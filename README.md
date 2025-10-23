@@ -2,6 +2,11 @@
 
 # For Deployment
 
+## Preparation:
+
+- ### Create a .env file inside a workdir.
+- ### Fill it with sample data from `.env.sample` or use real data.
+
 ## 1. Create a container:
 
 ```bash 
@@ -11,7 +16,7 @@ docker build -t myapp .
 ## 2. Run a container:
 
 ```bash 
-docker run -p 8000:8000 myapp
+docker run --env-file .env -p 8000:8000 myapp
 ```
 
 # For Development
@@ -19,11 +24,13 @@ docker run -p 8000:8000 myapp
 ## 1. Create a virtual env or use the existing one.
 
 ### 1.1 Create a venv:
+
 ```bash 
 python -m venv venv
 ```
 
 ### 1.2 Activate a venv:
+
 ```bash 
 .\venv\Scripts\activate
 ```
