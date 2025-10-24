@@ -1,5 +1,5 @@
 from sqlalchemy.orm import declarative_base
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, AsyncGenerator
 from typing import Annotated
 from fastapi import Depends
 import contextlib
@@ -16,11 +16,11 @@ Base = declarative_base()
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
 class DBSessionManager:
-    def __init__(self, host: str, engine_kwargs: dict[str, Any] | None = None):
-        self._engine = create_async_engine(host, **(engine_kwargs or {}))
+    def __init__(self, database_url: str, engine_kwargs: dict[str, Any] | None = None):
+        self._engine = create_async_engine(database_url, **(engine_kwargs or {}))
         self._sessionmaker = async_sessionmaker(autocommit=False, bind=self._engine, expire_on_commit=False)
 
-    async def close(self):
+    async def close(self) -> None:
         if self._engine:
             await self._engine.dispose()
             self._engine = None
@@ -44,7 +44,7 @@ class DBSessionManager:
 sessionmanager = DBSessionManager(settings.database_url, {"echo": settings.echo_sql})
 
 
-async def get_db_session():
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with sessionmanager.session() as session:
         yield session
 
