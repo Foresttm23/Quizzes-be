@@ -1,4 +1,6 @@
+redis==7.0.0
+sqlalchemy==2.0.44
 pydantic-settings==2.11.0
 pytest==8.4.2
 uvicorn==0.38.0
-fastapi==0.119.1
+fastapi==0.120.0
