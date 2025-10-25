@@ -1,3 +1,4 @@
+pydantic==2.12.3
 redis==7.0.0
 sqlalchemy==2.0.44
 asyncpg==0.30.0
