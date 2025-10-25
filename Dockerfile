@@ -1,4 +1,8 @@
-FROM python:3.11-slim
+FROM python:3.13-slim
+
+# More clean and better for debug
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /package
 
