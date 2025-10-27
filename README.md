@@ -82,3 +82,23 @@ docker build -t myapp .
 ```bash 
 docker run --env-file .env -p 8000:8000 myapp
 ```
+
+# Creating and Applying migrations
+
+### After you change a SQLAlchemy model  in app/db/models/ you must generate a migration script:
+
+```bash 
+alembic revision --autogenerate -m "Your message"
+```
+
+### Then to apply a migration changes:
+
+```bash 
+alembic upgrade head
+```
+
+### To revert the last changes:
+
+```bash 
+alembic downgrade -1
+```
