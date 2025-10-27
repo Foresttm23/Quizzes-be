@@ -52,7 +52,7 @@ docker compose up -d --build
 ### Tests must be run inside the running container since they need connection to the database and Redis.
 
 ```bash 
-docker exec -it myapp pytest
+docker exec myapp pytest
 ```
 
 # How to Stop the Application\Containers
