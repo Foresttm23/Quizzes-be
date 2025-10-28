@@ -1,15 +1,14 @@
-from sqlalchemy.orm import declarative_base
-from typing import Any, AsyncIterator, AsyncGenerator
-from typing import Annotated
-from fastapi import Depends
 import contextlib
+from typing import Any, AsyncIterator, AsyncGenerator
 
-from app.config import settings
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.orm import declarative_base
+
+from app.core.config import settings
 
 Base = declarative_base()
 
@@ -41,12 +40,9 @@ class DBSessionManager:
             await session.close()
 
 
-sessionmanager = DBSessionManager(settings.database_url, {"echo": settings.echo_sql})
+sessionmanager = DBSessionManager(settings.db.database_url, {"echo": settings.db.echo_sql})
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with sessionmanager.session() as session:
         yield session
-
-
-DBSessionDep = Annotated[AsyncSession, Depends(get_db_session)]

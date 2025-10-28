@@ -1,12 +1,13 @@
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-import uvicorn
 
-from app.routers.health import router as health_router
-from app.db.redis import redis_client, pool
+import uvicorn
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
 from app.db.postgres import sessionmanager
-from app.config import settings
+from app.db.redis import redis_client, pool
+from app.routers.health import router as health_router
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
@@ -29,11 +30,11 @@ app.include_router(health_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.origins,
+    allow_origins=settings.app.origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 if __name__ == '__main__':
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app.main:app", host=settings.app.host, port=settings.app.port, reload=settings.app.reload)
