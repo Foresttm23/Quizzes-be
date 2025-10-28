@@ -5,9 +5,12 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import settings
 import app.core.logger
 from app.core.config import settings
 from app.db.postgres import sessionmanager
+from app.db.redis import redis_client, pool
+from app.routers.health import router as health_router
 from app.db.redis import redis_client, pool
 from app.routers.health import router as health_router
 
