@@ -4,9 +4,9 @@ from pydantic_settings import BaseSettings
 
 class RedisSettings(BaseSettings):
     # Redis
-    redis_password: str
-    redis_db: int
+    REDIS_PASSWORD: str
+    REDIS_DB: int
 
     @computed_field
-    def redis_url(self) -> str:
-        return f"redis://:{self.redis_password}@redis:6379/{self.redis_db}"
+    def REDIS_URL(self) -> str:
+        return f"redis://:{self.REDIS_PASSWORD}@redis:6379/{self.REDIS_DB}"

@@ -12,8 +12,8 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY start.sh .
 RUN chmod +x start.sh
 
-# Since we want to reload container with the code we dont "Copy" but import local /app folder to the container
-# COPY ./app /package/app
+# For development docker-compose will overwrite folder
+COPY ./app /package/app
 
 EXPOSE 8000
 

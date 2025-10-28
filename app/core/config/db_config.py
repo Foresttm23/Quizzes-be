@@ -4,12 +4,12 @@ from pydantic_settings import BaseSettings
 
 class DBSettings(BaseSettings):
     # PostgresSQL
-    postgres_user: str
-    postgres_password: str
-    postgres_db: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
     # Debug
-    echo_sql: bool
+    ECHO_SQL: bool
 
     @computed_field
-    def database_url(self) -> str:
-        return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@postgres:5432/{self.postgres_db}"
+    def DATABASE_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@postgres:5432/{self.POSTGRES_DB}"

@@ -30,11 +30,11 @@ app.include_router(health_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.app.origins,
+    allow_origins=settings.APP.ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 if __name__ == '__main__':
-    uvicorn.run("app.main:app", host=settings.app.host, port=settings.app.port, reload=settings.app.reload)
+    uvicorn.run("app.main:app", host=settings.APP.HOST, port=settings.APP.PORT, reload=settings.APP.RELOAD)

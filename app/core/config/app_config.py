@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class AppSettings(BaseSettings):
-    host: str
-    port: int
-    reload: bool
+    HOST: str
+    PORT: int
+    RELOAD: bool
 
-    origins: list[str]
+    ORIGINS: list[str]

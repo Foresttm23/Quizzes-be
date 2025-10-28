@@ -6,9 +6,9 @@ from .redis_config import RedisSettings
 
 
 class Settings(BaseSettings):
-    app: AppSettings = AppSettings()
-    db: DBSettings = DBSettings()
-    redis: RedisSettings = RedisSettings()
+    APP: AppSettings = AppSettings()
+    DB: DBSettings = DBSettings()
+    REDIS: RedisSettings = RedisSettings()
 
     model_config = SettingsConfigDict(env_file=".env", extra='ignore')
 

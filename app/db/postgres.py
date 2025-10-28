@@ -40,7 +40,7 @@ class DBSessionManager:
             await session.close()
 
 
-sessionmanager = DBSessionManager(settings.db.database_url, {"echo": settings.db.echo_sql})
+sessionmanager = DBSessionManager(settings.DB.DATABASE_URL, {"echo": settings.DB.ECHO_SQL})
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
