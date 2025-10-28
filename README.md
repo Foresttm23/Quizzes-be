@@ -1,54 +1,84 @@
 # intern-meduzzen-be
 
-# For Deployment
+___
 
-## Preparation:
+## Install Docker
 
-- ### Create a .env file inside a workdir.
-- ### Fill it with sample data from `.env.sample` or use real data.
+https://www.docker.com
+___
 
-## 1. Create a container:
+# For IDE support and better experience configure virtual environment
 
-```bash 
-docker build -t myapp .
-```
-
-## 2. Run a container:
-
-```bash 
-docker run --env-file .env -p 8000:8000 myapp
-```
-
-# For Development
-
-## 1. Create a virtual env or use the existing one.
-
-### 1.1 Create a venv:
+### Create .venv
 
 ```bash 
 python -m venv venv
 ```
 
-### 1.2 Activate a venv:
+### Activate .venv
 
 ```bash 
 .\venv\Scripts\activate
 ```
 
-## 2. Install dependencies:
+### Install dependencies
 
 ```bash 
 pip install -r requirements.txt
 ```
 
-## 3. Run the app:
+# Project Setup
+
+### Create local environment file.
 
 ```bash 
-uvicorn app.main:app --reload
+cp .env.sample .env
 ```
 
-## 4. Run tests:
+### Fill real or leave as is for a local development.
+
+# Run the App
+
+### This command will start FastApi, Postgresql and Redis in separate containers and run it in the background.
 
 ```bash 
-pytest
+docker compose up -d --build
+```
+
+### You can then access APi at http://localhost:8000 .
+
+# How to Run Tests
+
+### Tests must be run inside the running container since they need connection to the database and Redis.
+
+```bash 
+docker exec -it myapp pytest
+```
+
+# How to Stop the Application\Containers
+
+### To stop the containers but keep DB data
+
+```bash 
+docker compose down
+```
+
+### For full teardown\reset
+
+```bash 
+docker compose down -v
+```
+
+# For FastApi Deployment
+
+### Create a container:
+
+```bash 
+docker build -t myapp .
+```
+
+### Run a container:
+
+```bash 
+docker run --env-file .env -p 8000:8000 myapp
 ```
