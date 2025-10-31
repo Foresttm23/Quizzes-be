@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     logger.info(f"Shutdown")
-    await redis_client.close()
+    await redis_client.aclose()
     await pool.disconnect()
     await sessionmanager.close()
 
