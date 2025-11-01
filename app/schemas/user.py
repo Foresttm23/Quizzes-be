@@ -1,19 +1,19 @@
+import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import Generic, TypeVar, Optional, List
 
 from pydantic import BaseModel, EmailStr, Field, SecretStr
 
 
 # Internal use
 class User(BaseModel):
-    id: int
+    id: uuid.UUID
     email: EmailStr
     username: str
     hashed_password: SecretStr
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class SignUpRequest(BaseModel):
@@ -28,17 +28,30 @@ class SignInRequest(BaseModel):
 
 
 class UserUpdateRequest(BaseModel):
-    email: Optional[EmailStr] = None
     username: Optional[str] = Field(None, min_length=3, max_length=100)
     password: Optional[SecretStr] = Field(None, min_length=8)
 
 
-class UserDetailsResponse(BaseModel):
-    id: int
+class BaseResponseModel(BaseModel):
+    model_config = {"from_attributes": True}
+
+
+class UserDetailsResponse(BaseResponseModel):
+    id: uuid.UUID
     email: EmailStr
     username: str
     created_at: datetime
 
 
-class UsersListResponse(BaseModel):
-    users: List[UserDetailsResponse]
+T = TypeVar("T")
+
+
+# Generic response, so we can reuse it for pagination routes
+class PaginationResponse(BaseResponseModel, Generic[T]):
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+    data: List[T]
