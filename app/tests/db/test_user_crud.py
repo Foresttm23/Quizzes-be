@@ -2,10 +2,10 @@ import uuid
 
 import pytest
 import pytest_asyncio
-from fastapi import HTTPException
 from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import UserNotFoundException, RecordAlreadyExistsException
 from app.core.security import verify_password
 from app.crud.user import (
     create_user_crud,
@@ -58,11 +58,8 @@ async def test_create_user_crud_duplicate_email(
         username="anotheruser",
         password=SecretStr("password123")
     )
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(RecordAlreadyExistsException):
         await create_user_crud(user_info_duplicate, db=testdb_session)
-
-    assert exc_info.value.status_code == 400
-    assert "Record already exists" in exc_info.value.detail
 
 
 async def test_get_user_crud_success(testdb_session: AsyncSession, created_user: UserModel):
@@ -73,11 +70,8 @@ async def test_get_user_crud_success(testdb_session: AsyncSession, created_user:
 
 async def test_get_user_crud_not_found(testdb_session: AsyncSession):
     non_existent_id = uuid.uuid4()
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(UserNotFoundException):
         await get_user_crud(non_existent_id, db=testdb_session)
-
-    assert exc_info.value.status_code == 404
-    assert "User not found" in exc_info.value.detail
 
 
 # Testing both first and other pages
@@ -138,24 +132,17 @@ async def test_update_user_crud_no_changes(testdb_session: AsyncSession, created
 async def test_update_user_crud_not_found(testdb_session: AsyncSession):
     non_existent_id = uuid.uuid4()
     update_data = UserUpdateRequest(username="newuser")
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(UserNotFoundException):
         await update_user_crud(non_existent_id, update_data, db=testdb_session)
-    assert exc_info.value.status_code == 404
-    assert "User not found" in exc_info.value.detail
 
 
 async def test_delete_user_crud_success(testdb_session: AsyncSession, created_user: UserModel):
     await delete_user_crud(created_user.id, db=testdb_session)
-    user_in_db = await testdb_session.get(UserModel, created_user.id)
-    assert user_in_db is None
-    with pytest.raises(HTTPException) as exc_info:
-        await get_user_crud(created_user.id, db=testdb_session)
-    assert exc_info.value.status_code == 404
+    user = await testdb_session.get(UserModel, created_user.id)
+    assert user is None
 
 
 async def test_delete_user_crud_not_found(testdb_session: AsyncSession):
     non_existent_id = uuid.uuid4()
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(UserNotFoundException):
         await delete_user_crud(non_existent_id, db=testdb_session)
-    assert exc_info.value.status_code == 404
-    assert "User not found" in exc_info.value.detail

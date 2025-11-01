@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
+from app.core.exceptions import DBSessionNotInitializedException
 from app.core.logger import logger
 
 
@@ -30,9 +31,7 @@ class DBSessionManager:
     @contextlib.asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
         if self._sessionmaker is None:
-            message = "DBSessionManager is not initialized!"
-            logger.error(message)
-            raise Exception(message)
+            raise DBSessionNotInitializedException()
 
         session = self._sessionmaker()
         try:

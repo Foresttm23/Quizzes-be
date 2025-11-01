@@ -1,12 +1,12 @@
 import uuid
 from typing import Type, TypeVar
 
-from fastapi import HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.exceptions import RecordAlreadyExistsException, UserNotFoundException
 from app.core.security import hash_password
 from app.db.models.user import User as UserModel
 from app.schemas.user import UserUpdateRequest
@@ -48,7 +48,7 @@ async def commit_with_handling(db: AsyncSession, instance=None):
     try:
         await db.commit()
     except IntegrityError:
-        raise HTTPException(status_code=400, detail="Record already exists")
+        raise RecordAlreadyExistsException()
 
     if instance:
         await db.refresh(instance)
@@ -70,7 +70,7 @@ async def get_user_or_404(db: AsyncSession, user_id: uuid.UUID) -> UserModel:
     """
     user = await db.get(UserModel, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise UserNotFoundException()
     return user
 
 
