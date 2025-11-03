@@ -1,22 +1,28 @@
+import logging
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.core.logger
 from app.core.config import settings
 from app.db.postgres import sessionmanager
 from app.db.redis import redis_client, pool
 from app.routers.health import router as health_router
+
+logger = logging.getLogger(__name__)
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    logger.debug(f"Startup")
 
     yield
     # Shutdown
+    logger.debug(f"Shutdown")
     ## Close Redis pool and conn
     await redis_client.close()
     await pool.disconnect()

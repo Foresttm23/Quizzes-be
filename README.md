@@ -52,7 +52,7 @@ docker compose up -d --build
 ### Tests must be run inside the running container since they need connection to the database and Redis.
 
 ```bash 
-docker exec -it myapp pytest
+docker exec myapp pytest
 ```
 
 # How to Stop the Application\Containers
@@ -81,4 +81,24 @@ docker build -t myapp .
 
 ```bash 
 docker run --env-file .env -p 8000:8000 myapp
+```
+
+# Creating and Applying migrations
+
+### After you change a SQLAlchemy model  in app/db/models/ you must generate a migration script:
+
+```bash 
+alembic revision --autogenerate -m "Your message"
+```
+
+### Then to apply a migration changes:
+
+```bash 
+alembic upgrade head
+```
+
+### To revert the last changes:
+
+```bash 
+alembic downgrade -1
 ```
