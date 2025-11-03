@@ -7,15 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import UserNotFoundException, RecordAlreadyExistsException
 from app.core.security import verify_password
-from app.crud.user import (
+from app.db.models.user import User as UserModel
+from app.schemas.user_schema import SignUpRequest, UserUpdateRequest
+from app.services.user_service import (
     create_user_crud,
     get_user_crud,
     get_users_crud,
     update_user_crud,
     delete_user_crud
 )
-from app.db.models.user import User as UserModel
-from app.schemas.user import SignUpRequest, UserUpdateRequest
 
 pytestmark = pytest.mark.asyncio
 

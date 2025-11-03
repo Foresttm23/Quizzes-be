@@ -3,8 +3,9 @@ import uuid
 from fastapi import APIRouter, status, Query
 
 from app.core.dependencies import DBSessionDep
-from app.crud.user import get_user_crud, get_users_crud, create_user_crud, update_user_crud, delete_user_crud
-from app.schemas.user import SignUpRequest, UserUpdateRequest, UserDetailsResponse, PaginationResponse
+from app.schemas.user_schema import SignUpRequest, UserUpdateRequest, UserDetailsResponse, PaginationResponse
+from app.services.user_service import get_user_crud, get_users_crud, create_user_crud, update_user_crud, \
+    delete_user_crud
 
 router = APIRouter(prefix="/users", tags=["users"])
 

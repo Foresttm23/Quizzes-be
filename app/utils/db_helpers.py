@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.exceptions import RecordAlreadyExistsException, UserNotFoundException
 from app.core.security import hash_password
 from app.db.models.user import User as UserModel
-from app.schemas.user import UserUpdateRequest
+from app.schemas.user_schema import UserUpdateRequest
 
 ModelType = TypeVar("ModelType")
 

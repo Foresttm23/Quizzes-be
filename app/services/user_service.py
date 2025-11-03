@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logger import logger
 from app.core.security import hash_password
 from app.db.models.user import User as UserModel
-from app.schemas.user import SignUpRequest, UserUpdateRequest
-from app.utils.crud import get_user_or_404, save_changes_and_refresh, apply_updates, get_items_paginated
+from app.schemas.user_schema import SignUpRequest, UserUpdateRequest
+from app.utils.db_helpers import get_user_or_404, save_changes_and_refresh, apply_updates, get_items_paginated
 
 
 async def get_users_crud(page: int, page_size: int, db: AsyncSession):
