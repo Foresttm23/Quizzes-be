@@ -11,11 +11,19 @@ class RecordAlreadyExistsException(HTTPException):
         )
 
 
-class UserNotFoundException(HTTPException):
+class InstanceNotFoundException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
+        )
+
+
+class PasswordReuseException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password cannot be the same as the current password"
         )
 
 

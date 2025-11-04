@@ -27,9 +27,14 @@ class SignInRequest(BaseModel):
     password: SecretStr
 
 
-class UserUpdateRequest(BaseModel):
-    username: Optional[str] = Field(None, min_length=3, max_length=100)
-    password: Optional[SecretStr] = Field(None, min_length=8)
+# Assuming we will have more fields later
+class UserInfoUpdateRequest(BaseModel):
+    username: str = Field(None, min_length=3, max_length=100)
+
+
+class UserPasswordUpdateRequest(BaseModel):
+    current_password: SecretStr
+    new_password: SecretStr = Field(min_length=8)
 
 
 class BaseResponseModel(BaseModel):

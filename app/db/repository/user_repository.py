@@ -6,10 +6,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import RecordAlreadyExistsException, UserNotFoundException
-from app.core.security import hash_password
+from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException, PasswordReuseException
+from app.core.security import hash_password, verify_password
 from app.db.models.user import User as UserModel
-from app.schemas.user_schema import UserUpdateRequest
+from app.schemas.user_schema import UserInfoUpdateRequest, UserPasswordUpdateRequest
 
 ModelType = TypeVar("ModelType")
 
@@ -70,31 +70,52 @@ async def get_user_or_404(db: AsyncSession, user_id: uuid.UUID) -> UserModel:
     """
     user = await db.get(UserModel, user_id)
     if not user:
-        raise UserNotFoundException()
+        raise InstanceNotFoundException()
     return user
 
 
-def apply_updates(user: UserModel, data: UserUpdateRequest) -> dict:
+def apply_user_updates(user: UserModel, new_user_info: UserInfoUpdateRequest) -> dict:
     """
-    Helper function for updating user details.
-    Takes user and data, that represents new user details if filled.
-    model_dump for SecretStr returns "*****" so accident password leakage is prevented.
+    Helper function for updating user details and keeping track of changes.
+    Takes user and new_user_info.
+    Doesn't include password field.
+    Password change has different method.
     """
     changes = {}
 
-    # If a field exists and not None
-    if "password" in data.model_fields_set:
-        hashed_password = hash_password(data.password.get_secret_value())
-        setattr(user, "hashed_password", hashed_password)
-        changes["password"] = {"updated": True}
-
-    update_data = data.model_dump(exclude_unset=True)
+    update_data = new_user_info.model_dump(exclude_unset=True)
     for key, new_value in update_data.items():
-        if key == "password":
-            continue
         old_value = getattr(user, key)
         if old_value != new_value:
             changes[key] = {"from": old_value, "to": new_value}
             setattr(user, key, new_value)
 
     return changes
+
+
+def apply_password_updates(user: UserModel, new_password_info: UserPasswordUpdateRequest) -> bool:
+    """
+    Helper function for updating user password and keeping track of changes.
+    Takes user and new_password_info.
+    """
+    current_password = new_password_info.current_password.get_secret_value()
+    new_password = new_password_info.new_password.get_secret_value()
+
+    # As long as current and new are the same, we raise exception.
+    if current_password == new_password:
+        raise PasswordReuseException()
+
+    if not verify_password(current_password, user.hashed_password):
+        return False
+
+    user.hashed_password = hash_password(new_password)
+    return True
+
+
+async def delete_user(db: AsyncSession, user: UserModel) -> None:
+    """
+    Function to delete user and commit changes.
+    """
+    await db.delete(user)
+    # We don't provide a value, since we don't need neither to update nor return user
+    await commit_with_handling(db=db, instance=None)
