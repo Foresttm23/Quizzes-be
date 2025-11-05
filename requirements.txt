@@ -15,4 +15,5 @@ alembic==1.17.0
 psycopg2-binary==2.9.11
 pwdlib[argon2]==0.3.0
 loguru==0.7.3
+python-jose[cryptography]==3.5.0
 #uvloop
