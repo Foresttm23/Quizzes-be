@@ -6,6 +6,7 @@ from sqlalchemy import NullPool, text
 
 from app.core.config import settings
 from app.db.postgres import DBSessionManager
+from app.services.user_service import UserService
 
 
 @pytest.fixture(scope="session")
@@ -68,3 +69,12 @@ async def clean_testdb(testdb_session):
     """
     await testdb_session.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE;"))
     await testdb_session.commit()
+
+
+@pytest.fixture(scope="function")
+def test_user_service(testdb_session):
+    """
+    With this we don't have to call testdb_session in all the tests.
+    Unless we need to call db directly to check the saved data.
+    """
+    return UserService(db=testdb_session)

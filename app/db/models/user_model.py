@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from sqlalchemy import UUID, DateTime, String
+from sqlalchemy import UUID, DateTime, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -16,8 +16,10 @@ class User(Base):
     )
     # Mapped[str] by default uses nullable=False, for nullable=True Mapped[Optional[str]] should be used
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
-    username: Mapped[str] = mapped_column(String, unique=True, index=True)
+    username: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str] = mapped_column(String)
+
+    is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

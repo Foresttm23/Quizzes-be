@@ -60,3 +60,8 @@ class PaginationResponse(BaseResponseModel, Generic[T]):
     has_next: bool
     has_prev: bool
     data: List[T]
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
