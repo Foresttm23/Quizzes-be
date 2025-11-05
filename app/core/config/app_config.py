@@ -7,3 +7,6 @@ class AppSettings(BaseSettings):
     RELOAD: bool
 
     ORIGINS: list[str]
+
+    # Limits
+    MAX_PAGE_SIZE: int

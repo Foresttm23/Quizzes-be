@@ -1,5 +1,4 @@
 import contextlib
-import logging
 from typing import Any, AsyncIterator, AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -9,13 +8,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-from app.core.config import settings
-
-logger = logging.getLogger(__name__)
+from app.core.exceptions import DBSessionNotInitializedException
+from app.core.logger import logger
 
 
 class Base(DeclarativeBase):
-    pass
+    __mapper_args__ = {"eager_defaults": True}
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
@@ -33,9 +31,7 @@ class DBSessionManager:
     @contextlib.asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
         if self._sessionmaker is None:
-            message = "DBSessionManager is not initialized!"
-            logger.error(message)
-            raise Exception(message)
+            raise DBSessionNotInitializedException()
 
         session = self._sessionmaker()
         try:
@@ -48,7 +44,13 @@ class DBSessionManager:
             await session.close()
 
 
-sessionmanager = DBSessionManager(settings.DB.DATABASE_URL, {"echo": settings.DB.ECHO_SQL})
+sessionmanager: DBSessionManager | None = None
+
+
+def init_db(database_url: str, engine_kwargs: dict[str, Any] | None = None):
+    global sessionmanager
+    sessionmanager = DBSessionManager(database_url, engine_kwargs or {})
+    return sessionmanager
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

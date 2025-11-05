@@ -7,8 +7,6 @@ class DBSettings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
-    # Debug
-    ECHO_SQL: bool
 
     @computed_field
     def DATABASE_URL(self) -> str:

@@ -20,3 +20,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String)
 
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self) -> str:
+        """Made for safe logging of a user if needed or made by accident"""
+        return f"<User {self.username!r}, {self.username!r}, {self.email!r}>"
