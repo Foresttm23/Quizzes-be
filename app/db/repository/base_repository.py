@@ -1,13 +1,14 @@
-import uuid
-from typing import Type, TypeVar, Generic
+from typing import Type, TypeVar, Generic, Any
 
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.config import settings
-from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException
+from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException, \
+    InvalidSQLModelFieldNameException
 from app.db.postgres import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -65,13 +66,24 @@ class BaseRepository(Generic[ModelType]):
         self.db.add(instance)
         await self.commit_with_handling(instance=instance)
 
-    async def get_instance_or_404(self, instance_id: uuid.UUID) -> ModelType:
+    async def get_instance_or_404(self, field_name: str, field_value: Any) -> ModelType:
         """
-        Gets instance by ID.
+        Gets instance by field.
         If no instance exists, raise error.
         Else returns instance.
         """
-        instance = await self.db.get(self.model, instance_id)
+        if not hasattr(self.model, field_name):
+            raise InvalidSQLModelFieldNameException(field_name)
+
+        # Assigned a specific type hint, so that ide won't show warning
+        field: InstrumentedAttribute = getattr(self.model, field_name)
+
+        result = await self.db.execute(
+            select(self.model).where(field == field_value)
+        )
+
+        instance = result.scalar_one_or_none()
+
         if not instance:
             raise InstanceNotFoundException()
         return instance

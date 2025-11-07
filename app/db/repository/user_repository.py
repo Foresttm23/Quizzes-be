@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import PasswordReuseException
-from app.core.security import hash_password, verify_password
 from app.db.models.user_model import User as UserModel
-from app.schemas.user_schema import UserPasswordUpdateRequest
+from app.schemas.user_schemas.user_request_schema import UserPasswordUpdateRequest
+from app.utils.password_utils import hash_password, verify_password
 from .base_repository import BaseRepository
 
 

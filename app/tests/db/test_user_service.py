@@ -6,10 +6,10 @@ from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InstanceNotFoundException, RecordAlreadyExistsException, PasswordReuseException
-from app.core.security import verify_password
 from app.db.models.user_model import User as UserModel
-from app.schemas.user_schema import SignUpRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest
+from app.schemas.user_schemas.user_request_schema import SignUpRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest
 from app.services.user_service import UserService
+from app.utils.password_utils import verify_password
 
 pytestmark = pytest.mark.asyncio
 
@@ -61,7 +61,7 @@ async def test_create_user_duplicate_email(
 
 
 async def test_fetch_user_success(test_user_service: UserService, created_user: UserModel):
-    user_from_db = await test_user_service.fetch_instance(instance_id=created_user.id)
+    user_from_db = await test_user_service.fetch_instance(field_name="id", field_value=created_user.id)
     assert user_from_db.id == created_user.id
     assert user_from_db.email == created_user.email
 
@@ -69,7 +69,7 @@ async def test_fetch_user_success(test_user_service: UserService, created_user: 
 async def test_fetch_user_not_found(test_user_service: UserService):
     non_existent_id = uuid.uuid4()
     with pytest.raises(InstanceNotFoundException):
-        await test_user_service.fetch_instance(instance_id=non_existent_id)
+        await test_user_service.fetch_instance(field_name="id", field_value=non_existent_id)
 
 
 # Testing both first and other pages
@@ -161,7 +161,7 @@ async def test_update_user_password_reuse_error(test_user_service: UserService, 
 
 async def test_delete_user_success(test_user_service: UserService, testdb_session: AsyncSession,
                                    created_user: UserModel):
-    await test_user_service.delete_instance(instance_id=created_user.id)
+    await test_user_service.delete_instance_by_id(instance_id=created_user.id)
     user = await testdb_session.get(UserModel, created_user.id)
     assert user is None
 
@@ -169,4 +169,4 @@ async def test_delete_user_success(test_user_service: UserService, testdb_sessio
 async def test_delete_user_not_found(test_user_service: UserService):
     non_existent_id = uuid.uuid4()
     with pytest.raises(InstanceNotFoundException):
-        await test_user_service.delete_instance(instance_id=non_existent_id)
+        await test_user_service.delete_instance_by_id(instance_id=non_existent_id)

@@ -3,11 +3,11 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import logger
-from app.core.security import hash_password
 from app.db.models.user_model import User as UserModel
 from app.db.repository.user_repository import UserRepository
-from app.schemas.user_schema import SignUpRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest
+from app.schemas.user_schemas.user_request_schema import SignUpRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest
 from app.services.base_service import BaseService
+from app.utils.password_utils import hash_password
 
 
 class UserService(BaseService[UserRepository]):
@@ -33,18 +33,36 @@ class UserService(BaseService[UserRepository]):
 
         await self.repo.save_changes_and_refresh(instance=user)
 
-        logger.info(f"Created new User: {user.id}")
+        logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider}")
+
+        return user
+
+    async def create_user_from_jwt(self, user_info: dict):
+        """Method for creating a user from a jwt token"""
+        # Since username is unique, we would need to create a unique username
+        # relying only on email will expose it, so a simple uuid is better
+        user = UserModel(
+            email=user_info["email"],
+            # .hex pretty much cleans the uuid from unique characters
+            username=f"user_{uuid.uuid4().hex[:12]}",
+            hashed_password=None,
+            auth_provider="auth0"
+        )
+
+        await self.repo.save_changes_and_refresh(instance=user)
+
+        logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider}")
 
         return user
 
     async def update_user_info(self, user_id: uuid.UUID, new_user_info: UserInfoUpdateRequest):
         """Method for updating user details by id"""
-        user = await super()._update_instance(instance_id=user_id, new_data=new_user_info)
+        user = await super()._update_instance_by_id(instance_id=user_id, new_data=new_user_info)
         return user
 
     async def update_user_password(self, user_id: uuid.UUID, new_password_info: UserPasswordUpdateRequest):
         """Method for updating user password by id"""
-        user = await self.repo.get_instance_or_404(instance_id=user_id)
+        user = await self.repo.get_instance_or_404(field_name="id", field_value=user_id)
         password_changed = self.repo.apply_password_updates(instance=user, new_password_info=new_password_info)
 
         if not password_changed:
