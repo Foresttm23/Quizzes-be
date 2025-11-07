@@ -1,31 +1,65 @@
-from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
-from jose import jwt
-from pwdlib import PasswordHash
+from fastapi import Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError, jwt, jws
 
 from app.core.config import settings
+from app.core.exceptions import InvalidJWTToken
+from app.utils.jwks_utils import find_public_key
+from app.utils.jwt_utils import check_jwt_fields
 
-pwd_hasher = PasswordHash.recommended()
-
-
-def hash_password(password: str) -> str:
-    """Hash a password"""
-    return pwd_hasher.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify that hashed_password and plain_password are equal"""
-    return pwd_hasher.verify(plain_password, hashed_password)
+# To prevent circular imports.
+# Since I make dependency from verify_token.
+security = HTTPBearer()
+SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    """Creates a signed JWT access token."""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.JWT.JWT_SECRET, algorithm=settings.JWT.JWT_ALGORITHM)
+def verify_token(token: SecurityDep) -> dict:
+    jwt_token = token.credentials
+    # Since we have 2 variation of registration we check them in order
+    try:
+        return verify_token_local(jwt_token)
+    except InvalidJWTToken:
+        # If this raises error, code stops
+        return verify_token_auth0(jwt_token)
 
-    return encoded_jwt
+
+def verify_token_local(token: str) -> dict:
+    try:
+        # Decode handles expiration automatically
+        payload = jwt.decode(token, settings.LOCAL_JWT.LOCAL_JWT_SECRET,
+                             algorithms=[settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM])
+        email: str = payload.get("sub")
+
+        if email is None:
+            raise InvalidJWTToken()
+
+        return {"email": email}
+    except JWTError:
+        raise InvalidJWTToken()
+
+
+def verify_token_auth0(token: str):
+    try:
+        unverified_token = jws.get_unverified_header(token)
+        public_key = find_public_key(unverified_token["kid"])
+        if public_key is None:
+            raise InvalidJWTToken()
+
+        # Decode handles expiration automatically
+        payload = jwt.decode(
+            token=token,
+            key=public_key,
+            audience=settings.AUTH0_JWT.AUTH0_JWT_AUDIENCE,
+            algorithms=settings.AUTH0_JWT.AUTH0_JWT_ALGORITHM,
+        )
+
+        email: str = payload.get("email")
+
+        response = {"email": email}
+        check_jwt_fields(response)
+
+        return response
+    except JWTError:
+        raise InvalidJWTToken()
