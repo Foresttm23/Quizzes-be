@@ -10,8 +10,8 @@ class SignUpRequest(BaseModel):
 
 
 class SignInRequest(BaseModel):
-    email: Optional[EmailStr]
-    password: SecretStr
+    email: Optional[EmailStr] = None
+    password: Optional[SecretStr] = None
 
 
 # Assuming we will have more fields later

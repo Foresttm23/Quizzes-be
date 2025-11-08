@@ -26,4 +26,4 @@ class User(Base):
 
     def __repr__(self) -> str:
         """Made for safe logging of a user if needed or made by accident"""
-        return f"<User {self.username!r}, {self.email!r}>"
+        return f"<{self.id!r}>"

@@ -19,11 +19,19 @@ class InstanceNotFoundException(HTTPException):
         )
 
 
-class UserIncorrectPasswordOrEmail(HTTPException):
+class UserIncorrectPasswordOrEmailException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Incorrect password or email"
+        )
+
+
+class NotProvidedPasswordOrEmailException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must provide email and password or a jwt"
         )
 
 
@@ -43,7 +51,7 @@ class InvalidSQLModelFieldNameException(HTTPException):
         )
 
 
-class InvalidJWTToken(HTTPException):
+class InvalidJWTException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,

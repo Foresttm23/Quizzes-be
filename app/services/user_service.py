@@ -57,7 +57,8 @@ class UserService(BaseService[UserRepository]):
 
     async def update_user_info(self, user_id: uuid.UUID, new_user_info: UserInfoUpdateRequest):
         """Method for updating user details by id"""
-        user = await super()._update_instance_by_id(instance_id=user_id, new_data=new_user_info)
+        user = await self.repo.get_instance_or_404(field_name="id", field_value=user_id)
+        user = await super()._update_instance(instance=user, new_data=new_user_info)
         return user
 
     async def update_user_password(self, user_id: uuid.UUID, new_password_info: UserPasswordUpdateRequest):
