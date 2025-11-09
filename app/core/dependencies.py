@@ -5,22 +5,35 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import verify_local_token_and_get_payload, verify_token_and_get_payload
 from app.db import (redis as redis_module, postgres as postgres_module)
+from app.services.auth_service import AuthService
+from app.services.user_service import UserService
 
 RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
 
 DBSessionDep = Annotated[AsyncSession, Depends(postgres_module.get_db_session)]
 
-VerifyLocalTokenAndGetPayloadDep = Annotated[dict, Depends(verify_local_token_and_get_payload)]
-
 security = HTTPBearer()
 SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
 
 
-async def get_jwt_from_header(header: SecurityDep) -> dict:
+async def get_user_service(db: DBSessionDep):
+    return UserService(db=db)
+
+
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+
+
+async def get_auth_service(user_service: UserServiceDep):
+    return AuthService(user_service=user_service)
+
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
+async def get_jwt_from_header(header: SecurityDep, auth_service: AuthServiceDep) -> dict:
     jwt = header.credentials
-    jwt_payload = verify_token_and_get_payload(jwt)
+    jwt_payload = auth_service.verify_token_and_get_payload(jwt_token=jwt)
     return jwt_payload
 
 

@@ -22,17 +22,17 @@ class BaseService(ABC, Generic[RepoType]):
     def __init__(self, repo: RepoType):
         self.repo = repo
 
-    async def fetch_instance(self, field_name: str, field_value: Any):
+    async def _fetch_instance(self, field_name: str, field_value: Any) -> ModelType:
         """Method for getting an instance by field"""
-        instance = await self.repo.get_instance_or_404(field_name=field_name, field_value=field_value)
+        instance = await self.repo.get_instance_by_field_or_404(field_name=field_name, field_value=field_value)
         return instance
 
-    async def fetch_instances_paginated(self, page: int, page_size: int):
+    async def _fetch_instances_data_paginated(self, page: int, page_size: int) -> dict[..., list[ModelType]]:
         """Method for getting all instances paginated"""
-        instances = await self.repo.get_instances_paginated(page=page, page_size=page_size)
+        instances = await self.repo.get_instances_data_paginated(page=page, page_size=page_size)
         return instances
 
-    async def _update_instance(self, instance: ModelType, new_data: SchemaType):
+    async def _update_instance(self, instance: ModelType, new_data: SchemaType) -> ModelType:
         """
         Method for updating instance details by id.
         Should only be called inside subclasses
@@ -52,9 +52,9 @@ class BaseService(ABC, Generic[RepoType]):
 
         return instance
 
-    async def delete_instance_by_id(self, instance_id: uuid.UUID) -> None:
+    async def _delete_instance_by_id(self, instance_id: uuid.UUID) -> None:
         """Method for deleting an instance by id"""
-        instance = await self.repo.get_instance_or_404(field_name="id", field_value=instance_id)
+        instance = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=instance_id)
 
         logger.info(f"Deleted {self.display_name}: {instance.id}")
 

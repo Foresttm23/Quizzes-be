@@ -20,7 +20,7 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.db = db
 
-    async def get_instances_paginated(self, page: int, page_size: int) -> dict:
+    async def get_instances_data_paginated(self, page: int, page_size: int) -> dict:
         """Returns a dict of instances in specified range and metadata"""
         page = max(page, 1)
         page_size = max(min(page_size, settings.APP.MAX_PAGE_SIZE), 1)
@@ -45,7 +45,7 @@ class BaseRepository(Generic[ModelType]):
             "data": items,
         }
 
-    async def commit_with_handling(self, instance: ModelType | None = None) -> None:
+    async def _commit_with_handling(self, instance: ModelType | None = None) -> None:
         """
         Commits current state of commits and refreshes instance.
         If instance is None only commits.
@@ -64,9 +64,9 @@ class BaseRepository(Generic[ModelType]):
         Wrapper for commit_with_handling() that also adds an instance to db.
         """
         self.db.add(instance)
-        await self.commit_with_handling(instance=instance)
+        await self._commit_with_handling(instance=instance)
 
-    async def get_instance_or_404(self, field_name: str, field_value: Any) -> ModelType:
+    async def get_instance_by_field_or_404(self, field_name: str, field_value: Any) -> ModelType:
         """
         Gets instance by field.
         If no instance exists, raise error.
@@ -111,4 +111,4 @@ class BaseRepository(Generic[ModelType]):
         """
         await self.db.delete(instance)
         # We don't provide a value, since we don't need neither to update nor return user
-        await self.commit_with_handling()
+        await self._commit_with_handling()
