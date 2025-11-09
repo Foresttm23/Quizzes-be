@@ -11,10 +11,7 @@ from app.db.postgres import Base
 class User(Base):
     __tablename__ = 'users'
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    # Mapped[str] by default uses nullable=False, for nullable=True Mapped[Optional[str]] should be used
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     username: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
