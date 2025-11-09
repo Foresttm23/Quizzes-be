@@ -9,10 +9,12 @@ from app.utils.jwt_utils import check_jwt_fields, fill_jwt_fields_from_payload
 def verify_token_and_get_payload(jwt_token: str) -> dict:
     # Since we have 2 variation of registration we check them in order
     try:
-        return verify_auth0_token_and_get_payload(jwt_token)
+        # Local verification is used for all auth endpoints,
+        # thus should be first in order
+        return verify_local_token_and_get_payload(jwt_token)
     except InvalidJWTException:
         # If this raises error, code stops
-        return verify_local_token_and_get_payload(jwt_token)
+        return verify_auth0_token_and_get_payload(jwt_token)
 
 
 def verify_local_token_and_get_payload(token: str) -> dict:
@@ -37,12 +39,8 @@ def verify_auth0_token_and_get_payload(token: str):
             raise InvalidJWTException()
 
         # Decode handles expiration automatically
-        payload = jwt.decode(
-            token=token,
-            key=public_key,
-            audience=settings.AUTH0_JWT.AUTH0_JWT_AUDIENCE,
-            algorithms=settings.AUTH0_JWT.AUTH0_JWT_ALGORITHM,
-        )
+        payload = jwt.decode(token=token, key=public_key, audience=settings.AUTH0_JWT.AUTH0_JWT_AUDIENCE,
+                             algorithms=settings.AUTH0_JWT.AUTH0_JWT_ALGORITHM, )
     except (JWTError, JWSError, KeyError):
         raise InvalidJWTException()
 
