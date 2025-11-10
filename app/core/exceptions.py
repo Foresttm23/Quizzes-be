@@ -75,22 +75,6 @@ class InvalidJWTException(HTTPException):
         )
 
 
-class InvalidJWTFieldsException(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provided JWT has missing fields"
-        )
-
-
-class InvalidJWTRefreshException(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid type of JWT token. Expected refresh token."
-        )
-
-
 class CompanyPermissionException(HTTPException):
     def __init__(self):
         super().__init__(

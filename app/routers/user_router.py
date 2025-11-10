@@ -37,7 +37,7 @@ async def get_user(user_service: UserServiceDep, user_id: uuid.UUID):
 async def update_self_info(user_service: UserServiceDep, jwt_payload: LocalJWTDep,
                            new_user_info: UserInfoUpdateRequest):
     """Updates info for authenticated user"""
-    user = await user_service.update_user_info(user_email=jwt_payload["email"], new_user_info=new_user_info)
+    user = await user_service.update_user_info(user_id=jwt_payload["id"], new_user_info=new_user_info)
     return user
 
 
@@ -45,11 +45,11 @@ async def update_self_info(user_service: UserServiceDep, jwt_payload: LocalJWTDe
 async def update_self_password(user_service: UserServiceDep, jwt_payload: LocalJWTDep,
                                new_password_info: UserPasswordUpdateRequest):
     """Updates password for authenticated user"""
-    user = await user_service.update_user_password(user_email=jwt_payload["email"], new_password_info=new_password_info)
+    user = await user_service.update_user_password(user_id=jwt_payload["id"], new_password_info=new_password_info)
     return user
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_self(user_service: UserServiceDep, jwt_payload: LocalJWTDep):
     """Deletes currently authenticated user"""
-    await user_service.delete_user(user_email=jwt_payload["email"])
+    await user_service.delete_user_by_id(user_id=jwt_payload["id"])
