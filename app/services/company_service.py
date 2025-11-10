@@ -29,7 +29,7 @@ class CompanyService(BaseService[CompanyRepository]):
         return companies_data
 
     async def fetch_company_by_id(self, company_id: UUID) -> CompanyModel:
-        company: CompanyModel = await super()._fetch_instance(field_name="id", field_value=company_id)
+        company = await super()._fetch_instance(field_name="id", field_value=company_id)
         return company
 
     async def create_company(self, owner_email: str, company_info: CompanyCreateRequest):
