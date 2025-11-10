@@ -2,11 +2,18 @@ import pytest
 import pytest_asyncio
 from alembic import command
 from alembic.config import Config
+from pydantic import SecretStr
 from sqlalchemy import NullPool, text
 
 from app.core.config import settings
+from app.db.models.user_model import User as UserModel
 from app.db.postgres import DBSessionManager
+from app.schemas.user_schemas.user_request_schema import SignUpRequest
 from app.services.user_service import UserService
+
+DEFAULT_EMAIL = "test@example.com"
+DEFAULT_USERNAME = "testuser"
+DEFAULT_PASSWORD = SecretStr("123456789")
 
 
 @pytest.fixture(scope="session")
@@ -68,6 +75,7 @@ async def clean_testdb(testdb_session):
     Main fixture to ensure tests execute in a 'clean' state.
     """
     await testdb_session.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE;"))
+    await testdb_session.execute(text("TRUNCATE TABLE companies RESTART IDENTITY CASCADE;"))
     await testdb_session.commit()
 
 
@@ -78,3 +86,10 @@ def test_user_service(testdb_session):
     Unless we need to call db directly to check the saved data.
     """
     return UserService(db=testdb_session)
+
+
+@pytest_asyncio.fixture
+async def created_user(test_user_service: UserService) -> UserModel:
+    user_info = SignUpRequest(email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+    user = await test_user_service.create_user(user_info=user_info)
+    return user
