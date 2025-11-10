@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import (redis as redis_module, postgres as postgres_module)
 from app.services.auth_service import AuthService
+from app.services.company_service import CompanyService
 from app.services.user_service import UserService
 
 RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
@@ -31,10 +32,26 @@ async def get_auth_service(user_service: UserServiceDep):
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
-async def get_jwt_from_header(header: SecurityDep, auth_service: AuthServiceDep) -> dict:
+async def get_jwt_payload_from_header(header: SecurityDep, auth_service: AuthServiceDep) -> dict:
     jwt = header.credentials
     jwt_payload = auth_service.verify_token_and_get_payload(jwt_token=jwt)
     return jwt_payload
 
 
-JWTDep = Annotated[dict, Depends(get_jwt_from_header)]
+LoginJWTDep = Annotated[dict, Depends(get_jwt_payload_from_header)]
+
+
+async def get_local_jwt_payload_from_header(header: SecurityDep, auth_service: AuthServiceDep) -> dict:
+    jwt = header.credentials
+    jwt_payload = auth_service.verify_local_token_and_get_payload(jwt_token=jwt)
+    return jwt_payload
+
+
+LocalJWTDep = Annotated[dict, Depends(get_local_jwt_payload_from_header)]
+
+
+async def get_company_service(db: DBSessionDep):
+    return CompanyService(db=db)
+
+
+CompanyServiceDep = Annotated[CompanyService, Depends(get_company_service)]

@@ -9,6 +9,7 @@ from app.core.logger import logger
 from app.db.postgres import init_db
 from app.db.redis import redis_client, pool
 from app.routers.auth_router import router as auth_router
+from app.routers.company_router import router as company_router
 from app.routers.health_router import router as health_router
 from app.routers.user_router import router as user_router
 
@@ -33,15 +34,10 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(health_router)
 app.include_router(user_router)
 app.include_router(auth_router)
+app.include_router(company_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.APP.ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=settings.APP.ORIGINS, allow_credentials=True, allow_methods=["*"],
+                   allow_headers=["*"], )
 
 if __name__ == '__main__':
-    uvicorn.run("app.main:app", host=settings.APP.HOST, port=settings.APP.PORT,
-                reload=settings.APP.RELOAD)
+    uvicorn.run("app.main:app", host=settings.APP.HOST, port=settings.APP.PORT, reload=settings.APP.RELOAD)

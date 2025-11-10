@@ -96,4 +96,5 @@ class UserService(BaseService[UserRepository]):
         user.hashed_password = hash_password(new_password)
 
     async def delete_user_by_id(self, user_id: uuid.UUID) -> None:
-        await super()._delete_instance_by_id(instance_id=user_id)
+        user = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=user_id)
+        await super()._delete_instance(instance=user)

@@ -5,7 +5,7 @@ from app.core.exceptions import InvalidJWTException
 from app.core.exceptions import UserIncorrectPasswordOrEmailException, InstanceNotFoundException
 from app.db.models.user_model import User as UserModel
 from app.db.repository.auth_repository import AuthRepository
-from app.schemas.user_schemas.user_request_schema import SignInRequest
+from app.schemas.user_schemas.user_request_schema import SignInRequest, SignUpRequest
 from app.services.user_service import UserService
 from app.utils.password_utils import verify_password
 
@@ -14,6 +14,14 @@ class AuthService:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
         self.repo = AuthRepository()
+
+    async def register_user(self, user_info: SignUpRequest) -> UserModel:
+        """
+        Wrapper for user_service.create_user.
+        Can be expanded in the future.
+        """
+        user = await self.user_service.create_user(user_info=user_info)
+        return user
 
     def verify_token_and_get_payload(self, jwt_token: str) -> dict:
         # Since we have 2 variation of registration we check them in order
@@ -24,6 +32,9 @@ class AuthService:
         except InvalidJWTException:
             # If this raises error, code stops
             return self.repo.verify_auth0_token_and_get_payload(jwt_token)
+
+    def verify_local_token_and_get_payload(self, jwt_token: str) -> dict:
+        return self.repo.verify_local_token_and_get_payload(token=jwt_token)
 
     async def handle_jwt_sign_in(self, jwt_payload: dict):
         try:
