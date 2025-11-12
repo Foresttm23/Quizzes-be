@@ -42,7 +42,7 @@ async def test_handle_jwt_sign_in_user_exists(auth_service, mock_user_service, m
     jwt_payload = {"email": mock_user.email}
     mock_user_service.fetch_user.return_value = mock_user
 
-    user = await auth_service.handle_jwt_sign_in(jwt_payload)
+    user = await auth_service._handle_jwt_sign_in(jwt_payload)
 
     assert user == mock_user
     mock_user_service.fetch_user.assert_called_once_with(field_name="email", field_value=mock_user.email)
@@ -55,7 +55,7 @@ async def test_handle_jwt_sign_in_user_not_found(auth_service, mock_user_service
     mock_user_service.fetch_user.side_effect = InstanceNotFoundException
     mock_user_service.create_user_from_jwt.return_value = mock_user
 
-    user = await auth_service.handle_jwt_sign_in(jwt_payload)
+    user = await auth_service._handle_jwt_sign_in(jwt_payload)
 
     assert user == mock_user
     mock_user_service.fetch_user.assert_called_once_with(field_name="email", field_value=jwt_payload["email"])
@@ -68,10 +68,10 @@ def test_create_access_token_calls_repo_correctly(mocker, auth_service, mock_use
 
     mock_auth_repository.create_access_token.return_value = "signed_jwt_token"
 
-    expected_data = {"id": str(mock_user.id), "email": mock_user.email, "auth_provider": mock_user.auth_provider}
+    expected_data = mock_auth_repository.fill_jwt_fields_from_dict(data=mock_user.to_dict())
     expected_expires_delta = timedelta(minutes=60)
 
-    token = auth_service.create_access_token(mock_user)
+    token = auth_service._create_access_token(mock_user)
 
     assert token == "signed_jwt_token"
     mock_auth_repository.create_access_token.assert_called_once_with(data=expected_data,
@@ -92,7 +92,7 @@ async def test_handle_email_password_sign_in_success(mocker, auth_service, mock_
     mock_user_service.fetch_user.return_value = mock_user
     mock_verify_password.return_value = True
 
-    user = await auth_service.handle_email_password_sign_in(sign_in_data)
+    user = await auth_service._handle_email_password_sign_in(sign_in_data)
 
     assert user == mock_user
     mock_user_service.fetch_user.assert_called_once_with(field_name="email", field_value=mock_user.email)
@@ -107,7 +107,7 @@ async def test_handle_email_password_sign_in_user_not_found(auth_service, mock_u
     mock_user_service.fetch_user.side_effect = InstanceNotFoundException
 
     with pytest.raises(UserIncorrectPasswordOrEmailException):
-        await auth_service.handle_email_password_sign_in(sign_in_data)
+        await auth_service._handle_email_password_sign_in(sign_in_data)
 
     mock_user_service.fetch_user.assert_called_once()
 
@@ -127,6 +127,6 @@ async def test_handle_email_password_sign_in_incorrect_password(mocker, auth_ser
     mock_verify_password.return_value = False
 
     with pytest.raises(UserIncorrectPasswordOrEmailException):
-        await auth_service.handle_email_password_sign_in(sign_in_data)
+        await auth_service._handle_email_password_sign_in(sign_in_data)
 
     mock_verify_password.assert_called_once()

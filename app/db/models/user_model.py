@@ -30,3 +30,13 @@ class User(Base):
     def __repr__(self) -> str:
         """Made for safe logging of a user if needed or made by accident"""
         return f"<{self.id!r}>"
+
+    def to_dict(self) -> dict:
+        """Transform main fields of User Model into dict"""
+        return {
+            "id": str(self.id),
+            "email": self.email,
+            "username": self.username,
+            "auth_provider": self.auth_provider,
+            "is_banned": self.is_banned,
+        }

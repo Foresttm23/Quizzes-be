@@ -93,3 +93,11 @@ async def created_user(test_user_service: UserService) -> UserModel:
     user_info = SignUpRequest(email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
     user = await test_user_service.create_user(user_info=user_info)
     return user
+
+
+@pytest_asyncio.fixture
+async def created_user_other(test_user_service: UserService) -> UserModel:
+    user_info = SignUpRequest(email="other_" + DEFAULT_EMAIL, username="other_" + DEFAULT_USERNAME,
+                              password=DEFAULT_PASSWORD)
+    user = await test_user_service.create_user(user_info=user_info)
+    return user
