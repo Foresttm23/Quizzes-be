@@ -10,6 +10,7 @@ from app.db.repository.company_repository import CompanyRepository
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest, CompanyUpdateInfoRequest
 from app.schemas.company_schemas.company_response_schema import CompanyDetailsResponse
 from app.services.base_service import BaseService
+from app.services.user_service import UserService
 
 
 class CompanyService(BaseService[CompanyRepository]):
@@ -17,8 +18,9 @@ class CompanyService(BaseService[CompanyRepository]):
     def display_name(self) -> str:
         return "Company"
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, user_service: UserService):
         super().__init__(repo=CompanyRepository(db=db))
+        self.user_service = user_service
 
     # Later we can add filter fields to access only the specific companies.
     async def fetch_companies_data_paginated(self, page: int, page_size: int) -> dict[
@@ -27,33 +29,35 @@ class CompanyService(BaseService[CompanyRepository]):
         return companies_data
 
     async def fetch_company_by_id(self, company_id: UUID) -> CompanyModel:
-        company = await super()._fetch_instance(field_name="id", field_value=company_id)
+        company: CompanyModel = await super()._fetch_instance(field_name="id", field_value=company_id)
         return company
 
-    async def create_company(self, owner_id: UUID, company_info: CompanyCreateRequest):
+    async def create_company(self, owner_email: str, company_info: CompanyCreateRequest):
         """Creates a new Company"""
+        owner = await self.user_service.fetch_user("email", owner_email)
         company_data = company_info.model_dump()
-        company = CompanyModel(**company_data, owner_id=owner_id)
+        company = CompanyModel(**company_data, owner_id=owner.id)
 
         await self.repo.save_changes_and_refresh(instance=company)
-        logger.info(f"Created new Company: {company.id} owner {owner_id}")
+        logger.info(f"Created new Company: {company.id} owner {owner_email}")
 
         return company
 
-    async def update_company(self, company_id: UUID, owner_id: UUID,
+    async def update_company(self, company_id: UUID, owner_email: str,
                              company_info: CompanyUpdateInfoRequest) -> CompanyModel:
+        company: CompanyModel = await super()._fetch_instance(field_name="id", field_value=company_id)
+        owner = await self.user_service.fetch_user("email", owner_email)
 
-        company = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
-
-        if company.owner_id != owner_id:
+        if company.owner_id != owner.id:
             raise CompanyPermissionException()
 
         company = await super()._update_instance(instance=company, new_data=company_info)
         return company
 
-    async def delete_company(self, company_id: UUID, owner_id: UUID):
-        company = await self.repo.get_instance_by_field_or_404("id", company_id)
-        if company.owner_id != owner_id:
+    async def delete_company(self, company_id: UUID, owner_email: str):
+        company: CompanyModel = await super()._fetch_instance(field_name="id", field_value=company_id)
+        owner = await self.user_service.fetch_user("email", owner_email)
+        if company.owner_id != owner.id:
             raise CompanyPermissionException()
 
         await super()._delete_instance(instance=company)
