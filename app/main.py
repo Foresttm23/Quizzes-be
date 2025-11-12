@@ -4,7 +4,6 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import app.core.security
 from app.core.config import settings
 from app.core.logger import logger
 from app.db.postgres import init_db

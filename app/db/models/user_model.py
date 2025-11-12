@@ -11,10 +11,7 @@ from app.db.postgres import Base
 class User(Base):
     __tablename__ = 'users'
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    # Mapped[str] by default uses nullable=False, for nullable=True Mapped[Optional[str]] should be used
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     username: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -26,4 +23,14 @@ class User(Base):
 
     def __repr__(self) -> str:
         """Made for safe logging of a user if needed or made by accident"""
-        return f"<User {self.username!r}, {self.email!r}>"
+        return f"<{self.id!r}>"
+
+    def to_dict(self) -> dict:
+        """Transform main fields of User Model into dict"""
+        return {
+            "id": str(self.id),
+            "email": self.email,
+            "username": self.username,
+            "auth_provider": self.auth_provider,
+            "is_banned": self.is_banned,
+        }

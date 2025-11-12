@@ -1,51 +1,36 @@
-from datetime import timedelta
-
 from fastapi import APIRouter, status
 
-from app.core.config import settings
-from app.core.dependencies import DBSessionDep, VerifyTokenDep, OAuth2PasswordRequestFormDep
-from app.core.exceptions import UserIncorrectPasswordOrEmail, InstanceNotFoundException
-from app.schemas.user_schemas.user_request_schema import SignUpRequest
+from app.core.dependencies import LoginJWTDep, AuthServiceDep, JWTCredentialsDep, UserServiceDep
+from app.schemas.user_schemas.user_request_schema import SignUpRequest, SignInRequest
 from app.schemas.user_schemas.user_response_schema import UserDetailsResponse, TokenResponse
-from app.services.user_service import UserService
-from app.utils.jwt_utils import create_access_token
-from app.utils.password_utils import verify_password
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserDetailsResponse)
-async def register(db: DBSessionDep, user_info: SignUpRequest):
-    """Endpoint for creating a user"""
-    user_service = UserService(db=db)
-    user = await user_service.create_user(user_info=user_info)
+async def register(auth_service: AuthServiceDep, user_info: SignUpRequest):
+    """Endpoint for registering/creating a user"""
+    user = await auth_service.register_user(user_info=user_info)
     return user
 
 
 @router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-async def login(db: DBSessionDep, form_data: OAuth2PasswordRequestFormDep):
-    user_service = UserService(db=db)
+async def sign_in(auth_service: AuthServiceDep, sign_in_data: SignInRequest | None = None,
+                  jwt_payload: LoginJWTDep | None = None):
+    """Endpoint for authenticating a user with either password and email or Auth0"""
+    user = await auth_service.handle_sign_in(sign_in_data=sign_in_data, jwt_payload=jwt_payload)
 
-    # Checks if user exist byt itself, so the call checking user isn't needed
-    # but might help in some unexpected situations
-    user = await user_service.fetch_instance(field_name="email", field_value=form_data.username)
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise UserIncorrectPasswordOrEmail()
-
-    access_token_expires = timedelta(minutes=settings.JWT.LOCAL_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-
-    return {"access_token": access_token, "token_type": "bearer"}
+    tokens = auth_service.create_token_pairs(user=user)
+    return tokens
 
 
-@router.get("/me", response_model=UserDetailsResponse, status_code=status.HTTP_200_OK)
-async def get_me(db: DBSessionDep, user_jwt_sub: VerifyTokenDep):
-    user_service = UserService(db=db)
-    try:
-        user = await user_service.fetch_instance(field_name="email", field_value=user_jwt_sub["email"])
-    except InstanceNotFoundException:
-        user = await user_service.create_user_from_jwt(user_info=user_jwt_sub)
-
-    return user
+@router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
+async def refresh_jwt(user_service: UserServiceDep, auth_service: AuthServiceDep, jwt_refresh_token: JWTCredentialsDep):
+    """
+    Endpoint for refreshing a refresh token.
+    Returns both, refresh token and access token.
+    """
+    payload = auth_service.verify_refresh_token_and_get_payload(token=jwt_refresh_token)
+    user = await user_service.fetch_user("id", payload["id"])
+    tokens = auth_service.create_token_pairs(user=user)
+    return tokens

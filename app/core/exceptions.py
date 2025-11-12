@@ -19,7 +19,15 @@ class InstanceNotFoundException(HTTPException):
         )
 
 
-class UserIncorrectPasswordOrEmail(HTTPException):
+class FieldsNotProvidedException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide at least 1 field."
+        )
+
+
+class UserIncorrectPasswordOrEmailException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -27,7 +35,23 @@ class UserIncorrectPasswordOrEmail(HTTPException):
         )
 
 
+class NotProvidedPasswordOrEmailException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must provide email and password or a jwt"
+        )
+
+
 class PasswordReuseException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password cannot be the same as the current password"
+        )
+
+
+class InvalidPasswordException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -43,11 +67,35 @@ class InvalidSQLModelFieldNameException(HTTPException):
         )
 
 
-class InvalidJWTToken(HTTPException):
+class InvalidJWTException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired JWT token"
+        )
+
+
+class InvalidJWTFieldsException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provided JWT has missing fields"
+        )
+
+
+class InvalidJWTRefreshException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid type of JWT token. Expected refresh token."
+        )
+
+
+class CompanyPermissionException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the owner can update the company"
         )
 
 
