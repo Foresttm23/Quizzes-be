@@ -1,24 +1,24 @@
-from typing import Optional
+from pydantic import EmailStr, Field, SecretStr
 
-from pydantic import BaseModel, EmailStr, Field, SecretStr
+from app.schemas.base_schemas import BaseRequestModel
 
 
-class SignUpRequest(BaseModel):
+class SignUpRequest(BaseRequestModel):
     email: EmailStr
     username: str = Field(min_length=3, max_length=100)
     password: SecretStr = Field(min_length=8)
 
 
-class SignInRequest(BaseModel):
-    email: Optional[EmailStr] = None
-    password: Optional[SecretStr] = None
+class SignInRequest(BaseRequestModel):
+    email: EmailStr | None = None
+    password: SecretStr | None = None
 
 
 # Assuming we will have more fields later
-class UserInfoUpdateRequest(BaseModel):
-    username: str = Field(None, min_length=3, max_length=100)
+class UserInfoUpdateRequest(BaseRequestModel):
+    username: str = Field(min_length=3, max_length=100)
 
 
-class UserPasswordUpdateRequest(BaseModel):
-    current_password: SecretStr
+class UserPasswordUpdateRequest(BaseRequestModel):
+    current_password: SecretStr = Field(min_length=8)
     new_password: SecretStr = Field(min_length=8)

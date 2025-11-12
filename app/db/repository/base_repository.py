@@ -1,10 +1,12 @@
+from http.client import HTTPException
 from typing import Type, TypeVar, Generic, Any
 
 from pydantic import BaseModel
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
+from sqlalchemy.sql.selectable import Select
 
 from app.core.config import settings
 from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException, \
@@ -20,30 +22,54 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.db = db
 
-    async def get_instances_data_paginated(self, page: int, page_size: int) -> dict:
-        """Returns a dict of instances in specified range and metadata"""
+    async def get_instances_data_paginated(self, page: int, page_size: int,
+                                           filters: dict[str, Any] | None = None) -> dict:
+        """
+        Returns a dict of instances and metadata in specified range.
+        Can accept filter fields in format {"field_name": value}.
+        """
         page = max(page, 1)
         page_size = max(min(page_size, settings.APP.MAX_PAGE_SIZE), 1)
 
         offset = (page - 1) * page_size
 
-        result = await self.db.execute(select(self.model).offset(offset).limit(page_size))
+        conditions, query = self._apply_filters(filters=filters)
+
+        # This queries adds on top of the previous queries,
+        # so in the end we will get a final query to execute
+        query = query.offset(offset).limit(page_size)
+        result = await self.db.execute(query)
         items = result.scalars().all()
 
-        total_result = await self.db.execute(select(func.count()).select_from(self.model))
-        total = total_result.scalar() or 0
+        count_query = select(func.count()).select_from(self.model)
+        if conditions:
+            count_query = count_query.where(and_(*conditions))
 
+        total = (await self.db.execute(count_query)).scalar() or 0
         total_pages = (total + page_size - 1) // page_size
 
-        return {
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages,
-            "has_next": page < total_pages,
-            "has_prev": page > 1,
-            "data": items,
-        }
+        return {"total": total, "page": page, "page_size": page_size, "total_pages": total_pages,
+                "has_next": page < total_pages, "has_prev": page > 1, "data": items}
+
+    def _apply_filters(self, filters: dict[str, Any]) -> tuple[list, Select]:
+        """
+        Returns conditions and query of stacked queries.
+        """
+
+        conditions = []
+        query = select(self.model)
+
+        if not filters:
+            return conditions, query
+
+        for key, value in filters.items():
+            # Only add valid attributes
+            if hasattr(self.model, key):
+                conditions.append(getattr(self.model, key) == value)
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        return conditions, query
 
     async def _commit_with_handling(self, instance: ModelType | None = None) -> None:
         """
@@ -53,7 +79,12 @@ class BaseRepository(Generic[ModelType]):
         """
         try:
             await self.db.commit()
-        except IntegrityError:
+        except (IntegrityError, HTTPException, Exception) as e:
+            from app.core.logger import logger
+            from app.db.models.company_model import Company
+
+            logger.critical(e)
+
             raise RecordAlreadyExistsException()
 
         if instance:
@@ -63,6 +94,7 @@ class BaseRepository(Generic[ModelType]):
         """
         Wrapper for commit_with_handling() that also adds an instance to db.
         """
+
         self.db.add(instance)
         await self._commit_with_handling(instance=instance)
 
@@ -78,9 +110,7 @@ class BaseRepository(Generic[ModelType]):
         # Assigned a specific type hint, so that ide won't show warning
         field: InstrumentedAttribute = getattr(self.model, field_name)
 
-        result = await self.db.execute(
-            select(self.model).where(field == field_value)
-        )
+        result = await self.db.execute(select(self.model).where(field == field_value))
 
         instance = result.scalar_one_or_none()
 

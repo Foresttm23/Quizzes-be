@@ -64,15 +64,15 @@ class UserService(BaseService[UserRepository]):
 
         return user
 
-    async def update_user_info(self, user_id: uuid.UUID, new_user_info: UserInfoUpdateRequest) -> UserModel:
+    async def update_user_info(self, user_email: str, new_user_info: UserInfoUpdateRequest) -> UserModel:
         """Method for updating user details by id"""
-        user = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=user_id)
+        user = await self.repo.get_instance_by_field_or_404(field_name="email", field_value=user_email)
         user = await super()._update_instance(instance=user, new_data=new_user_info)
         return user
 
-    async def update_user_password(self, user_id: uuid.UUID, new_password_info: UserPasswordUpdateRequest) -> UserModel:
+    async def update_user_password(self, user_email: str, new_password_info: UserPasswordUpdateRequest) -> UserModel:
         """Method for updating user password by id"""
-        user = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=user_id)
+        user = await self.repo.get_instance_by_field_or_404(field_name="email", field_value=user_email)
         self._verify_and_update_password(user=user, new_password_info=new_password_info)
 
         await self.repo.save_changes_and_refresh(instance=user)
@@ -95,5 +95,6 @@ class UserService(BaseService[UserRepository]):
 
         user.hashed_password = hash_password(new_password)
 
-    async def delete_user_by_id(self, user_id: uuid.UUID) -> None:
-        await super()._delete_instance_by_id(instance_id=user_id)
+    async def delete_user(self, user_email: str) -> None:
+        user = await self.repo.get_instance_by_field_or_404(field_name="email", field_value=user_email)
+        await super()._delete_instance(instance=user)
