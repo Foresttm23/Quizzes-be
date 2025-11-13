@@ -25,11 +25,11 @@ class CompanyService(BaseService[CompanyRepository]):
     # Later we can add filter fields to access only the specific companies.
     async def fetch_companies_data_paginated(self, page: int, page_size: int) -> dict[
         Any, list[CompanyDetailsResponse]]:
-        companies_data = await super()._fetch_instances_data_paginated(page=page, page_size=page_size)
+        companies_data = await self.repo.get_instances_data_paginated(page=page, page_size=page_size)
         return companies_data
 
     async def fetch_company_by_id(self, company_id: UUID) -> CompanyModel:
-        company: CompanyModel = await super()._fetch_instance(field_name="id", field_value=company_id)
+        company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
         return company
 
     async def create_company(self, owner_email: str, company_info: CompanyCreateRequest):
@@ -45,19 +45,19 @@ class CompanyService(BaseService[CompanyRepository]):
 
     async def update_company(self, company_id: UUID, owner_email: str,
                              company_info: CompanyUpdateInfoRequest) -> CompanyModel:
-        company: CompanyModel = await super()._fetch_instance(field_name="id", field_value=company_id)
+        company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
         owner = await self.user_service.fetch_user("email", owner_email)
 
         if company.owner_id != owner.id:
             raise CompanyPermissionException()
 
-        company = await super()._update_instance(instance=company, new_data=company_info)
+        company = await self._update_instance(instance=company, new_data=company_info)
         return company
 
     async def delete_company(self, company_id: UUID, owner_email: str):
-        company: CompanyModel = await super()._fetch_instance(field_name="id", field_value=company_id)
+        company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
         owner = await self.user_service.fetch_user("email", owner_email)
         if company.owner_id != owner.id:
             raise CompanyPermissionException()
 
-        await super()._delete_instance(instance=company)
+        await self._delete_instance(instance=company)
