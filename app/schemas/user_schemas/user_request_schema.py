@@ -10,8 +10,8 @@ class SignUpRequest(BaseRequestModel):
 
 
 class SignInRequest(BaseRequestModel):
-    email: EmailStr | None = None
-    password: SecretStr | None = None
+    email: EmailStr
+    password: SecretStr
 
 
 # Assuming we will have more fields later

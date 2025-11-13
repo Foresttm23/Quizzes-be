@@ -3,7 +3,8 @@ import uuid
 from fastapi import APIRouter, status, Query
 
 from app.core.config import settings
-from app.core.dependencies import LocalJWTDep, UserServiceDep
+from app.core.dependencies import GetUserJWTDep, UserServiceDep
+from app.core.exceptions import ExternalAuthProviderException
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.user_schemas.user_request_schema import UserInfoUpdateRequest, UserPasswordUpdateRequest
 from app.schemas.user_schemas.user_response_schema import UserDetailsResponse
@@ -22,9 +23,8 @@ async def get_users(user_service: UserServiceDep, page: int = Query(ge=1),
 # Must be defined before the more general /{user_id} endpoint
 # Otherwise, a request to /me would be interpreted as /{user_id}
 @router.get("/me", response_model=UserDetailsResponse, status_code=status.HTTP_200_OK)
-async def get_me(user_service: UserServiceDep, jwt_payload: LocalJWTDep):
+async def get_me(user_service: UserServiceDep, user: GetUserJWTDep):
     """Returns an authenticated user info"""
-    user = await user_service.fetch_user(field_name="email", field_value=jwt_payload["email"])
     return user
 
 
@@ -36,22 +36,26 @@ async def get_user(user_service: UserServiceDep, user_id: uuid.UUID):
 
 
 @router.patch("/me/info", status_code=status.HTTP_200_OK, response_model=UserDetailsResponse)
-async def update_self_info(user_service: UserServiceDep, jwt_payload: LocalJWTDep,
+async def update_self_info(user_service: UserServiceDep, user: GetUserJWTDep,
                            new_user_info: UserInfoUpdateRequest):
     """Updates info for authenticated user"""
-    user = await user_service.update_user_info(user_email=jwt_payload["email"], new_user_info=new_user_info)
+    user = await user_service.update_user_info(user=user, new_user_info=new_user_info)
     return user
 
 
 @router.patch("/me/password", status_code=status.HTTP_200_OK, response_model=UserDetailsResponse)
-async def update_self_password(user_service: UserServiceDep, jwt_payload: LocalJWTDep,
+async def update_self_password(user_service: UserServiceDep, user: GetUserJWTDep,
                                new_password_info: UserPasswordUpdateRequest):
     """Updates password for authenticated user"""
-    user = await user_service.update_user_password(user_email=jwt_payload["email"], new_password_info=new_password_info)
+    if user.auth_provider != "local":
+        raise ExternalAuthProviderException(auth_provider=user.auth_provider,
+                                            message="change password in your provider")
+
+    user = await user_service.update_user_password(user=user, new_password_info=new_password_info)
     return user
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_self(user_service: UserServiceDep, jwt_payload: LocalJWTDep):
+async def delete_self(user_service: UserServiceDep, user: GetUserJWTDep):
     """Deletes currently authenticated user"""
-    await user_service.delete_user(user_email=jwt_payload["email"])
+    await user_service.delete_user(user=user)
