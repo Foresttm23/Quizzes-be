@@ -17,12 +17,12 @@ class AuthUtils:
         expire = datetime.now(timezone.utc) + expires_delta
         data.update({"exp": expire, "type": "access"})
 
-        encoded_jwt = self._handle_local_token_encode(data=data)
+        encoded_jwt = self._handle_local_token_encode(data=data, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET)
 
         return encoded_jwt
 
     def verify_local_token_and_get_payload(self, token: str) -> dict:
-        payload = self._handle_local_token_decode(token=token)
+        payload = self._handle_local_token_decode(token=token, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET)
 
         response = self.fill_jwt_fields_from_dict(data=payload)
 
@@ -41,12 +41,13 @@ class AuthUtils:
     def create_refresh_token(self, data: dict, expires_delta: timedelta):
         expire = datetime.now(timezone.utc) + expires_delta
         data.update({"exp": expire, "type": "refresh"})
-        encoded_jwt = self._handle_local_token_encode(data=data)
+        encoded_jwt = self._handle_local_token_encode(data=data,
+                                                      secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET)
 
         return encoded_jwt
 
     def verify_refresh_token_and_get_payload(self, token: str):
-        payload = self._handle_local_token_decode(token=token)
+        payload = self._handle_local_token_decode(token=token, secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET)
         return payload
 
     def fill_jwt_fields_from_dict(self, data: dict):
@@ -60,20 +61,20 @@ class AuthUtils:
         return response
 
     @staticmethod
-    def _handle_local_token_encode(data: dict):
+    def _handle_local_token_encode(data: dict, secret_key: str) -> str:
         encoded_jwt = jwt.encode(
             data,
-            settings.LOCAL_JWT.LOCAL_JWT_SECRET,
+            key=secret_key,
             algorithm=settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM
         )
         return encoded_jwt
 
     @staticmethod
-    def _handle_local_token_decode(token: str) -> dict:
+    def _handle_local_token_decode(token: str, secret_key: str) -> dict:
         try:
             payload = jwt.decode(
                 token,
-                settings.LOCAL_JWT.LOCAL_JWT_SECRET,
+                key=secret_key,
                 algorithms=[settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM],
             )
         except JWTError:

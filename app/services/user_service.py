@@ -51,7 +51,8 @@ class UserService(BaseService[UserRepository]):
 
         return user
 
-    async def create_user_from_jwt(self, user_info: dict) -> UserModel:
+    # Can be later renamed for something like create_user_from_external_jwt if we would have many providers.
+    async def create_user_from_auth0(self, user_info: dict) -> UserModel:
         """Method for creating a user from a jwt token"""
         # Since username is unique, we would need to create a unique username
         # relying only on email will expose it, so a simple uuid is better
@@ -64,15 +65,13 @@ class UserService(BaseService[UserRepository]):
 
         return user
 
-    async def update_user_info(self, user_email: str, new_user_info: UserInfoUpdateRequest) -> UserModel:
+    async def update_user_info(self, user: UserModel, new_user_info: UserInfoUpdateRequest) -> UserModel:
         """Method for updating user details by id"""
-        user = await self.repo.get_instance_by_field_or_404(field_name="email", field_value=user_email)
-        user = await super()._update_instance(instance=user, new_data=new_user_info)
+        user = await self._update_instance(instance=user, new_data=new_user_info)
         return user
 
-    async def update_user_password(self, user_email: str, new_password_info: UserPasswordUpdateRequest) -> UserModel:
+    async def update_user_password(self, user: UserModel, new_password_info: UserPasswordUpdateRequest) -> UserModel:
         """Method for updating user password by id"""
-        user = await self.repo.get_instance_by_field_or_404(field_name="email", field_value=user_email)
         self._verify_and_update_password(user=user, new_password_info=new_password_info)
 
         await self.repo.save_changes_and_refresh(instance=user)
@@ -95,6 +94,5 @@ class UserService(BaseService[UserRepository]):
 
         user.hashed_password = hash_password(new_password)
 
-    async def delete_user(self, user_email: str) -> None:
-        user = await self.repo.get_instance_by_field_or_404(field_name="email", field_value=user_email)
-        await super()._delete_instance(instance=user)
+    async def delete_user(self, user: UserModel) -> None:
+        await self._delete_instance(instance=user)

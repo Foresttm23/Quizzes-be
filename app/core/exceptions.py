@@ -91,6 +91,14 @@ class InvalidJWTRefreshException(HTTPException):
         )
 
 
+class ExternalAuthProviderException(HTTPException):
+    def __init__(self, auth_provider: str, message: str):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Authenticated via {auth_provider}, {message}."
+        )
+
+
 class CompanyPermissionException(HTTPException):
     def __init__(self):
         super().__init__(

@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from app.core.config import settings
-from app.core.exceptions import InvalidJWTException, InvalidJWTRefreshException, NotProvidedPasswordOrEmailException
+from app.core.exceptions import InvalidJWTException, InvalidJWTRefreshException
 from app.core.exceptions import UserIncorrectPasswordOrEmailException, InstanceNotFoundException
 from app.core.logger import logger
 from app.db.models.user_model import User as UserModel
@@ -24,12 +24,12 @@ class AuthService:
         logger.debug({"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"})
         return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-    async def register_user(self, user_info: SignUpRequest) -> UserModel:
+    async def register_user(self, sign_up_data: SignUpRequest) -> UserModel:
         """
         Wrapper for user_service.create_user.
         Can be expanded in the future.
         """
-        user = await self.user_service.create_user(user_info=user_info)
+        user = await self.user_service.create_user(user_info=sign_up_data)
         return user
 
     def verify_token_and_get_payload(self, jwt_token: str) -> dict:
@@ -45,22 +45,13 @@ class AuthService:
     def verify_local_token_and_get_payload(self, jwt_token: str) -> dict:
         return self.utils.verify_local_token_and_get_payload(token=jwt_token)
 
-    async def _handle_jwt_sign_in(self, jwt_payload: dict):
+    async def handle_jwt_sign_in(self, jwt_payload: dict):
+        """Creates user from jwt if not found. Returns user in either way."""
         try:
             user = await self.user_service.fetch_user(field_name="email", field_value=jwt_payload["email"])
         except InstanceNotFoundException:
-            user = await self.user_service.create_user_from_jwt(user_info=jwt_payload)
-
-        return user
-
-    async def handle_sign_in(self, sign_in_data: SignInRequest | None = None,
-                             jwt_payload: dict | None = None) -> UserModel:
-        if jwt_payload and "email" in jwt_payload:
-            user = await self._handle_jwt_sign_in(jwt_payload=jwt_payload)
-        elif sign_in_data and sign_in_data.email and sign_in_data.password:
-            user = await self._handle_email_password_sign_in(sign_in_data=sign_in_data)
-        else:
-            raise NotProvidedPasswordOrEmailException()
+            # Since user cannot possibly have a local JWT without already creating a user instance.
+            user = await self.user_service.create_user_from_auth0(user_info=jwt_payload)
 
         return user
 
@@ -88,7 +79,8 @@ class AuthService:
 
         return encoded_jwt
 
-    async def _handle_email_password_sign_in(self, sign_in_data: SignInRequest):
+    async def handle_email_password_sign_in(self, sign_in_data: SignInRequest):
+        """Creates user from password and email if not found. Returns user in either way."""
         # Checks if user exist byt itself, so the call checking user isn't needed
         # but might help in some unexpected situations
         try:
@@ -98,6 +90,6 @@ class AuthService:
 
         plain_password = sign_in_data.password.get_secret_value()
         if not user or not verify_password(plain_password, user.hashed_password):
-            raise UserIncorrectPasswordOrEmailException()  #
+            raise UserIncorrectPasswordOrEmailException()
 
         return user
