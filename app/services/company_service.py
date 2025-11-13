@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import CompanyPermissionException
 from app.core.logger import logger
 from app.db.models.company_model import Company as CompanyModel
+from app.db.models.user_model import User as UserModel
 from app.db.repository.company_repository import CompanyRepository
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest, CompanyUpdateInfoRequest
 from app.schemas.company_schemas.company_response_schema import CompanyDetailsResponse
@@ -32,21 +33,19 @@ class CompanyService(BaseService[CompanyRepository]):
         company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
         return company
 
-    async def create_company(self, owner_email: str, company_info: CompanyCreateRequest):
+    async def create_company(self, owner: UserModel, company_info: CompanyCreateRequest):
         """Creates a new Company"""
-        owner = await self.user_service.fetch_user("email", owner_email)
         company_data = company_info.model_dump()
         company = CompanyModel(**company_data, owner_id=owner.id)
 
         await self.repo.save_changes_and_refresh(instance=company)
-        logger.info(f"Created new Company: {company.id} owner {owner_email}")
+        logger.info(f"Created new Company: {company.id} owner {owner.id}")
 
         return company
 
-    async def update_company(self, company_id: UUID, owner_email: str,
+    async def update_company(self, company_id: UUID, owner: UserModel,
                              company_info: CompanyUpdateInfoRequest) -> CompanyModel:
         company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
-        owner = await self.user_service.fetch_user("email", owner_email)
 
         if company.owner_id != owner.id:
             raise CompanyPermissionException()
@@ -54,9 +53,8 @@ class CompanyService(BaseService[CompanyRepository]):
         company = await self._update_instance(instance=company, new_data=company_info)
         return company
 
-    async def delete_company(self, company_id: UUID, owner_email: str):
+    async def delete_company(self, company_id: UUID, owner: UserModel):
         company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
-        owner = await self.user_service.fetch_user("email", owner_email)
         if company.owner_id != owner.id:
             raise CompanyPermissionException()
 

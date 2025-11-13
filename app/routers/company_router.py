@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, status, Query
 
-from app.core.dependencies import LocalJWTDep, CompanyServiceDep
+from app.core.dependencies import CompanyServiceDep, GetUserJWTDep
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest, CompanyUpdateInfoRequest
 from app.schemas.company_schemas.company_response_schema import CompanyListResponse, CompanyDetailsResponse
 
@@ -10,13 +10,13 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 
 
 @router.post("/", response_model=CompanyDetailsResponse, status_code=status.HTTP_201_CREATED)
-async def create_company(company_service: CompanyServiceDep, jwt_payload: LocalJWTDep,
+async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep,
                          company_info: CompanyCreateRequest):
     """
     Creates a company for authenticated user.
     This user is owner of the created company.
     """
-    company_info = await company_service.create_company(owner_email=jwt_payload["email"], company_info=company_info)
+    company_info = await company_service.create_company(owner=user, company_info=company_info)
     return company_info
 
 
@@ -39,21 +39,21 @@ async def get_company(company_service: CompanyServiceDep, company_id: UUID):
 
 
 @router.patch("/{company_id}", response_model=CompanyDetailsResponse, status_code=status.HTTP_200_OK)
-async def update_company(company_service: CompanyServiceDep, jwt_payload: LocalJWTDep, company_id: UUID,
+async def update_company(company_service: CompanyServiceDep, user: GetUserJWTDep, company_id: UUID,
                          new_company_info: CompanyUpdateInfoRequest):
     """
     Updates a company by its id,
     if company.owner_id is equal to the currently authenticated user id.
     """
-    updated_company = await company_service.update_company(company_id=company_id, owner_email=jwt_payload["email"],
+    updated_company = await company_service.update_company(company_id=company_id, owner=user,
                                                            company_info=new_company_info)
     return updated_company
 
 
 @router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_company(company_service: CompanyServiceDep, jwt_payload: LocalJWTDep, company_id: UUID):
+async def delete_company(company_service: CompanyServiceDep, user: GetUserJWTDep, company_id: UUID):
     """
     Deletes a company by its id,
     if company.owner_id is equal to the currently authenticated user id.
     """
-    await company_service.delete_company(company_id=company_id, owner_email=jwt_payload["email"])
+    await company_service.delete_company(company_id=company_id, owner=user)

@@ -12,7 +12,8 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_fetch_instance_success(test_base_service: _TestService, created_instance: UserModel):
-    fetched_instance = await test_base_service._fetch_instance(field_name="id", field_value=created_instance.id)
+    fetched_instance = await test_base_service.repo.get_instance_by_field_or_404(field_name="id",
+                                                                                 field_value=created_instance.id)
 
     assert fetched_instance.id == created_instance.id
     fetched_user = cast(UserModel, fetched_instance)
@@ -23,7 +24,7 @@ async def test_fetch_instance_success(test_base_service: _TestService, created_i
 async def test_fetch_instance_not_found(test_base_service: _TestService):
     non_existent_id = uuid.uuid4()
     with pytest.raises(InstanceNotFoundException):
-        await test_base_service._fetch_instance(field_name="id", field_value=non_existent_id)
+        await test_base_service.repo.get_instance_by_field_or_404(field_name="id", field_value=non_existent_id)
 
 
 # Testing both first and other pages
@@ -36,7 +37,7 @@ async def test_fetch_instances_paginated(test_base_service: _TestService, page, 
     await test_base_service.helper_create_instance(_TestCreateSchema(email="1@example.com", username="user1"))
     await test_base_service.helper_create_instance(_TestCreateSchema(email="2@example.com", username="user2"))
 
-    paginated_results = await test_base_service._fetch_instances_data_paginated(page=page, page_size=page_size)
+    paginated_results = await test_base_service.repo.get_instances_data_paginated(page=page, page_size=page_size)
 
     assert paginated_results["page"] == page
     assert paginated_results["page_size"] == page_size
@@ -49,7 +50,7 @@ async def test_fetch_instances_paginated(test_base_service: _TestService, page, 
 
 
 async def test_fetch_instances_paginated_no_instances(test_base_service: _TestService):
-    paginated_results = await test_base_service._fetch_instances_data_paginated(page=1, page_size=1)
+    paginated_results = await test_base_service.repo.get_instances_data_paginated(page=1, page_size=1)
     assert paginated_results["data"] == []
 
 

@@ -34,5 +34,5 @@ async def created_company(test_company_service: CompanyService, company_owner: U
                           testdb_session: AsyncSession) -> CompanyModel:
     """Creates and returns a default Company instance for testing."""
     company_info = CompanyCreateRequest(name=DEFAULT_COMPANY_NAME, description=DEFAULT_COMPANY_DESCRIPTION)
-    company = await test_company_service.create_company(owner_email=company_owner.email, company_info=company_info)
+    company = await test_company_service.create_company(owner=company_owner, company_info=company_info)
     return company
