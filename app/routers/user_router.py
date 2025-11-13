@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import APIRouter, status, Query
 
+from app.core.config import settings
 from app.core.dependencies import LocalJWTDep, UserServiceDep
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.user_schemas.user_request_schema import UserInfoUpdateRequest, UserPasswordUpdateRequest
@@ -11,7 +12,8 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.get("/", status_code=status.HTTP_200_OK, response_model=PaginationResponse[UserDetailsResponse])
-async def get_users(user_service: UserServiceDep, page: int = Query(ge=1), page_size: int = Query(ge=1)):
+async def get_users(user_service: UserServiceDep, page: int = Query(ge=1),
+                    page_size: int = Query(ge=1, le=settings.APP.MAX_PAGE_SIZE)):
     """Return a list of all users by page and page_size"""
     users = await user_service.fetch_users_data_paginated(page=page, page_size=page_size)
     return users

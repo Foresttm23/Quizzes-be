@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.selectable import Select
 
-from app.core.config import settings
 from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException, \
     InvalidSQLModelFieldNameException
 from app.db.postgres import Base
@@ -28,9 +27,6 @@ class BaseRepository(Generic[ModelType]):
         Returns a dict of instances and metadata in specified range.
         Can accept filter fields in format {"field_name": value}.
         """
-        page = max(page, 1)
-        page_size = max(min(page_size, settings.APP.MAX_PAGE_SIZE), 1)
-
         offset = (page - 1) * page_size
 
         conditions, query = self._apply_filters(filters=filters)
@@ -80,11 +76,6 @@ class BaseRepository(Generic[ModelType]):
         try:
             await self.db.commit()
         except (IntegrityError, HTTPException, Exception) as e:
-            from app.core.logger import logger
-            from app.db.models.company_model import Company
-
-            logger.critical(e)
-
             raise RecordAlreadyExistsException()
 
         if instance:
@@ -94,7 +85,6 @@ class BaseRepository(Generic[ModelType]):
         """
         Wrapper for commit_with_handling() that also adds an instance to db.
         """
-
         self.db.add(instance)
         await self._commit_with_handling(instance=instance)
 

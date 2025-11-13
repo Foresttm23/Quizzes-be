@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypeVar, Generic, Any
+from typing import TypeVar, Generic
 
 from pydantic import BaseModel
 
@@ -20,17 +20,6 @@ class BaseService(ABC, Generic[RepoType]):
 
     def __init__(self, repo: RepoType):
         self.repo = repo
-
-    async def _fetch_instance(self, field_name: str, field_value: Any) -> ModelType:
-        """Method for getting an instance by field"""
-        instance = await self.repo.get_instance_by_field_or_404(field_name=field_name, field_value=field_value)
-        return instance
-
-    async def _fetch_instances_data_paginated(self, page: int, page_size: int, filters: dict[str, Any] | None = None) -> \
-            dict[Any, list[SchemaType]]:
-        """Method for getting all instances paginated"""
-        instances = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
-        return instances
 
     async def _update_instance(self, instance: ModelType, new_data: SchemaType) -> ModelType:
         """

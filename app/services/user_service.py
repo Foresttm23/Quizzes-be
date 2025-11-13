@@ -24,12 +24,12 @@ class UserService(BaseService[UserRepository]):
         super().__init__(repo=UserRepository(db=db))
 
     async def fetch_user(self, field_name: str, field_value: Any) -> UserModel:
-        user = await super()._fetch_instance(field_name=field_name, field_value=field_value)
+        user = await self.repo.get_instance_by_field_or_404(field_name=field_name, field_value=field_value)
         return user
 
     async def fetch_users_data_paginated(self, page: int, page_size: int) -> dict[Any, list[UserDetailsResponse]]:
         # We can now add filter fields.
-        users_data = await super()._fetch_instances_data_paginated(page=page, page_size=page_size)
+        users_data = await self.repo.get_instances_data_paginated(page=page, page_size=page_size)
         return users_data
 
     async def create_user(self, user_info: SignUpRequest) -> UserModel:

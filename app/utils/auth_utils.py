@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.exceptions import InvalidJWTException, InvalidJWTFieldsException
 
 
-class AuthRepository:
+class AuthUtils:
     def __init__(self):
         pass
 
