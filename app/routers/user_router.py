@@ -23,7 +23,7 @@ async def get_users(user_service: UserServiceDep, page: int = Query(ge=1),
 # Must be defined before the more general /{user_id} endpoint
 # Otherwise, a request to /me would be interpreted as /{user_id}
 @router.get("/me", response_model=UserDetailsResponse, status_code=status.HTTP_200_OK)
-async def get_me(user_service: UserServiceDep, user: GetUserJWTDep):
+async def get_me(user: GetUserJWTDep):
     """Returns an authenticated user info"""
     return user
 

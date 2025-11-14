@@ -1,5 +1,5 @@
-import uuid
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,9 +44,9 @@ class UserService(BaseService[UserRepository]):
 
         # Since we don't want to commit real password from the user_info fields
         # We specify directly what fields we need
-        user = UserModel(**user_data, hashed_password=hashed_password)
+        user = UserModel(id=uuid4(), **user_data, hashed_password=hashed_password)
 
-        await self.repo.save_changes_and_refresh(instance=user)
+        await self.repo.save_changes_and_refresh(user)
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider}")
 
         return user
@@ -56,10 +56,11 @@ class UserService(BaseService[UserRepository]):
         """Method for creating a user from a jwt token"""
         # Since username is unique, we would need to create a unique username
         # relying only on email will expose it, so a simple uuid is better
-        user = UserModel(email=user_info["email"],  # .hex pretty much cleans the uuid from unique characters
-                         username=f"user_{uuid.uuid4().hex[:12]}", hashed_password=None, auth_provider="auth0")
+        user = UserModel(id=uuid4(), email=user_info["email"],
+                         # .hex pretty much cleans the uuid from unique characters
+                         username=f"user_{uuid4().hex[:12]}", hashed_password=None, auth_provider="auth0")
 
-        await self.repo.save_changes_and_refresh(instance=user)
+        await self.repo.save_changes_and_refresh(user)
 
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider}")
 
@@ -74,7 +75,7 @@ class UserService(BaseService[UserRepository]):
         """Method for updating user password by id"""
         self._verify_and_update_password(user=user, new_password_info=new_password_info)
 
-        await self.repo.save_changes_and_refresh(instance=user)
+        await self.repo.save_changes_and_refresh(user)
 
         logger.info(f"{self.display_name}: {user.id} updated")
         logger.debug(f"{self.display_name}: {user.id} changed password")

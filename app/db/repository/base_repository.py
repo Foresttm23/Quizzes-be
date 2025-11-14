@@ -67,26 +67,27 @@ class BaseRepository(Generic[ModelType]):
 
         return conditions, query
 
-    async def _commit_with_handling(self, instance: ModelType | None = None) -> None:
+    async def _commit_with_handling(self, *args: Base) -> None:
         """
-        Commits current state of commits and refreshes instance.
-        If instance is None only commits.
-        If there is duplicate of unique field, IntegrityError is called.
+        Commits current state of commits and refreshes instances.
+        If *args is None only commits.
+        If there is duplicate of unique field, IntegrityError is called and session is rolled back.
         """
         try:
             await self.db.commit()
         except (IntegrityError, HTTPException, Exception) as e:
             raise RecordAlreadyExistsException()
 
-        if instance:
+        for instance in args:
             await self.db.refresh(instance)
 
-    async def save_changes_and_refresh(self, instance: ModelType) -> None:
+    async def save_changes_and_refresh(self, *args: Base) -> None:
         """
         Wrapper for commit_with_handling() that also adds an instance to db.
         """
-        self.db.add(instance)
-        await self._commit_with_handling(instance=instance)
+        for instance in args:
+            self.db.add(instance)
+        await self._commit_with_handling(*args)
 
     async def get_instance_by_field_or_404(self, field_name: str, field_value: Any) -> ModelType:
         """
@@ -103,9 +104,9 @@ class BaseRepository(Generic[ModelType]):
         result = await self.db.execute(select(self.model).where(field == field_value))
 
         instance = result.scalar_one_or_none()
-
         if not instance:
             raise InstanceNotFoundException()
+
         return instance
 
     @staticmethod

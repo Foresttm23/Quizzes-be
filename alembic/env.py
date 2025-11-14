@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..'
 # Import all models
 from app.db.models.user_model import User  # type: ignore
 from app.db.models.company_model import Company  # type: ignore
+from app.db.models.company_member_model import CompanyMember  # type: ignore
 
 from app.core.config import settings
 from app.db.postgres import Base

@@ -24,7 +24,7 @@ async def company_owner_other(created_user_other: UserModel) -> UserModel:
 
 
 @pytest_asyncio.fixture
-def test_company_service(test_user_service: UserService, testdb_session: AsyncSession) -> CompanyService:
+async def test_company_service(test_user_service: UserService, testdb_session: AsyncSession) -> CompanyService:
     """Fixture to provide the CompanyService instance wired to the test database."""
     return CompanyService(db=testdb_session, user_service=test_user_service)
 
@@ -33,6 +33,7 @@ def test_company_service(test_user_service: UserService, testdb_session: AsyncSe
 async def created_company(test_company_service: CompanyService, company_owner: UserModel,
                           testdb_session: AsyncSession) -> CompanyModel:
     """Creates and returns a default Company instance for testing."""
-    company_info = CompanyCreateRequest(name=DEFAULT_COMPANY_NAME, description=DEFAULT_COMPANY_DESCRIPTION)
-    company = await test_company_service.create_company(owner=company_owner, company_info=company_info)
+    company_info = CompanyCreateRequest(name=DEFAULT_COMPANY_NAME, description=DEFAULT_COMPANY_DESCRIPTION,
+                                        is_visible=True)
+    company = await test_company_service.create_company(user=company_owner, company_info=company_info)
     return company

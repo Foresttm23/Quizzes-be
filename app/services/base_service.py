@@ -34,7 +34,7 @@ class BaseService(ABC, Generic[RepoType]):
         if not changes:
             return instance
 
-        await self.repo.save_changes_and_refresh(instance=instance)
+        await self.repo.save_changes_and_refresh(instance)
 
         # Since I made __repr__ in DB model for id
         logger.info(f"{self.display_name}: {instance} updated")

@@ -79,8 +79,8 @@ async def clean_testdb(testdb_session):
     await testdb_session.commit()
 
 
-@pytest.fixture(scope="function")
-def test_user_service(testdb_session):
+@pytest_asyncio.fixture(scope="function")
+async def test_user_service(testdb_session):
     """
     With this we don't have to call testdb_session in all the tests.
     Unless we need to call db directly to check the saved data.

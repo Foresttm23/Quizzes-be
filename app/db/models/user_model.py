@@ -5,7 +5,6 @@ from sqlalchemy import UUID, DateTime, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.models.relationships import company_admins
 from app.db.postgres import Base
 
 
@@ -18,14 +17,16 @@ class User(Base):
     hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
     auth_provider: Mapped[str] = mapped_column(String, default="local")
 
+    # lazy="selectin", allows for efficient access for all the relationships.
+    # By making a separate query for each of them.
+    # The default "select", creates a different query when a relationship is asked.
+    companies: Mapped[list["CompanyMember"]] = relationship(
+        back_populates="user",
+        lazy="selectin"
+    )
+
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
-
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    owned_companies: Mapped[list["Company"]] = relationship("Company", back_populates="owner", lazy="selectin")
-
-    admin_companies: Mapped[list["Company"]] = relationship("Company", secondary=company_admins,
-                                                            back_populates="admins", lazy="selectin")
 
     def __repr__(self) -> str:
         """Made for safe logging of a user if needed or made by accident"""
