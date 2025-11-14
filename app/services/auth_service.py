@@ -35,8 +35,6 @@ class AuthService:
     def verify_token_and_get_payload(self, jwt_token: str) -> dict:
         # Since we have 2 variation of registration we check them in order
         try:
-            # Local verification is used for all auth endpoints,
-            # thus should be first in order
             return self.utils.verify_local_token_and_get_payload(jwt_token)
         except InvalidJWTException:
             # If this raises error, code stops

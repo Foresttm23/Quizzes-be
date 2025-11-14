@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import (redis as redis_module, postgres as postgres_module)
 from app.db.models.user_model import User as UserModel
 from app.services.auth_service import AuthService
+from app.services.company_service import CompanyService
 from app.services.user_service import UserService
 
 RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
@@ -38,6 +39,13 @@ async def get_auth_service(user_service: UserServiceDep) -> AuthService:
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
+async def get_company_service(db: DBSessionDep, user_service: UserServiceDep) -> CompanyService:
+    return CompanyService(db=db, user_service=user_service)
+
+
+CompanyServiceDep = Annotated[CompanyService, Depends(get_company_service)]
 
 
 async def get_user_from_jwt(jwt: JWTCredentialsDep, auth_service: AuthServiceDep) -> UserModel:

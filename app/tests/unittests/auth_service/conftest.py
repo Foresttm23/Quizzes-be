@@ -13,13 +13,13 @@ def mock_user_service():
 
 
 @pytest.fixture
-def mock_auth_repository():
+def mock_auth_utils():
     return Mock()
 
 
 @pytest.fixture
-def auth_service(mock_user_service, mock_auth_repository, mocker):
-    mocker.patch('app.services.auth_service.AuthRepository', return_value=mock_auth_repository)
+def auth_service(mock_user_service, mock_auth_utils, mocker):
+    mocker.patch('app.services.auth_service.AuthUtils', return_value=mock_auth_utils)
     service = AuthService(user_service=mock_user_service)
 
     return service
