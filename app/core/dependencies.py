@@ -5,6 +5,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import NotAuthenticatedException
 from app.db import (redis as redis_module, postgres as postgres_module)
 from app.db.models.user_model import User as UserModel
 from app.services.auth_service import AuthService
@@ -15,12 +16,15 @@ RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
 
 DBSessionDep = Annotated[AsyncSession, Depends(postgres_module.get_db_session)]
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
 
 
 def get_jwt_from_header(header: SecurityDep) -> str:
-    jwt = header.credentials
+    if header:
+        jwt = header.credentials
+    else:
+        jwt = None
     return jwt
 
 
@@ -49,12 +53,25 @@ CompanyServiceDep = Annotated[CompanyService, Depends(get_company_service)]
 
 
 async def get_user_from_jwt(jwt: JWTCredentialsDep, auth_service: AuthServiceDep) -> UserModel:
+    if not jwt:
+        raise NotAuthenticatedException()
     jwt_payload = auth_service.verify_token_and_get_payload(jwt_token=jwt)
     user = await auth_service.handle_jwt_sign_in(jwt_payload=jwt_payload)
     return user
 
 
 GetUserJWTDep = Annotated[UserModel, Depends(get_user_from_jwt)]
+
+
+async def get_optional_user_from_jwt(jwt: JWTCredentialsDep, auth_service: AuthServiceDep) -> UserModel | None:
+    if not jwt:
+        return None
+    jwt_payload = auth_service.verify_token_and_get_payload(jwt_token=jwt)
+    user = await auth_service.handle_jwt_sign_in(jwt_payload=jwt_payload)
+    return user
+
+
+GetOptionalUserJWTDep = Annotated[UserModel, Depends(get_optional_user_from_jwt)]
 
 
 async def get_user_from_refresh_jwt(jwt: JWTCredentialsDep,

@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, status, Query
 
-from app.core.dependencies import CompanyServiceDep, GetUserJWTDep
+from app.core.dependencies import CompanyServiceDep, GetUserJWTDep, GetOptionalUserJWTDep
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest, CompanyUpdateInfoRequest
 from app.schemas.company_schemas.company_response_schema import CompanyListResponse, CompanyDetailsResponse
 
@@ -10,8 +10,7 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
 
 
 @router.post("/", response_model=CompanyDetailsResponse, status_code=status.HTTP_201_CREATED)
-async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep,
-                         company_info: CompanyCreateRequest):
+async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep, company_info: CompanyCreateRequest):
     """
     Creates a company for authenticated user.
     This user is owner of the created company.
@@ -21,20 +20,29 @@ async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep
 
 
 @router.get("/", response_model=CompanyListResponse, status_code=status.HTTP_200_OK)
-async def list_companies(company_service: CompanyServiceDep, page: int = Query(ge=1), page_size: int = Query(ge=1)):
+async def list_companies(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, page: int = Query(ge=1),
+                         page_size: int = Query(ge=1)):
     """
     Return a list of all companies by page and page_size.
     Filters can be added later.
     Crud operations in company_repository supports it.
     """
-    companies_data = await company_service.fetch_companies_data_paginated(page=page, page_size=page_size)
+    if user:
+        companies_data = await company_service.fetch_companies_data_paginated(page=page, page_size=page_size,
+                                                                              user_id=user.id)
+    else:
+        companies_data = await company_service.fetch_companies_data_paginated(page=page, page_size=page_size)
     return companies_data
 
 
 @router.get("/{company_id}", response_model=CompanyDetailsResponse, status_code=status.HTTP_200_OK)
-async def get_company(company_service: CompanyServiceDep, company_id: UUID):
+async def get_company(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID):
     """Returns a company by its id"""
-    company = await company_service.fetch_company_by_id(company_id=company_id)
+    if user:
+        company = await company_service.fetch_company_by_id(company_id=company_id, user_id=user.id)
+    else:
+        company = await company_service.fetch_company_by_id(company_id=company_id)
+
     return company
 
 

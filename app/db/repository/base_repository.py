@@ -29,17 +29,14 @@ class BaseRepository(Generic[ModelType]):
         """
         offset = (page - 1) * page_size
 
-        conditions, query = self._apply_filters(filters=filters)
-
+        filters_query = self._apply_filters(filters)
         # This queries adds on top of the previous queries,
         # so in the end we will get a final query to execute
-        query = query.offset(offset).limit(page_size)
+        query = filters_query.offset(offset).limit(page_size)
         result = await self.db.execute(query)
         items = result.scalars().all()
 
-        count_query = select(func.count()).select_from(self.model)
-        if conditions:
-            count_query = count_query.where(and_(*conditions))
+        count_query = filters_query.with_only_columns(func.count())
 
         total = (await self.db.execute(count_query)).scalar() or 0
         total_pages = (total + page_size - 1) // page_size
@@ -47,25 +44,20 @@ class BaseRepository(Generic[ModelType]):
         return {"total": total, "page": page, "page_size": page_size, "total_pages": total_pages,
                 "has_next": page < total_pages, "has_prev": page > 1, "data": items}
 
-    def _apply_filters(self, filters: dict[str, Any]) -> tuple[list, Select]:
+    def _apply_filters(self, filters: dict[str, Any]) -> Select:
         """
         Returns conditions and query of stacked queries.
         """
-
-        conditions = []
         query = select(self.model)
-
         if not filters:
-            return conditions, query
+            return query
 
         for key, value in filters.items():
             # Only add valid attributes
             if hasattr(self.model, key):
-                conditions.append(getattr(self.model, key) == value)
-        if conditions:
-            query = query.where(and_(*conditions))
+                query = query.where(and_(getattr(self.model, key) == value))
 
-        return conditions, query
+        return query
 
     async def _commit_with_handling(self, *args: Base) -> None:
         """
