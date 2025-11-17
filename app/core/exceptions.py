@@ -107,6 +107,22 @@ class CompanyPermissionException(HTTPException):
         )
 
 
+class InvalidRecipientException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Different recipient for invitation/request"
+        )
+
+
+class UserAlreadyInCompanyException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is already a member of this company"
+        )
+
+
 class NotAuthenticatedException(HTTPException):
     def __init__(self):
         super().__init__(

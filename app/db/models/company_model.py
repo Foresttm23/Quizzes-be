@@ -15,16 +15,17 @@ class Company(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.text('true'))
 
     # The str in "" syntax allows not importing every model needed.
     # SQLAlchemy will resolve it automatically if the User model exists
-    members: Mapped[list["CompanyMember"]] = relationship(
-        back_populates="company",
-        cascade="all, delete-orphan",
-        lazy="selectin"
-    )
+    members: Mapped[list["CompanyMember"]] = relationship(back_populates="company", cascade="all, delete-orphan",
+                                                          lazy="selectin")
+    join_requests: Mapped[list["CompanyJoinRequest"]] = relationship(back_populates="company",
+                                                                     cascade="all, delete-orphan", lazy="selectin")
+    invitations: Mapped[list["CompanyInvitation"]] = relationship(back_populates="company",
+                                                                  cascade="all, delete-orphan", lazy="selectin")
 
-    is_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.text('true'))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
                                                           onupdate=func.now())

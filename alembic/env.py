@@ -14,6 +14,8 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..'
 from app.db.models.user_model import User  # type: ignore
 from app.db.models.company_model import Company  # type: ignore
 from app.db.models.company_member_model import CompanyMember  # type: ignore
+from app.db.models.company_invitations_model import CompanyInvitation  # type: ignore
+from app.db.models.company_join_requests_model import CompanyJoinRequest  # type: ignore
 
 from app.core.config import settings
 from app.db.postgres import Base
@@ -55,12 +57,8 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-    )
+    context.configure(url=url, target_metadata=target_metadata, literal_binds=True,
+                      dialect_opts={"paramstyle": "named"}, )
 
     with context.begin_transaction():
         context.run_migrations()
@@ -79,11 +77,8 @@ async def run_async_migrations() -> None:
 
     """
 
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = async_engine_from_config(config.get_section(config.config_ini_section, {}), prefix="sqlalchemy.",
+                                           poolclass=pool.NullPool, )
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.company_model import Company as CompanyModel
 from app.db.models.user_model import User as UserModel
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest
+from app.services.company_member_service import CompanyMemberService
 from app.services.company_service import CompanyService
-from app.services.user_service import UserService
 
 pytestmark = pytest.mark.asyncio
 
@@ -18,15 +18,17 @@ DEFAULT_COMPANY_DESCRIPTION = "A default company for testing."
 async def company_owner(created_user: UserModel) -> UserModel:
     return created_user
 
+
 @pytest_asyncio.fixture
 async def company_owner_other(created_user_other: UserModel) -> UserModel:
     return created_user_other
 
 
 @pytest_asyncio.fixture
-async def test_company_service(test_user_service: UserService, testdb_session: AsyncSession) -> CompanyService:
+async def test_company_service(test_company_member_service: CompanyMemberService,
+                               testdb_session: AsyncSession) -> CompanyService:
     """Fixture to provide the CompanyService instance wired to the test database."""
-    return CompanyService(db=testdb_session, user_service=test_user_service)
+    return CompanyService(db=testdb_session, company_member_service=test_company_member_service)
 
 
 @pytest_asyncio.fixture
@@ -35,5 +37,5 @@ async def created_company(test_company_service: CompanyService, company_owner: U
     """Creates and returns a default Company instance for testing."""
     company_info = CompanyCreateRequest(name=DEFAULT_COMPANY_NAME, description=DEFAULT_COMPANY_DESCRIPTION,
                                         is_visible=True)
-    company = await test_company_service.create_company(user=company_owner, company_info=company_info)
+    company = await test_company_service.create_company(owner_id=company_owner.id, company_info=company_info)
     return company

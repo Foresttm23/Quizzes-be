@@ -9,6 +9,9 @@ from app.core.exceptions import NotAuthenticatedException
 from app.db import (redis as redis_module, postgres as postgres_module)
 from app.db.models.user_model import User as UserModel
 from app.services.auth_service import AuthService
+from app.services.company_invitation_service import CompanyInvitationService
+from app.services.company_join_request_service import CompanyJoinRequestService
+from app.services.company_member_service import CompanyMemberService
 from app.services.company_service import CompanyService
 from app.services.user_service import UserService
 
@@ -45,11 +48,34 @@ async def get_auth_service(user_service: UserServiceDep) -> AuthService:
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
-async def get_company_service(db: DBSessionDep, user_service: UserServiceDep) -> CompanyService:
-    return CompanyService(db=db, user_service=user_service)
+async def get_company_member_service(db: DBSessionDep) -> CompanyMemberService:
+    return CompanyMemberService(db=db)
+
+
+CompanyMemberServiceDep = Annotated[CompanyMemberService, Depends(get_company_member_service)]
+
+
+async def get_company_service(db: DBSessionDep, company_member_service: CompanyMemberServiceDep) -> CompanyService:
+    return CompanyService(db=db, company_member_service=company_member_service)
 
 
 CompanyServiceDep = Annotated[CompanyService, Depends(get_company_service)]
+
+
+async def get_company_join_request_service(db: DBSessionDep,
+                                           company_member_service: CompanyMemberServiceDep) -> CompanyJoinRequestService:
+    return CompanyJoinRequestService(db=db, company_member_service=company_member_service)
+
+
+CompanyJoinRequestServiceDep = Annotated[CompanyJoinRequestService, Depends(get_company_join_request_service)]
+
+
+async def get_company_invitation_service(db: DBSessionDep,
+                                         company_member_service: CompanyMemberServiceDep) -> CompanyInvitationService:
+    return CompanyInvitationService(db=db, company_member_service=company_member_service)
+
+
+CompanyInvitationServiceDep = Annotated[CompanyInvitationService, Depends(get_company_invitation_service)]
 
 
 async def get_user_from_jwt(jwt: JWTCredentialsDep, auth_service: AuthServiceDep) -> UserModel:
@@ -74,8 +100,8 @@ async def get_optional_user_from_jwt(jwt: JWTCredentialsDep, auth_service: AuthS
 GetOptionalUserJWTDep = Annotated[UserModel, Depends(get_optional_user_from_jwt)]
 
 
-async def get_user_from_refresh_jwt(jwt: JWTCredentialsDep,
-                                    auth_service: AuthServiceDep, user_service: UserServiceDep) -> UserModel:
+async def get_user_from_refresh_jwt(jwt: JWTCredentialsDep, auth_service: AuthServiceDep,
+                                    user_service: UserServiceDep) -> UserModel:
     jwt_refresh_payload = auth_service.verify_refresh_token_and_get_payload(token=jwt)
     user = await user_service.fetch_user(field_name="id", field_value=jwt_refresh_payload["id"])
     return user

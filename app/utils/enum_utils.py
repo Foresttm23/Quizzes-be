@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 
 
 class CompanyRole(IntEnum):
@@ -6,3 +6,10 @@ class CompanyRole(IntEnum):
     ADMIN = 500
     MEMBER = 100
     GUEST = 0
+
+
+class MessageStatus(Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    CANCELED = "canceled"
