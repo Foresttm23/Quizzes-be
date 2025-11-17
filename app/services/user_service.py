@@ -69,6 +69,7 @@ class UserService(BaseService[UserRepository]):
     async def update_user_info(self, user: UserModel, new_user_info: UserInfoUpdateRequest) -> UserModel:
         """Method for updating user details by id"""
         user = await self._update_instance(instance=user, new_data=new_user_info)
+        await self.repo.save_changes_and_refresh(user)
         return user
 
     async def update_user_password(self, user: UserModel, new_password_info: UserPasswordUpdateRequest) -> UserModel:

@@ -36,7 +36,7 @@ class BaseRepository(Generic[ModelType]):
         result = await self.db.execute(query)
         items = result.scalars().all()
 
-        count_query = filters_query.with_only_columns(func.count())
+        count_query = select(func.count()).select_from(filters_query.subquery())
 
         total = (await self.db.execute(count_query)).scalar() or 0
         total_pages = (total + page_size - 1) // page_size
@@ -77,8 +77,7 @@ class BaseRepository(Generic[ModelType]):
         """
         Wrapper for commit_with_handling() that also adds an instance to db.
         """
-        for instance in args:
-            self.db.add(instance)
+        self.db.add_all(args)
         await self._commit_with_handling(*args)
 
     async def get_instance_by_field_or_404(self, field_name: str, field_value: Any) -> ModelType:
