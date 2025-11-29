@@ -5,6 +5,7 @@ services:
     container_name: myapp
     volumes:
       - .:/package
+      - /package/.venv # To ensure local .venv isn't leaking to the container
     env_file:
       - .env
     ports:
