@@ -39,5 +39,5 @@ class CompanyInvitationRepository(BaseRepository[CompanyInvitationModel]):
         return invitations
 
     async def _execute_base_invitation(self, query: Select) -> Sequence[CompanyInvitationModel]:
-        result = await self.db.execute(query)
-        return result.scalars().all()
+        invitations = await self.db.scalars(query)
+        return invitations.all()

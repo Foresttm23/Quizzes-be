@@ -33,12 +33,12 @@ class BaseRepository(Generic[ModelType]):
         # This queries adds on top of the previous queries,
         # so in the end we will get a final query to execute
         query = filters_query.offset(offset).limit(page_size)
-        result = await self.db.execute(query)
-        items = result.scalars().all()
+        result = await self.db.scalars(query)
+        items = result.all()
 
         count_query = select(func.count()).select_from(filters_query.subquery())
 
-        total = (await self.db.execute(count_query)).scalar() or 0
+        total = await self.db.scalar(count_query) or 0
         total_pages = (total + page_size - 1) // page_size
 
         return {"total": total, "page": page, "page_size": page_size, "total_pages": total_pages,
@@ -67,7 +67,7 @@ class BaseRepository(Generic[ModelType]):
         """
         try:
             await self.db.commit()
-        except (IntegrityError, HTTPException, Exception) as e:
+        except (IntegrityError, HTTPException) as e:
             raise RecordAlreadyExistsException()
 
         for instance in args:
@@ -91,10 +91,9 @@ class BaseRepository(Generic[ModelType]):
 
         # Assigned a specific type hint, so that ide won't show warning
         field: InstrumentedAttribute = getattr(self.model, field_name)
+        query = select(self.model).where(field == field_value)
 
-        result = await self.db.execute(select(self.model).where(field == field_value))
-
-        instance = result.scalar_one_or_none()
+        instance = await self.db.scalar(query)
         if not instance:
             raise InstanceNotFoundException()
 

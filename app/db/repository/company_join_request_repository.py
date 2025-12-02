@@ -39,5 +39,5 @@ class CompanyJoinRequestRepository(BaseRepository[CompanyJoinRequestModel]):
         return requests
 
     async def _execute_base_request(self, query: Select) -> Sequence[CompanyJoinRequestModel]:
-        result = await self.db.execute(query)
-        return result.scalars().all()
+        requests = await self.db.scalars(query)
+        return requests.all()
