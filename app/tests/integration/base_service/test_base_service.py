@@ -39,10 +39,13 @@ async def test_fetch_instances_paginated(test_base_service: _TestService, page, 
 
     paginated_results = await test_base_service.repo.get_instances_data_paginated(page=page, page_size=page_size)
 
+    from app.core.logger import logger
+    logger.critical(paginated_results["total"])
+
     assert paginated_results["page"] == page
     assert paginated_results["page_size"] == page_size
-    assert paginated_results["has_next"] is expected_has_next
-    assert paginated_results["has_prev"] is expected_has_prev
+    assert paginated_results["has_next"] == expected_has_next
+    assert paginated_results["has_prev"] == expected_has_prev
 
     instances = paginated_results["data"]
     assert len(instances) == 1
@@ -57,6 +60,7 @@ async def test_fetch_instances_paginated_no_instances(test_base_service: _TestSe
 async def test_update_instance_success(test_base_service: _TestService, created_instance: UserModel):
     new_data = _TestUpdateSchema(username="new_instance_name")
     updated_instance = await test_base_service._update_instance(instance=created_instance, new_data=new_data)
+    await test_base_service.repo.save_changes_and_refresh(updated_instance)
 
     assert updated_instance.username == "new_instance_name"
     assert updated_instance.email == created_instance.email
@@ -68,6 +72,7 @@ async def test_update_instance_no_changes(test_base_service: _TestService, creat
 
     new_data = _TestUpdateSchema(username=created_instance.username, email=created_instance.email)
     updated_instance = await test_base_service._update_instance(instance=created_instance, new_data=new_data)
+    await test_base_service.repo.save_changes_and_refresh(updated_instance)
 
     assert updated_instance.username == original_username
     assert updated_instance.email == created_instance.email

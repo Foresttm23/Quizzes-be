@@ -24,7 +24,7 @@ python -m venv venv
 ### Install dependencies
 
 ```bash 
-pip install -r requirements.txt
+uv sync
 ```
 
 # Project Setup
@@ -52,7 +52,7 @@ docker compose up -d --build
 ### Tests must be run inside the running container since they need connection to the database and Redis.
 
 ```bash 
-docker exec myapp pytest
+docker exec myapp uv run pytes
 ```
 
 # How to Stop the Application\Containers

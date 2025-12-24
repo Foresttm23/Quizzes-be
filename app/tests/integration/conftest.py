@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.db.models.user_model import User as UserModel
 from app.db.postgres import DBSessionManager
 from app.schemas.user_schemas.user_request_schema import SignUpRequest
+from app.services.company_member_service import CompanyMemberService
 from app.services.user_service import UserService
 
 DEFAULT_EMAIL = "test@example.com"
@@ -79,13 +80,22 @@ async def clean_testdb(testdb_session):
     await testdb_session.commit()
 
 
-@pytest.fixture(scope="function")
-def test_user_service(testdb_session):
+@pytest_asyncio.fixture(scope="function")
+async def test_user_service(testdb_session):
     """
     With this we don't have to call testdb_session in all the tests.
     Unless we need to call db directly to check the saved data.
     """
     return UserService(db=testdb_session)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def test_company_member_service(testdb_session):
+    """
+    With this we don't have to call testdb_session in all the tests.
+    Unless we need to call db directly to check the saved data.
+    """
+    return CompanyMemberService(db=testdb_session)
 
 
 @pytest_asyncio.fixture

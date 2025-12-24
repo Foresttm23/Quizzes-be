@@ -26,5 +26,5 @@ class _TestService(BaseService[_TestUserRepository]):
     async def helper_create_instance(self, data: _TestCreateSchema) -> ModelType:
         """A helper/wrapper function for save_changes_and_refresh"""
         instance = self.repo.model(**data.model_dump())
-        await self.repo.save_changes_and_refresh(instance=instance)
+        await self.repo.save_changes_and_refresh(instance)
         return instance

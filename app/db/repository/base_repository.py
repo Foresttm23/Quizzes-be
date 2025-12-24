@@ -29,64 +29,56 @@ class BaseRepository(Generic[ModelType]):
         """
         offset = (page - 1) * page_size
 
-        conditions, query = self._apply_filters(filters=filters)
-
+        filters_query = self._apply_filters(filters)
         # This queries adds on top of the previous queries,
         # so in the end we will get a final query to execute
-        query = query.offset(offset).limit(page_size)
-        result = await self.db.execute(query)
-        items = result.scalars().all()
+        query = filters_query.offset(offset).limit(page_size)
+        result = await self.db.scalars(query)
+        items = result.all()
 
-        count_query = select(func.count()).select_from(self.model)
-        if conditions:
-            count_query = count_query.where(and_(*conditions))
+        count_query = select(func.count()).select_from(filters_query.subquery())
 
-        total = (await self.db.execute(count_query)).scalar() or 0
+        total = await self.db.scalar(count_query) or 0
         total_pages = (total + page_size - 1) // page_size
 
         return {"total": total, "page": page, "page_size": page_size, "total_pages": total_pages,
                 "has_next": page < total_pages, "has_prev": page > 1, "data": items}
 
-    def _apply_filters(self, filters: dict[str, Any]) -> tuple[list, Select]:
+    def _apply_filters(self, filters: dict[str, Any]) -> Select:
         """
         Returns conditions and query of stacked queries.
         """
-
-        conditions = []
         query = select(self.model)
-
         if not filters:
-            return conditions, query
+            return query
 
         for key, value in filters.items():
             # Only add valid attributes
             if hasattr(self.model, key):
-                conditions.append(getattr(self.model, key) == value)
-        if conditions:
-            query = query.where(and_(*conditions))
+                query = query.where(and_(getattr(self.model, key) == value))
 
-        return conditions, query
+        return query
 
-    async def _commit_with_handling(self, instance: ModelType | None = None) -> None:
+    async def _commit_with_handling(self, *args: Base) -> None:
         """
-        Commits current state of commits and refreshes instance.
-        If instance is None only commits.
-        If there is duplicate of unique field, IntegrityError is called.
+        Commits current state of commits and refreshes instances.
+        If *args is None only commits.
+        If there is duplicate of unique field, IntegrityError is called and session is rolled back.
         """
         try:
             await self.db.commit()
-        except (IntegrityError, HTTPException, Exception) as e:
+        except (IntegrityError, HTTPException) as e:
             raise RecordAlreadyExistsException()
 
-        if instance:
+        for instance in args:
             await self.db.refresh(instance)
 
-    async def save_changes_and_refresh(self, instance: ModelType) -> None:
+    async def save_changes_and_refresh(self, *args: Base) -> None:
         """
         Wrapper for commit_with_handling() that also adds an instance to db.
         """
-        self.db.add(instance)
-        await self._commit_with_handling(instance=instance)
+        self.db.add_all(args)
+        await self._commit_with_handling(*args)
 
     async def get_instance_by_field_or_404(self, field_name: str, field_value: Any) -> ModelType:
         """
@@ -99,13 +91,12 @@ class BaseRepository(Generic[ModelType]):
 
         # Assigned a specific type hint, so that ide won't show warning
         field: InstrumentedAttribute = getattr(self.model, field_name)
+        query = select(self.model).where(field == field_value)
 
-        result = await self.db.execute(select(self.model).where(field == field_value))
-
-        instance = result.scalar_one_or_none()
-
+        instance = await self.db.scalar(query)
         if not instance:
             raise InstanceNotFoundException()
+
         return instance
 
     @staticmethod
