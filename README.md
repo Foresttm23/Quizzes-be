@@ -1,4 +1,4 @@
-# intern-meduzzen-be
+# Quizzes-be
 
 ___
 
