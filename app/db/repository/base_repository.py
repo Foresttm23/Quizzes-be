@@ -1,4 +1,3 @@
-from http.client import HTTPException
 from typing import Type, TypeVar, Generic, Any
 
 from pydantic import BaseModel
@@ -57,39 +56,53 @@ class BaseRepository(Generic[ModelType]):
             return base_query
 
         query = base_query  # Solely for readability
-        for key, value in filters.items():
-            query = query.where(key == value)
+        for attr, value in filters.items():
+            query = query.where(attr == value)
 
         return query
 
-    async def _commit_with_handling(self, *args: Base) -> None:
+    async def save_and_refresh(self, *instances: Base) -> None:
         """
-        Commits current state of commits and refreshes instances.
-        If *args is None only commits.
+        Adds instances, commits and refreshes them.
         If there is duplicate of unique field, IntegrityError is called and session is rolled back.
+        """
+        self.db.add_all(instances)
+        await self.commit()
+
+        for instance in instances:
+            await self.db.refresh(instance)
+
+    async def commit(self) -> None:
+        """
+        Commits the current transaction.
         """
         try:
             await self.db.commit()
-        except (IntegrityError, HTTPException) as e:
+        except IntegrityError as e:
             raise RecordAlreadyExistsException()
-
-        for instance in args:
-            await self.db.refresh(instance)
-
-    async def save_changes_and_refresh(self, *args: Base) -> None:
-        """
-        Wrapper for commit_with_handling() that also adds an instance to db.
-        """
-        self.db.add_all(args)
-        await self._commit_with_handling(*args)
 
     async def get_instance_by_field_or_404(self, field: InstrumentedAttribute, value: Any) -> ModelType:
         """
-        Gets instance by field.
-        If no instance exists, raise error.
-        Else returns instance.
+        Gets instance by single field.
+        :param field:
+        :param value:
+        :return: instance
+        :raises InstanceNotFoundException: If not found
         """
-        query = select(self.model).where(field == value)
+        instance = await self.get_instance_by_filters_or_404(filters={field: value})
+        return instance
+
+    async def get_instance_by_filters_or_404(self, filters: dict[InstrumentedAttribute, Any]) -> ModelType:
+        """
+        Gets instance by many field.
+        :param filters:
+        :return: instance
+        :raises InstanceNotFoundException: If not found
+        """
+        query = select(self.model)
+
+        for attr, value in filters.items():
+            query = query.where(attr == value)
 
         instance = await self.db.scalar(query)
         if instance is None:
@@ -106,11 +119,11 @@ class BaseRepository(Generic[ModelType]):
         changes = {}
 
         update_data = new_instance_info.model_dump(exclude_unset=True)
-        for key, new_value in update_data.items():
-            old_value = getattr(instance, key)
+        for attr, new_value in update_data.items():
+            old_value = getattr(instance, attr)
             if old_value != new_value:
-                changes[key] = {"from": old_value, "to": new_value}
-                setattr(instance, key, new_value)
+                changes[attr] = {"from": old_value, "to": new_value}
+                setattr(instance, attr, new_value)
 
         return changes
 
@@ -119,5 +132,3 @@ class BaseRepository(Generic[ModelType]):
         Function to delete instance and commit changes.
         """
         await self.db.delete(instance)
-        # We don't provide a value, since we don't need neither to update nor return user
-        await self._commit_with_handling()

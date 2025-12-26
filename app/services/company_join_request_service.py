@@ -31,8 +31,8 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         """
         await self.company_member_service.assert_user_not_in_company(company_id=company_id, user_id=requesting_user_id)
         new_request = CompanyJoinRequestModel(id=uuid4(), company_id=company_id, requesting_user_id=requesting_user_id)
-        await self.repo.save_changes_and_refresh(new_request)
 
+        await self.repo.save_and_refresh(new_request)
         return new_request
 
     async def accept_request(self, request_id: UUID, acting_user_id: UUID) -> tuple[
@@ -50,7 +50,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
 
         new_member = CompanyMemberModel(company_id=request.company_id, user_id=request.requesting_user_id)
 
-        await self.repo.save_changes_and_refresh(request, new_member)
+        await self.repo.save_and_refresh(request, new_member)
         return request, new_member
 
     async def decline_request(self, request_id: UUID, acting_user_id: UUID) -> CompanyJoinRequestModel:
@@ -65,7 +65,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         new_request_data = UpdateRequestSchema(status=MessageStatus.DECLINED)
         await self._update_instance(instance=request, new_data=new_request_data)
 
-        await self.repo.save_changes_and_refresh(request)
+        await self.repo.save_and_refresh(request)
         return request
 
     async def cancel_request(self, request_id: UUID, requesting_user_id: UUID) -> CompanyJoinRequestModel:
@@ -82,13 +82,13 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         new_request_data = UpdateRequestSchema(status=MessageStatus.CANCELED)
         await self._update_instance(instance=request, new_data=new_request_data)
 
-        await self.repo.save_changes_and_refresh(request)
+        await self.repo.save_and_refresh(request)
         return request
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
                                       page_size: int = 100) -> PaginationResponse[CompanyJoinRequestModel]:
-        await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=acting_user_id,
-                                                               required_role=CompanyRole.ADMIN)
+        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
+                                                                      required_role=CompanyRole.ADMIN)
 
         filters = {CompanyJoinRequestModel.company_id: company_id,
                    CompanyJoinRequestModel.status: MessageStatus.PENDING}
@@ -110,6 +110,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :return: request
         """
         request = await self.repo.get_instance_by_field_or_404(CompanyJoinRequestModel.id, value=request_id)
-        await self.company_member_service.assert_user_has_role(company_id=request.company_id, user_id=acting_user_id,
-                                                               required_role=CompanyRole.ADMIN)
+        await self.company_member_service.assert_user_has_permissions(company_id=request.company_id,
+                                                                      user_id=acting_user_id,
+                                                                      required_role=CompanyRole.ADMIN)
         return request

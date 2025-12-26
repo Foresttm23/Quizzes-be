@@ -31,14 +31,14 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         :param acting_user_id: id of a user with admin or higher role in a company
         :return: invitation
         """
-        await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=acting_user_id,
-                                                               required_role=CompanyRole.ADMIN)
+        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
+                                                                      required_role=CompanyRole.ADMIN)
         await self.company_member_service.assert_user_not_in_company(company_id=company_id, user_id=invited_user_id)
 
         new_invitation = CompanyInvitationModel(id=uuid4(), company_id=company_id, invited_user_id=invited_user_id,
                                                 status=MessageStatus.PENDING)
 
-        await self.repo.save_changes_and_refresh(new_invitation)
+        await self.repo.save_and_refresh(new_invitation)
         return new_invitation
 
     async def accept_from_company(self, invitation_id: UUID, invited_user_id: UUID) -> tuple[
@@ -55,7 +55,7 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         invitation = await self._update_status(invitation=invitation, new_status=MessageStatus.ACCEPTED)
 
         new_member = CompanyMemberModel(company_id=invitation.company_id, user_id=invitation.invited_user_id)
-        await self.repo.save_changes_and_refresh(invitation, new_member)
+        await self.repo.save_and_refresh(invitation, new_member)
 
         return invitation, new_member
 
@@ -70,7 +70,7 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
                                                                 invited_user_id=invited_user_id)
 
         invitation = await self._update_status(invitation=invitation, new_status=MessageStatus.DECLINED)
-        await self.repo.save_changes_and_refresh(invitation)
+        await self.repo.save_and_refresh(invitation)
         return invitation
 
     async def cancel_by_company(self, invitation_id: UUID, acting_user_id: UUID) -> CompanyInvitationModel:
@@ -81,24 +81,25 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         :return: invitation
         """
         invitation = await self.repo.get_instance_by_field_or_404(CompanyInvitationModel.id, value=invitation_id)
-        await self.company_member_service.assert_user_has_role(company_id=invitation.company_id, user_id=acting_user_id,
-                                                               required_role=CompanyRole.ADMIN)
+        await self.company_member_service.assert_user_has_permissions(company_id=invitation.company_id,
+                                                                      user_id=acting_user_id,
+                                                                      required_role=CompanyRole.ADMIN)
 
         invitation = await self._update_status(invitation=invitation, new_status=MessageStatus.CANCELED)
-        await self.repo.save_changes_and_refresh(invitation)
+        await self.repo.save_and_refresh(invitation)
         return invitation
 
-    async def get_pending_for_user(self, user_id: UUID, page: int = 1, page_size: int = 100) -> PaginationResponse[
+    async def get_pending_for_user(self, user_id: UUID, page: int, page_size: int) -> PaginationResponse[
         CompanyInvitationModel]:
         filters = {CompanyInvitationModel.invited_user_id: user_id,
                    CompanyInvitationModel.status: MessageStatus.PENDING}
         invitations = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
         return invitations
 
-    async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
-                                      page_size: int = 100) -> PaginationResponse[CompanyInvitationModel]:
-        await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=acting_user_id,
-                                                               required_role=CompanyRole.ADMIN)
+    async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int,
+                                      page_size: int) -> PaginationResponse[CompanyInvitationModel]:
+        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
+                                                                      required_role=CompanyRole.ADMIN)
 
         filters = {CompanyInvitationModel.company_id: company_id, CompanyInvitationModel.status: MessageStatus.PENDING}
         invitations = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)

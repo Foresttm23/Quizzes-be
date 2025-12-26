@@ -8,7 +8,7 @@ from sqlalchemy import NullPool, text
 from app.core.config import settings
 from app.db.models.user_model import User as UserModel
 from app.db.postgres import DBSessionManager
-from app.schemas.user_schemas.user_request_schema import SignUpRequest
+from app.schemas.user_schemas.user_request_schema import RegisterRequest
 from app.services.company_member_service import CompanyMemberService
 from app.services.user_service import UserService
 
@@ -100,14 +100,14 @@ async def test_company_member_service(testdb_session):
 
 @pytest_asyncio.fixture
 async def created_user(test_user_service: UserService) -> UserModel:
-    user_info = SignUpRequest(email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+    user_info = RegisterRequest(email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
     user = await test_user_service.create_user(user_info=user_info)
     return user
 
 
 @pytest_asyncio.fixture
 async def created_user_other(test_user_service: UserService) -> UserModel:
-    user_info = SignUpRequest(email="other_" + DEFAULT_EMAIL, username="other_" + DEFAULT_USERNAME,
-                              password=DEFAULT_PASSWORD)
+    user_info = RegisterRequest(email="other_" + DEFAULT_EMAIL, username="other_" + DEFAULT_USERNAME,
+                                password=DEFAULT_PASSWORD)
     user = await test_user_service.create_user(user_info=user_info)
     return user

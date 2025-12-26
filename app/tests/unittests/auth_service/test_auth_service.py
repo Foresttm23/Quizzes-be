@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from app.core.exceptions import (InvalidJWTException, InstanceNotFoundException, UserIncorrectPasswordOrEmailException)
-from app.schemas.user_schemas.user_request_schema import SignInRequest
+from app.schemas.user_schemas.user_request_schema import LoginRequest
 
 
 def test_verify_token_and_get_payload_local_success(auth_service, mock_auth_utils):
@@ -82,7 +82,7 @@ def test_create_access_token_calls_repo_correctly(mocker, auth_service, mock_use
 async def test_handle_email_password_sign_in_success(mocker, auth_service, mock_user, mock_user_service):
     mock_verify_password = mocker.patch('app.services.auth_service.verify_password')
 
-    sign_in_data = Mock(spec=SignInRequest)
+    sign_in_data = Mock(spec=LoginRequest)
     sign_in_data.email = mock_user.email
 
     mock_secret_str = Mock()
@@ -101,7 +101,7 @@ async def test_handle_email_password_sign_in_success(mocker, auth_service, mock_
 
 @pytest.mark.asyncio
 async def test_handle_email_password_sign_in_user_not_found(auth_service, mock_user_service, mock_user):
-    sign_in_data = Mock(spec=SignInRequest)
+    sign_in_data = Mock(spec=LoginRequest)
     sign_in_data.email = mock_user.email
 
     mock_user_service.fetch_user.side_effect = InstanceNotFoundException
@@ -116,7 +116,7 @@ async def test_handle_email_password_sign_in_user_not_found(auth_service, mock_u
 async def test_handle_email_password_sign_in_incorrect_password(mocker, auth_service, mock_user, mock_user_service):
     mock_verify_password = mocker.patch('app.services.auth_service.verify_password')
 
-    sign_in_data = Mock(spec=SignInRequest)
+    sign_in_data = Mock(spec=LoginRequest)
     sign_in_data.email = mock_user.email
 
     mock_secret_str = Mock()

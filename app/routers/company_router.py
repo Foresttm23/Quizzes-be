@@ -22,16 +22,16 @@ async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep
 
 
 @router.get("/", response_model=PaginationResponse[CompanyDetailsResponse], status_code=status.HTTP_200_OK)
-async def list_companies(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, page: int = Query(ge=1),
-                         page_size: int = Query(ge=1, le=settings.APP.MAX_PAGE_SIZE)):
+async def get_companies(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep,
+                        page: int = Query(default=1, ge=1),
+                        page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE)):
     """
-    Return a list of all companies by page and page_size.
+    Get all companies by page and page_size.
     Filters can be added later.
     Crud operations in company_repository supports it.
     """
     if user:
-        companies_data = await company_service.get_companies_paginated(page=page, page_size=page_size,
-                                                                       user_id=user.id)
+        companies_data = await company_service.get_companies_paginated(page=page, page_size=page_size, user_id=user.id)
     else:
         companies_data = await company_service.get_companies_paginated(page=page, page_size=page_size)
     return companies_data
@@ -40,11 +40,9 @@ async def list_companies(company_service: CompanyServiceDep, user: GetOptionalUs
 @router.get("/{company_id}", response_model=CompanyDetailsResponse, status_code=status.HTTP_200_OK)
 async def get_company(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID):
     """Returns a company by its id"""
-    if user:
-        company = await company_service.get_by_id(company_id=company_id, user_id=user.id)
-    else:
-        company = await company_service.get_by_id(company_id=company_id)
+    user_id = user.id if user else None
 
+    company = await company_service.get_by_id(company_id=company_id, user_id=user_id)
     return company
 
 
