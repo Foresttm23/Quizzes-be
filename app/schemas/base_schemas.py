@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, List, Any
+from typing import Generic, TypeVar, Any, Sequence
 
 from pydantic import BaseModel, model_validator
 
@@ -30,4 +30,4 @@ class PaginationResponse(BaseResponseModel, Generic[T]):
     total_pages: int
     has_next: bool
     has_prev: bool
-    data: List[T]
+    data: Sequence[T]

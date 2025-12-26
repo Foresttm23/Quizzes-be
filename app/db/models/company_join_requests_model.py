@@ -14,7 +14,6 @@ from app.utils.enum_utils import MessageStatus
 class CompanyJoinRequest(Base):
     __tablename__ = "company_join_requests"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"),
                                                   nullable=False)
     requesting_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True),

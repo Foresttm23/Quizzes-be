@@ -1,12 +1,15 @@
 import contextlib
+import uuid
 from typing import Any, AsyncIterator, AsyncGenerator
 
+from sqlalchemy import UUID
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.exceptions import DBSessionNotInitializedException
 from app.core.logger import logger
@@ -14,6 +17,7 @@ from app.core.logger import logger
 
 class Base(DeclarativeBase):
     __mapper_args__ = {"eager_defaults": True}
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308

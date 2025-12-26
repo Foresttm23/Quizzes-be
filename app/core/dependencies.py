@@ -103,7 +103,7 @@ GetOptionalUserJWTDep = Annotated[UserModel, Depends(get_optional_user_from_jwt)
 async def get_user_from_refresh_jwt(jwt: JWTCredentialsDep, auth_service: AuthServiceDep,
                                     user_service: UserServiceDep) -> UserModel:
     jwt_refresh_payload = auth_service.verify_refresh_token_and_get_payload(token=jwt)
-    user = await user_service.fetch_user(field_name="id", field_value=jwt_refresh_payload["id"])
+    user = await user_service.get_by_id(user_id=jwt_refresh_payload["id"])
     return user
 
 

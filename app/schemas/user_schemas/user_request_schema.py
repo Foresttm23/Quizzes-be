@@ -3,13 +3,13 @@ from pydantic import EmailStr, Field, SecretStr
 from app.schemas.base_schemas import BaseRequestModel
 
 
-class SignUpRequest(BaseRequestModel):
+class RegisterRequest(BaseRequestModel):
     email: EmailStr
     username: str = Field(min_length=3, max_length=100)
     password: SecretStr = Field(min_length=8)
 
 
-class SignInRequest(BaseRequestModel):
+class LoginRequest(BaseRequestModel):
     email: EmailStr
     password: SecretStr
 

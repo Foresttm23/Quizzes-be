@@ -13,8 +13,8 @@ class CompanyMemberRepository(BaseRepository[CompanyMemberModel]):
     def __init__(self, db: AsyncSession):
         super().__init__(model=CompanyMemberModel, db=db)
 
-    async def get_user_role(self, company_id: UUID, user_id: UUID) -> CompanyRole | None:
-        query = (select(self.model.role).where(self.model.company_id == company_id, self.model.user_id == user_id))
+    async def get_company_role(self, company_id: UUID, user_id: UUID) -> CompanyRole | None:
+        query = select(self.model.role).where(self.model.company_id == company_id, self.model.user_id == user_id)
         role = await self.db.scalar(query)
         return role
 
@@ -23,11 +23,6 @@ class CompanyMemberRepository(BaseRepository[CompanyMemberModel]):
         user_company_ids = await self.db.scalars(query)
         return user_company_ids.all()
 
-    async def get_user_from_company(self, company_id: UUID, user_id: UUID) -> CompanyMemberModel | None:
-        query = select(self.model).where(self.model.user_id == user_id, self.model.company_id == company_id)
-        company_member = await self.db.scalar(query)
-        return company_member
-
-    async def remove_user_from_company(self, company_id: UUID, user_id: UUID):
+    async def remove_member(self, company_id: UUID, user_id: UUID):
         query = delete(self.model).where(self.model.company_id == company_id, self.model.user_id == user_id)
         await self.db.execute(query)
