@@ -1,7 +1,7 @@
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.company_member_model import CompanyMember as CompanyMemberModel
@@ -23,16 +23,6 @@ class CompanyMemberRepository(BaseRepository[CompanyMemberModel]):
         user_company_ids = await self.db.scalars(query)
         return user_company_ids.all()
 
-    async def get_member(self, company_id: UUID, user_id: UUID) -> CompanyMemberModel | None:
-        query = select(self.model).where(self.model.user_id == user_id, self.model.company_id == company_id)
-        company_member = await self.db.scalar(query)
-        return company_member
-
     async def remove_member(self, company_id: UUID, user_id: UUID):
         query = delete(self.model).where(self.model.company_id == company_id, self.model.user_id == user_id)
-        await self.db.execute(query)
-
-    async def update_role(self, company_id: UUID, user_id: UUID, new_role: CompanyRole) -> None:
-        query = update(self.model).where(self.model.company_id == company_id, self.model.user_id == user_id).values(
-            role=new_role)
         await self.db.execute(query)

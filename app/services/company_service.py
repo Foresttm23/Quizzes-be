@@ -73,24 +73,25 @@ class CompanyService(BaseService[CompanyRepository]):
 
         logger.info(f"Created new Company: {company.id} owner {owner_member.user_id}")
 
-        await self.repo.save_changes_and_refresh(company, owner_member)
+        await self.repo.save_and_refresh(company, owner_member)
 
         return company
 
     async def update_company(self, company_id: UUID, owner_id: UUID,
                              company_info: CompanyUpdateInfoRequest) -> CompanyModel:
         company = await self.repo.get_instance_by_field_or_404(CompanyModel.id, value=company_id)
-        await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=owner_id,
-                                                               required_role=CompanyRole.ADMIN)
+        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=owner_id,
+                                                                      required_role=CompanyRole.ADMIN)
 
         company = await self._update_instance(instance=company, new_data=company_info)
-        await self.repo.save_changes_and_refresh(company)
+        await self.repo.save_and_refresh(company)
 
         return company
 
     async def delete_company(self, company_id: UUID, owner_id: UUID):
         company = await self.repo.get_instance_by_field_or_404(CompanyModel.id, value=company_id)
-        await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=owner_id,
-                                                               required_role=CompanyRole.OWNER)
+        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=owner_id,
+                                                                      required_role=CompanyRole.OWNER)
 
         await self._delete_instance(instance=company)
+        await self.repo.commit()

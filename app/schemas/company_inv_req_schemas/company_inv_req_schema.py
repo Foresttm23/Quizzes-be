@@ -4,6 +4,7 @@ from uuid import UUID
 from app.schemas.base_schemas import BaseResponseModel
 from app.schemas.company_members_schemas.company_member_response_schema import CompanyMemberDetailsResponse
 from app.utils.enum_utils import MessageStatus
+from schemas.base_schemas import BaseRequestModel
 
 
 class UpdateRequestSchema(BaseResponseModel):
@@ -40,3 +41,7 @@ class InvitationDetailsResponse(BaseResponseModel):
 class AcceptInvitationResponse(BaseResponseModel):
     invitation: InvitationDetailsResponse
     new_member: CompanyMemberDetailsResponse
+
+
+class CreateInvitationRequest(BaseRequestModel):
+    invited_user_id: UUID

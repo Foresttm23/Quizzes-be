@@ -5,7 +5,7 @@ from app.core.exceptions import InvalidJWTException, InvalidJWTRefreshException
 from app.core.exceptions import UserIncorrectPasswordOrEmailException, InstanceNotFoundException
 from app.core.logger import logger
 from app.db.models.user_model import User as UserModel
-from app.schemas.user_schemas.user_request_schema import SignInRequest, SignUpRequest
+from app.schemas.user_schemas.user_request_schema import LoginRequest, RegisterRequest
 from app.services.user_service import UserService
 from app.utils.auth_utils import AuthUtils
 from app.utils.password_utils import verify_password
@@ -24,7 +24,7 @@ class AuthService:
         logger.debug({"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"})
         return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-    async def register_user(self, sign_up_data: SignUpRequest) -> UserModel:
+    async def register_user(self, sign_up_data: RegisterRequest) -> UserModel:
         """
         Wrapper for user_service.create_user.
         Can be expanded in the future.
@@ -77,7 +77,7 @@ class AuthService:
 
         return encoded_jwt
 
-    async def handle_email_password_sign_in(self, sign_in_data: SignInRequest):
+    async def handle_email_password_sign_in(self, sign_in_data: LoginRequest):
         """Creates user from password and email if not found. Returns user in either way."""
         # Checks if user exist byt itself, so the call checking user isn't needed
         # but might help in some unexpected situations

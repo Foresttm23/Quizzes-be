@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InstanceNotFoundException, RecordAlreadyExistsException, PasswordReuseException
 from app.db.models.user_model import User as UserModel
-from app.schemas.user_schemas.user_request_schema import SignUpRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest
+from app.schemas.user_schemas.user_request_schema import RegisterRequest, UserInfoUpdateRequest, \
+    UserPasswordUpdateRequest
 from app.services.user_service import UserService
 from app.utils.password_utils import verify_password
 
@@ -16,7 +17,7 @@ DEFAULT_PASSWORD = SecretStr("123456789")
 
 
 async def test_create_user_success(test_user_service: UserService):
-    user_info = SignUpRequest(email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+    user_info = RegisterRequest(email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
     user = await test_user_service.create_user(user_info=user_info)
 
     assert user.id is not None
@@ -26,7 +27,8 @@ async def test_create_user_success(test_user_service: UserService):
 
 
 async def test_create_user_duplicate_email(test_user_service: UserService, created_user: UserModel):
-    user_info_duplicate = SignUpRequest(email=created_user.email, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+    user_info_duplicate = RegisterRequest(email=created_user.email, username=DEFAULT_USERNAME,
+                                          password=DEFAULT_PASSWORD)
     with pytest.raises(RecordAlreadyExistsException):
         await test_user_service.create_user(user_info=user_info_duplicate)
 
@@ -95,8 +97,8 @@ async def test_fetch_user_not_found(test_user_service: UserService):
                                                                                    ])
 async def test_fetch_users_paginated(test_user_service: UserService, page, page_size, expected_has_next,
                                      expected_has_prev):
-    user1_info = SignUpRequest(email="1" + DEFAULT_EMAIL, username="1" + DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
-    user2_info = SignUpRequest(email="2" + DEFAULT_EMAIL, username="2" + DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+    user1_info = RegisterRequest(email="1" + DEFAULT_EMAIL, username="1" + DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+    user2_info = RegisterRequest(email="2" + DEFAULT_EMAIL, username="2" + DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
     await test_user_service.create_user(user1_info)
     await test_user_service.create_user(user2_info)
 
