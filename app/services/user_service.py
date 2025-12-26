@@ -1,6 +1,6 @@
-from typing import Any
-from uuid import uuid4
+from uuid import uuid4, UUID
 
+from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidPasswordException
@@ -10,9 +10,9 @@ from app.db.models.user_model import User as UserModel
 from app.db.repository.user_repository import UserRepository
 from app.schemas.user_schemas.user_request_schema import SignUpRequest, UserInfoUpdateRequest
 from app.schemas.user_schemas.user_request_schema import UserPasswordUpdateRequest
-from app.schemas.user_schemas.user_response_schema import UserDetailsResponse
 from app.services.base_service import BaseService
 from app.utils.password_utils import hash_password, verify_password
+from schemas.base_schemas import PaginationResponse
 
 
 class UserService(BaseService[UserRepository]):
@@ -23,11 +23,15 @@ class UserService(BaseService[UserRepository]):
     def __init__(self, db: AsyncSession):
         super().__init__(repo=UserRepository(db=db))
 
-    async def fetch_user(self, field_name: str, field_value: Any) -> UserModel:
-        user = await self.repo.get_instance_by_field_or_404(field_name=field_name, field_value=field_value)
+    async def get_by_email(self, email: EmailStr) -> UserModel:
+        user = await self.repo.get_instance_by_field_or_404(field=UserModel.email, value=email)
         return user
 
-    async def fetch_users_data_paginated(self, page: int, page_size: int) -> dict[Any, list[UserDetailsResponse]]:
+    async def get_by_id(self, user_id: UUID) -> UserModel:
+        user = await self.repo.get_instance_by_field_or_404(field=UserModel.id, value=user_id)
+        return user
+
+    async def get_users_paginated(self, page: int, page_size: int) -> PaginationResponse[UserModel]:
         # We can now add filter fields.
         users_data = await self.repo.get_instances_data_paginated(page=page, page_size=page_size)
         return users_data

@@ -2,18 +2,20 @@ from http.client import HTTPException
 from typing import Type, TypeVar, Generic, Any
 
 from pydantic import BaseModel
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
-from sqlalchemy.sql.selectable import Select
+from sqlalchemy.sql import Select, Update, Delete
 
-from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException, \
-    InvalidSQLModelFieldNameException
+from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException
 from app.db.postgres import Base
+from schemas.base_schemas import PaginationResponse
 
 ModelType = TypeVar("ModelType", bound=Base)
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
+
+BaseQuery = Select | Update | Delete
 
 
 class BaseRepository(Generic[ModelType]):
@@ -22,40 +24,41 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get_instances_data_paginated(self, page: int, page_size: int,
-                                           filters: dict[str, Any] | None = None) -> dict:
-        """
-        Returns a dict of instances and metadata in specified range.
-        Can accept filter fields in format {"field_name": value}.
-        """
-        offset = (page - 1) * page_size
+                                           filters: dict[InstrumentedAttribute, Any] | None = None) -> \
+            PaginationResponse[ModelType]:
+        stmt = select(self.model)
+        stmt = self._apply_filters(filters, stmt)
+        stmt = stmt.order_by(self.model.id.desc())
 
-        filters_query = self._apply_filters(filters)
-        # This queries adds on top of the previous queries,
-        # so in the end we will get a final query to execute
-        query = filters_query.offset(offset).limit(page_size)
-        result = await self.db.scalars(query)
-        items = result.all()
+        result = await self.paginate_query(stmt, page, page_size)
+        return result
 
-        count_query = select(func.count()).select_from(filters_query.subquery())
-
+    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[ModelType]:
+        count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
+
         total_pages = (total + page_size - 1) // page_size
 
-        return {"total": total, "page": page, "page_size": page_size, "total_pages": total_pages,
-                "has_next": page < total_pages, "has_prev": page > 1, "data": items}
+        offset = (page - 1) * page_size
+        stmt = stmt.offset(offset).limit(page_size)
 
-    def _apply_filters(self, filters: dict[str, Any]) -> Select:
+        result = await self.db.scalars(stmt)
+        items = result.all()
+
+        return PaginationResponse(total=total, page=page, page_size=page_size, total_pages=total_pages,
+                                  has_next=page < total_pages, has_prev=page > 1, data=items)
+
+    @staticmethod
+    def _apply_filters(filters: dict[InstrumentedAttribute, Any], base_query: BaseQuery) -> BaseQuery:
         """
         Returns conditions and query of stacked queries.
         """
-        query = select(self.model)
         if not filters:
-            return query
+            return base_query
 
+        query = base_query  # Solely for readability
         for key, value in filters.items():
-            # Only add valid attributes
-            if hasattr(self.model, key):
-                query = query.where(and_(getattr(self.model, key) == value))
+            query = query.where(key == value)
 
         return query
 
@@ -80,21 +83,16 @@ class BaseRepository(Generic[ModelType]):
         self.db.add_all(args)
         await self._commit_with_handling(*args)
 
-    async def get_instance_by_field_or_404(self, field_name: str, field_value: Any) -> ModelType:
+    async def get_instance_by_field_or_404(self, field: InstrumentedAttribute, value: Any) -> ModelType:
         """
         Gets instance by field.
         If no instance exists, raise error.
         Else returns instance.
         """
-        if not hasattr(self.model, field_name):
-            raise InvalidSQLModelFieldNameException(field_name)
-
-        # Assigned a specific type hint, so that ide won't show warning
-        field: InstrumentedAttribute = getattr(self.model, field_name)
-        query = select(self.model).where(field == field_value)
+        query = select(self.model).where(field == value)
 
         instance = await self.db.scalar(query)
-        if not instance:
+        if instance is None:
             raise InstanceNotFoundException()
 
         return instance

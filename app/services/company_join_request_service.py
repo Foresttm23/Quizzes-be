@@ -1,4 +1,3 @@
-from typing import Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +10,7 @@ from app.schemas.company_inv_req_schemas.company_inv_req_schema import UpdateReq
 from app.services.base_service import BaseService
 from app.services.company_member_service import CompanyMemberService
 from app.utils.enum_utils import MessageStatus, CompanyRole
+from schemas.base_schemas import PaginationResponse
 
 
 class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
@@ -22,7 +22,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         super().__init__(repo=CompanyJoinRequestRepository(db=db))
         self.company_member_service = company_member_service
 
-    async def create_request_to_company(self, company_id: UUID, requesting_user_id: UUID) -> CompanyJoinRequestModel:
+    async def create_join_request(self, company_id: UUID, requesting_user_id: UUID) -> CompanyJoinRequestModel:
         """
         Creates request from user to a desired company.
         :param company_id:
@@ -35,7 +35,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
 
         return new_request
 
-    async def accept_request_from_user(self, request_id: UUID, acting_user_id: UUID) -> tuple[
+    async def accept_request(self, request_id: UUID, acting_user_id: UUID) -> tuple[
         CompanyJoinRequestModel, CompanyMemberModel]:
         """
         Accepts request from user by a company.
@@ -43,67 +43,73 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :param acting_user_id: id of a user with admin or higher role in a company
         :return: request, new_member
         """
-        request = await self._get_request_and_assert_role(request_id=request_id, acting_user_id=acting_user_id)
+        request = await self._get_and_assert_role(request_id=request_id, acting_user_id=acting_user_id)
 
-        new_request_data = UpdateRequestSchema(request_status=MessageStatus.ACCEPTED)
-        await self._update_instance(instance=request, new_data=new_request_data)
+        new_request_data = UpdateRequestSchema(status=MessageStatus.ACCEPTED)
+        request = await self._update_instance(instance=request, new_data=new_request_data)
 
         new_member = CompanyMemberModel(company_id=request.company_id, user_id=request.requesting_user_id)
-        await self.repo.save_changes_and_refresh(request, new_member)
 
+        await self.repo.save_changes_and_refresh(request, new_member)
         return request, new_member
 
-    async def decline_request_from_user(self, request_id: UUID, acting_user_id: UUID) -> CompanyJoinRequestModel:
+    async def decline_request(self, request_id: UUID, acting_user_id: UUID) -> CompanyJoinRequestModel:
         """
         Decline request from user by a company.
         :param request_id:
         :param acting_user_id: id of a user with admin or higher role in a company
         :return: request
         """
-        request = await self._get_request_and_assert_role(request_id=request_id, acting_user_id=acting_user_id)
+        request = await self._get_and_assert_role(request_id=request_id, acting_user_id=acting_user_id)
 
-        new_request_data = UpdateRequestSchema(request_status=MessageStatus.DECLINED)
+        new_request_data = UpdateRequestSchema(status=MessageStatus.DECLINED)
         await self._update_instance(instance=request, new_data=new_request_data)
-        await self.repo.save_changes_and_refresh(request)
 
+        await self.repo.save_changes_and_refresh(request)
         return request
 
-    async def cancel_request_by_user(self, request_id: UUID, requesting_user_id: UUID) -> CompanyJoinRequestModel:
+    async def cancel_request(self, request_id: UUID, requesting_user_id: UUID) -> CompanyJoinRequestModel:
         """
         Cancels request to company by a user.
         :param request_id:
         :param requesting_user_id: id of a user with admin or higher role in a company
         :return: request
         """
-        request = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=request_id)
+        request = await self.repo.get_instance_by_field_or_404(CompanyJoinRequestModel.id, value=request_id)
         if request.requesting_user_id != requesting_user_id:
             raise InvalidRecipientException()
 
-        new_request_data = UpdateRequestSchema(request_status=MessageStatus.CANCELED)
+        new_request_data = UpdateRequestSchema(status=MessageStatus.CANCELED)
         await self._update_instance(instance=request, new_data=new_request_data)
-        await self.repo.save_changes_and_refresh(request)
 
+        await self.repo.save_changes_and_refresh(request)
         return request
 
-    async def get_pending_requests_for_company(self, company_id: UUID, acting_user_id: UUID) -> Sequence[
-        CompanyJoinRequestModel]:
+    async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
+                                      page_size: int = 100) -> PaginationResponse[CompanyJoinRequestModel]:
         await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=acting_user_id,
                                                                required_role=CompanyRole.ADMIN)
-        requests = await self.repo.get_pending_requests_for_company(company_id=company_id)
+
+        filters = {CompanyJoinRequestModel.company_id: company_id,
+                   CompanyJoinRequestModel.status: MessageStatus.PENDING}
+        requests = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
         return requests
 
-    async def get_pending_requests_for_user(self, user_id: UUID) -> Sequence[CompanyJoinRequestModel]:
-        requests = await self.repo.get_pending_requests_for_user(user_id=user_id)
+    async def get_pending_for_user(self, user_id: UUID, page: int = 1, page_size: int = 100) -> PaginationResponse[
+        CompanyJoinRequestModel]:
+        filters = {CompanyJoinRequestModel.requesting_user_id: user_id,
+                   CompanyJoinRequestModel.status: MessageStatus.PENDING}
+        requests = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
         return requests
 
-    async def _get_request_and_assert_role(self, request_id: UUID, acting_user_id: UUID) -> CompanyJoinRequestModel:
+    async def _get_and_assert_role(self, request_id: UUID, acting_user_id: UUID) -> CompanyJoinRequestModel:
         """
         Helper method to get request and verify acting_user_id as Admin or higher role.
         :param request_id:
         :param acting_user_id: id of a user with admin or higher role in a company
         :return: request
         """
-        request = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=request_id)
+        request = await self.repo.get_instance_by_field_or_404(CompanyJoinRequestModel.id, value=request_id)
         await self.company_member_service.assert_user_has_role(company_id=request.company_id, user_id=acting_user_id,
                                                                required_role=CompanyRole.ADMIN)
         return request

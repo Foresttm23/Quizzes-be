@@ -16,7 +16,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def get_users(user_service: UserServiceDep, page: int = Query(ge=1),
                     page_size: int = Query(ge=1, le=settings.APP.MAX_PAGE_SIZE)):
     """Return a list of all users by page and page_size"""
-    users = await user_service.fetch_users_data_paginated(page=page, page_size=page_size)
+    users = await user_service.get_users_paginated(page=page, page_size=page_size)
     return users
 
 
@@ -31,7 +31,7 @@ async def get_me(user: GetUserJWTDep):
 @router.get("/{user_id}", status_code=status.HTTP_200_OK, response_model=UserDetailsResponse)
 async def get_user(user_service: UserServiceDep, user_id: uuid.UUID):
     """Returns a user by its id"""
-    user = await user_service.fetch_user(field_name="id", field_value=user_id)
+    user = await user_service.get_by_id(user_id=user_id)
     return user
 
 

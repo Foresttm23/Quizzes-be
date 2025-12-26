@@ -7,7 +7,7 @@ from app.utils.enum_utils import MessageStatus
 
 
 class UpdateRequestSchema(BaseResponseModel):
-    request_status: MessageStatus
+    status: MessageStatus
 
 
 class UpdateInvitationSchema(BaseResponseModel):

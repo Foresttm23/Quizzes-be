@@ -21,11 +21,11 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
     def __init__(self, db: AsyncSession):
         super().__init__(repo=CompanyMemberRepository(db=db))
 
-    async def fetch_data_paginated(self, page: int, page_size: int, company_id: UUID):
+    async def get_members_paginated(self, page: int, page_size: int, company_id: UUID):
         filters = {CompanyMemberModel.company_id: company_id}
         return await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
 
-    async def fetch_data_by_role_paginated(self, page: int, page_size: int, company_id: UUID, role: CompanyRole):
+    async def get_members_by_role_paginated(self, page: int, page_size: int, company_id: UUID, role: CompanyRole):
         filters = {CompanyMemberModel.company_id: company_id, CompanyMemberModel.role: role}
         return await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
 
@@ -64,7 +64,7 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
 
     # TODO create a method for owner to allow him to delete his companies.
 
-    async def fetch_user_company_ids(self, user_id: UUID) -> Sequence[UUID]:
+    async def get_user_company_ids(self, user_id: UUID) -> Sequence[UUID]:
         user_company_ids = await self.repo.get_user_company_ids(user_id=user_id)
         return user_company_ids
 
@@ -89,7 +89,7 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
             raise UserAlreadyInCompanyException()
 
     async def update_role(self, company_id: UUID, target_user_id: UUID, acting_user_id: UUID,
-                          new_role: CompanyRole) -> None:
+                          new_role: CompanyRole) -> CompanyMemberModel:
         # Only Owner can update the member roles for now, can be changed in the future though
         await self.assert_user_has_role(company_id=company_id, user_id=acting_user_id, required_role=CompanyRole.OWNER)
         target_member = await self.repo.get_member(company_id=company_id, user_id=target_user_id)

@@ -12,8 +12,8 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_fetch_instance_success(test_base_service: _TestService, created_instance: UserModel):
-    fetched_instance = await test_base_service.repo.get_instance_by_field_or_404(field_name="id",
-                                                                                 field_value=created_instance.id)
+    fetched_instance = await test_base_service.repo.get_instance_by_field_or_404(field=UserModel.id,
+                                                                                 value=created_instance.id)
 
     assert fetched_instance.id == created_instance.id
     fetched_user = cast(UserModel, fetched_instance)
@@ -24,7 +24,7 @@ async def test_fetch_instance_success(test_base_service: _TestService, created_i
 async def test_fetch_instance_not_found(test_base_service: _TestService):
     non_existent_id = uuid.uuid4()
     with pytest.raises(InstanceNotFoundException):
-        await test_base_service.repo.get_instance_by_field_or_404(field_name="id", field_value=non_existent_id)
+        await test_base_service.repo.get_instance_by_field_or_404(field=UserModel.id, value=non_existent_id)
 
 
 # Testing both first and other pages

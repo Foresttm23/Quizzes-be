@@ -1,17 +1,16 @@
 import datetime
-import uuid
 
-from sqlalchemy import UUID, DateTime, String, Boolean
+from sqlalchemy import DateTime, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.db.postgres import Base
 
 
+# TODO selecting is bad for pagination thus should be used directly in the db query nad not in the model
 class User(Base):
     __tablename__ = 'users'
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     username: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)

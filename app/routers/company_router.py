@@ -30,10 +30,10 @@ async def list_companies(company_service: CompanyServiceDep, user: GetOptionalUs
     Crud operations in company_repository supports it.
     """
     if user:
-        companies_data = await company_service.fetch_companies_data_paginated(page=page, page_size=page_size,
-                                                                              user_id=user.id)
+        companies_data = await company_service.get_companies_paginated(page=page, page_size=page_size,
+                                                                       user_id=user.id)
     else:
-        companies_data = await company_service.fetch_companies_data_paginated(page=page, page_size=page_size)
+        companies_data = await company_service.get_companies_paginated(page=page, page_size=page_size)
     return companies_data
 
 
@@ -41,9 +41,9 @@ async def list_companies(company_service: CompanyServiceDep, user: GetOptionalUs
 async def get_company(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID):
     """Returns a company by its id"""
     if user:
-        company = await company_service.fetch_company_by_id(company_id=company_id, user_id=user.id)
+        company = await company_service.get_by_id(company_id=company_id, user_id=user.id)
     else:
-        company = await company_service.fetch_company_by_id(company_id=company_id)
+        company = await company_service.get_by_id(company_id=company_id)
 
     return company
 

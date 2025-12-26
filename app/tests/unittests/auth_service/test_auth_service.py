@@ -45,7 +45,7 @@ async def test_handle_jwt_sign_in_user_exists(auth_service, mock_user_service, m
     user = await auth_service.handle_jwt_sign_in(jwt_payload)
 
     assert user == mock_user
-    mock_user_service.fetch_user.assert_called_once_with(field_name="email", field_value=mock_user.email)
+    mock_user_service.fetch_user.assert_called_once_with(field="email", value=mock_user.email)
     mock_user_service.create_user_from_auth0.assert_not_called()
 
 
@@ -58,7 +58,7 @@ async def test_handle_jwt_sign_in_user_not_found(auth_service, mock_user_service
     user = await auth_service.handle_jwt_sign_in(jwt_payload)
 
     assert user == mock_user
-    mock_user_service.fetch_user.assert_called_once_with(field_name="email", field_value=jwt_payload["email"])
+    mock_user_service.fetch_user.assert_called_once_with(field="email", value=jwt_payload["email"])
     mock_user_service.create_user_from_auth0.assert_called_once_with(user_info=jwt_payload)
 
 
@@ -95,7 +95,7 @@ async def test_handle_email_password_sign_in_success(mocker, auth_service, mock_
     user = await auth_service.handle_email_password_sign_in(sign_in_data)
 
     assert user == mock_user
-    mock_user_service.fetch_user.assert_called_once_with(field_name="email", field_value=mock_user.email)
+    mock_user_service.fetch_user.assert_called_once_with(field="email", value=mock_user.email)
     mock_verify_password.assert_called_once_with("correct_password", mock_user.hashed_password)
 
 

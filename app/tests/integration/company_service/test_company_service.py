@@ -90,7 +90,7 @@ async def test_delete_company_permission_error(test_company_service: CompanyServ
 # -------------------------BUT SINCE IT INTERACTS MOSTLY WITH 2 MODELS (USER, COMPANY), CAN STILL BE USEFUL--------------------------
 
 async def test_fetch_company_by_id_success(test_company_service: CompanyService, created_company: CompanyModel):
-    company_from_db = await test_company_service.fetch_company_by_id(company_id=created_company.id)
+    company_from_db = await test_company_service.get_by_id(company_id=created_company.id)
     assert company_from_db.id == created_company.id
     assert company_from_db.name == created_company.name
     assert company_from_db.members[0].user_id == created_company.members[0].user_id
@@ -99,7 +99,7 @@ async def test_fetch_company_by_id_success(test_company_service: CompanyService,
 async def test_fetch_company_by_id_not_found(test_company_service: CompanyService):
     non_existent_id = uuid.uuid4()
     with pytest.raises(InstanceNotFoundException):
-        await test_company_service.fetch_company_by_id(company_id=non_existent_id)
+        await test_company_service.get_by_id(company_id=non_existent_id)
 
 
 async def test_fetch_companies_paginated_success(test_company_service: CompanyService, company_owner: UserModel):
@@ -108,7 +108,7 @@ async def test_fetch_companies_paginated_success(test_company_service: CompanySe
     await test_company_service.create_company(owner_id=company_owner.id, company_info=company1_info)
     await test_company_service.create_company(owner_id=company_owner.id, company_info=company2_info)
 
-    paginated_companies = await test_company_service.fetch_companies_data_paginated(page=1, page_size=1)
+    paginated_companies = await test_company_service.get_companies_paginated(page=1, page_size=1)
 
     assert paginated_companies["page"] == 1
     assert len(paginated_companies["data"]) == 1
@@ -116,7 +116,7 @@ async def test_fetch_companies_paginated_success(test_company_service: CompanySe
 
 
 async def test_fetch_companies_paginated_no_companies(test_company_service: CompanyService):
-    paginated_companies = await test_company_service.fetch_companies_data_paginated(page=1, page_size=1)
+    paginated_companies = await test_company_service.get_companies_paginated(page=1, page_size=1)
     assert paginated_companies["data"] == []
 
 

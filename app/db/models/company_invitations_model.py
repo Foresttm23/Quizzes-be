@@ -14,7 +14,6 @@ from app.utils.enum_utils import MessageStatus
 class CompanyInvitation(Base):
     __tablename__ = "company_invitations"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"))
     invited_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     status: Mapped[MessageStatus] = mapped_column(SQLEnum(MessageStatus, native_enum=True),

@@ -46,7 +46,7 @@ class AuthService:
     async def handle_jwt_sign_in(self, jwt_payload: dict):
         """Creates user from jwt if not found. Returns user in either way."""
         try:
-            user = await self.user_service.fetch_user(field_name="email", field_value=jwt_payload["email"])
+            user = await self.user_service.get_by_email(email=jwt_payload["email"])
         except InstanceNotFoundException:
             # Since user cannot possibly have a local JWT without already creating a user instance.
             user = await self.user_service.create_user_from_auth0(user_info=jwt_payload)
@@ -82,7 +82,7 @@ class AuthService:
         # Checks if user exist byt itself, so the call checking user isn't needed
         # but might help in some unexpected situations
         try:
-            user = await self.user_service.fetch_user(field_name="email", field_value=sign_in_data.email)
+            user = await self.user_service.get_by_email(email=sign_in_data.email)
         except InstanceNotFoundException:
             raise UserIncorrectPasswordOrEmailException()
 

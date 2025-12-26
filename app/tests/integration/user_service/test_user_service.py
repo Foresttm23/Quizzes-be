@@ -77,7 +77,7 @@ async def test_update_user_password_reuse_error(test_user_service: UserService, 
 # ------------------------------------PRETTY MUCH OBSOLETE, SINCE BASE SERVICE ALREADY TESTS THIS------------------------------------
 
 async def test_fetch_user_success(test_user_service: UserService, created_user: UserModel):
-    user_from_db = await test_user_service.fetch_user(field_name="id", field_value=created_user.id)
+    user_from_db = await test_user_service.get_by_id(user_id=created_user.id)
     assert user_from_db.id == created_user.id
     assert user_from_db.email == created_user.email
 
@@ -85,7 +85,7 @@ async def test_fetch_user_success(test_user_service: UserService, created_user: 
 async def test_fetch_user_not_found(test_user_service: UserService):
     non_existent_email = "Some wrong user email"
     with pytest.raises(InstanceNotFoundException):
-        await test_user_service.fetch_user(field_name="email", field_value=non_existent_email)
+        await test_user_service.get_by_email(email=non_existent_email)
 
 
 # Testing both first and other pages
@@ -100,7 +100,7 @@ async def test_fetch_users_paginated(test_user_service: UserService, page, page_
     await test_user_service.create_user(user1_info)
     await test_user_service.create_user(user2_info)
 
-    paginated_users = await test_user_service.fetch_users_data_paginated(page=page, page_size=page_size)
+    paginated_users = await test_user_service.get_users_paginated(page=page, page_size=page_size)
 
     assert paginated_users["page"] == page
     assert paginated_users["page_size"] == page_size
@@ -113,7 +113,7 @@ async def test_fetch_users_paginated(test_user_service: UserService, page, page_
 
 
 async def test_fetch_users_paginated_no_users(test_user_service: UserService):
-    paginated_users = await test_user_service.fetch_users_data_paginated(page=1, page_size=1)
+    paginated_users = await test_user_service.get_users_paginated(page=1, page_size=1)
     assert paginated_users["data"] == []
 
 
