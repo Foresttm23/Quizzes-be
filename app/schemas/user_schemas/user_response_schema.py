@@ -13,6 +13,7 @@ class UserDetailsResponse(BaseResponseModel):
     auth_provider: str
     is_banned: bool
     created_at: datetime
+    updated_at: datetime
 
 
 class TokenResponse(BaseResponseModel):

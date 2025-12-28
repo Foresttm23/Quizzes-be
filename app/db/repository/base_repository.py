@@ -9,7 +9,7 @@ from sqlalchemy.sql import Select, Update, Delete
 
 from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException
 from app.db.postgres import Base
-from schemas.base_schemas import PaginationResponse
+from app.schemas.base_schemas import PaginationResponse
 
 ModelType = TypeVar("ModelType", bound=Base)
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
@@ -24,7 +24,7 @@ class BaseRepository(Generic[ModelType]):
 
     async def get_instances_data_paginated(self, page: int, page_size: int,
                                            filters: dict[InstrumentedAttribute, Any] | None = None) -> \
-            PaginationResponse[ModelType]:
+            PaginationResponse[SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
         stmt = stmt.order_by(self.model.id.desc())
@@ -32,7 +32,7 @@ class BaseRepository(Generic[ModelType]):
         result = await self.paginate_query(stmt, page, page_size)
         return result
 
-    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[ModelType]:
+    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[SchemaType]:
         count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
 

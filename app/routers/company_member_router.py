@@ -8,7 +8,7 @@ from app.core.dependencies import GetUserJWTDep
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company_members_schemas.company_member_response_schema import CompanyMemberDetailsResponse
 from app.schemas.company_members_schemas.company_member_response_schema import UpdateMemberRoleSchema
-from utils.enum_utils import CompanyRole
+from app.utils.enum_utils import CompanyRole
 
 router = APIRouter(prefix="/company-members", tags=["Company Members"])
 
@@ -18,8 +18,8 @@ router = APIRouter(prefix="/company-members", tags=["Company Members"])
 async def get_members_paginated(company_member_service: CompanyMemberServiceDep, company_id: UUID,
                                 role: CompanyRole | None = Query(default=None), page: int = Query(default=1, ge=1),
                                 page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE)):
-    company_members = company_member_service.get_members_paginated(page=page, page_size=page_size,
-                                                                   company_id=company_id, role=role)
+    company_members = await company_member_service.get_members_paginated(page=page, page_size=page_size,
+                                                                         company_id=company_id, role=role)
     return company_members
 
 

@@ -6,11 +6,13 @@ from sqlalchemy import UUID, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+# from app.db.models.company.company_model import Company
+# from app.db.models.user_model import User
 from app.db.postgres import Base
 from app.utils.enum_utils import CompanyRole
 
 
-class CompanyMember(Base):
+class Member(Base):
     __tablename__ = "company_members"
 
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"))
@@ -21,5 +23,5 @@ class CompanyMember(Base):
 
     joined_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    company: Mapped["Company"] = relationship(back_populates="members")
-    user: Mapped["User"] = relationship(back_populates="companies")
+    company: Mapped["Company"] = relationship("Company", back_populates="members")
+    user: Mapped["User"] = relationship("User", back_populates="companies")

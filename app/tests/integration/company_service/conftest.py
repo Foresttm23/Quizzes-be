@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.company_model import Company as CompanyModel
+from app.db.models.company.company_model import Company as CompanyModel
 from app.db.models.user_model import User as UserModel
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest
 from app.services.company_member_service import CompanyMemberService

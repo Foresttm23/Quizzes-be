@@ -1,14 +1,15 @@
-import datetime
-
-from sqlalchemy import DateTime, String, Boolean
+from sqlalchemy import String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
 
-from app.db.postgres import Base
+# from app.db.models.company.invitation_model import Invitation
+# from app.db.models.company.join_request_model import JoinRequest
+# from app.db.models.company.member_model import Member
+# from db.models.company.quiz.user_attempt.attempt_model import Attempt
+from app.db.postgres import Base, TimestampMixin
 
 
 # TODO selecting is bad for pagination thus should be used directly in the db query nad not in the model
-class User(Base):
+class User(Base, TimestampMixin):
     __tablename__ = 'users'
 
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
@@ -20,13 +21,13 @@ class User(Base):
     # lazy="selectin", allows for efficient access for all the relationships.
     # By making a separate query for each of them.
     # The default "select", creates a different query when a relationship is asked.
-    companies: Mapped[list["CompanyMember"]] = relationship(back_populates="user", lazy="selectin")
-    join_requests: Mapped[list["CompanyJoinRequest"]] = relationship(back_populates="requesting_user", lazy="selectin")
-
-    received_invitations: Mapped[list["CompanyInvitation"]] = relationship(back_populates="invited_user",
-                                                                           lazy="selectin")
-
-    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    companies: Mapped[list["Member"]] = relationship("Member", back_populates="user", lazy="selectin")
+    join_requests: Mapped[list["JoinRequest"]] = relationship("JoinRequest", back_populates="requesting_user",
+                                                              lazy="selectin")
+    received_invitations: Mapped[list["Invitation"]] = relationship("Invitation", back_populates="invited_user",
+                                                                    lazy="selectin")
+    attempts: Mapped[list["Attempt"]] = relationship("Attempt", back_populates="user", passive_deletes=True,
+                                                     cascade="all, delete")
 
     def __repr__(self) -> str:
         """Made for safe logging of a user if needed or made by accident"""

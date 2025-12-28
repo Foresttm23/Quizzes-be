@@ -10,15 +10,11 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Import all models
-from app.db.models.user_model import User  # type: ignore # noqa
-from app.db.models.company_model import Company  # type: ignore # noqa
-from app.db.models.company_member_model import CompanyMember  # type: ignore # noqa
-from app.db.models.company_invitations_model import CompanyInvitation  # type: ignore # noqa
-from app.db.models.company_join_requests_model import CompanyJoinRequest  # type: ignore # noqa
+# Import all models.
+# Since all models defined in this file, we can import *, or just Base for simplicity
+from app.db.models import Base  # type: ignore # noqa
 
 from app.core.config import settings
-from app.db.postgres import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

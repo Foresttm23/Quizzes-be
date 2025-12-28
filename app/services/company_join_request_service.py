@@ -1,17 +1,20 @@
+from typing import TypeVar
 from uuid import UUID, uuid4
 
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidRecipientException
-from app.db.models.company_join_requests_model import CompanyJoinRequest as CompanyJoinRequestModel
-from app.db.models.company_member_model import CompanyMember as CompanyMemberModel
+from app.db.models.company.join_request_model import JoinRequest as CompanyJoinRequestModel
+from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.db.repository.company_join_request_repository import CompanyJoinRequestRepository
+from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company_inv_req_schemas.company_inv_req_schema import UpdateRequestSchema
 from app.services.base_service import BaseService
 from app.services.company_member_service import CompanyMemberService
 from app.utils.enum_utils import MessageStatus, CompanyRole
-from schemas.base_schemas import PaginationResponse
 
+SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
 class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
     @property
@@ -86,7 +89,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         return request
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
-                                      page_size: int = 100) -> PaginationResponse[CompanyJoinRequestModel]:
+                                      page_size: int = 100) -> PaginationResponse[SchemaType]:
         await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
                                                                       required_role=CompanyRole.ADMIN)
 
@@ -96,7 +99,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         return requests
 
     async def get_pending_for_user(self, user_id: UUID, page: int = 1, page_size: int = 100) -> PaginationResponse[
-        CompanyJoinRequestModel]:
+        SchemaType]:
         filters = {CompanyJoinRequestModel.requesting_user_id: user_id,
                    CompanyJoinRequestModel.status: MessageStatus.PENDING}
         requests = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)

@@ -7,11 +7,11 @@ from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.exceptions import UserIsNotACompanyMemberException, CompanyPermissionException, \
     UserAlreadyInCompanyException
-from app.db.models.company_member_model import CompanyMember as CompanyMemberModel
+from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.db.repository.company_member_repository import CompanyMemberRepository
+from app.schemas.company_members_schemas.company_member_response_schema import UpdateMemberRoleSchema
 from app.services.base_service import BaseService
 from app.utils.enum_utils import CompanyRole
-from schemas.company_members_schemas.company_member_response_schema import UpdateMemberRoleSchema
 
 
 class CompanyMemberService(BaseService[CompanyMemberRepository]):

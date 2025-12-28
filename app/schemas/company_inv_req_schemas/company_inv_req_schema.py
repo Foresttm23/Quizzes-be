@@ -1,10 +1,10 @@
 from datetime import datetime
 from uuid import UUID
 
+from app.schemas.base_schemas import BaseRequestModel
 from app.schemas.base_schemas import BaseResponseModel
 from app.schemas.company_members_schemas.company_member_response_schema import CompanyMemberDetailsResponse
 from app.utils.enum_utils import MessageStatus
-from schemas.base_schemas import BaseRequestModel
 
 
 class UpdateRequestSchema(BaseResponseModel):

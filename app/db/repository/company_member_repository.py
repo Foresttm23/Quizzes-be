@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.company_member_model import CompanyMember as CompanyMemberModel
+from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.utils.enum_utils import CompanyRole
 from .base_repository import BaseRepository
 

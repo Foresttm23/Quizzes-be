@@ -1,16 +1,20 @@
+from typing import TypeVar
 from uuid import UUID, uuid4
 
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidRecipientException
-from app.db.models.company_invitations_model import CompanyInvitation as CompanyInvitationModel
-from app.db.models.company_member_model import CompanyMember as CompanyMemberModel
+from app.db.models.company.invitation_model import Invitation as CompanyInvitationModel
+from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.db.repository.company_invitation_repository import CompanyInvitationRepository
+from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company_inv_req_schemas.company_inv_req_schema import UpdateInvitationSchema
 from app.services.base_service import BaseService
 from app.services.company_member_service import CompanyMemberService
 from app.utils.enum_utils import CompanyRole, MessageStatus
-from schemas.base_schemas import PaginationResponse
+
+SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
 
 class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
@@ -89,15 +93,14 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         await self.repo.save_and_refresh(invitation)
         return invitation
 
-    async def get_pending_for_user(self, user_id: UUID, page: int, page_size: int) -> PaginationResponse[
-        CompanyInvitationModel]:
+    async def get_pending_for_user(self, user_id: UUID, page: int, page_size: int) -> PaginationResponse[SchemaType]:
         filters = {CompanyInvitationModel.invited_user_id: user_id,
                    CompanyInvitationModel.status: MessageStatus.PENDING}
         invitations = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
         return invitations
 
-    async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int,
-                                      page_size: int) -> PaginationResponse[CompanyInvitationModel]:
+    async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int, page_size: int) -> \
+            PaginationResponse[SchemaType]:
         await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
                                                                       required_role=CompanyRole.ADMIN)
 

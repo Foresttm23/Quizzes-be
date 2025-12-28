@@ -2,10 +2,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, status, Query
 
+from app.core.config import settings
 from app.core.dependencies import GetUserJWTDep, CompanyJoinRequestServiceDep
+from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company_inv_req_schemas.company_inv_req_schema import RequestDetailsResponse, AcceptRequestResponse
-from core.config import settings
-from schemas.base_schemas import PaginationResponse
 
 router = APIRouter(prefix="/company-join-requests", tags=["Company Join Requests"])
 

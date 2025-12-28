@@ -1,19 +1,23 @@
 from typing import Sequence
+from typing import TypeVar
 from uuid import UUID, uuid4
 
+from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InstanceNotFoundException
 from app.core.logger import logger
-from app.db.models.company_member_model import CompanyMember as CompanyMemberModel
-from app.db.models.company_model import Company as CompanyModel
+from app.db.models.company.company_model import Company as CompanyModel
+from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.db.repository.company_repository import CompanyRepository
+from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest, CompanyUpdateInfoRequest
 from app.services.base_service import BaseService
 from app.services.company_member_service import CompanyMemberService
 from app.utils.enum_utils import CompanyRole
-from schemas.base_schemas import PaginationResponse
+
+SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
 
 class CompanyService(BaseService[CompanyRepository]):
@@ -26,7 +30,7 @@ class CompanyService(BaseService[CompanyRepository]):
         self.company_member_service = company_member_service
 
     async def get_companies_paginated(self, page: int, page_size: int, user_id: UUID | None = None) -> \
-            PaginationResponse[CompanyModel]:
+            PaginationResponse[SchemaType]:
         if not user_id:
             return await self._get_visible_companies_paginated(page=page, page_size=page_size)
 
