@@ -9,7 +9,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.postgres import Base, TimestampMixin
 
 
-# TODO selecting is bad for pagination thus should be used directly in the db query nad not in the model
 class Company(Base, TimestampMixin):
     __tablename__ = "companies"
 
@@ -20,11 +19,10 @@ class Company(Base, TimestampMixin):
     # The str in "" syntax allows not importing every model needed.
     # SQLAlchemy will resolve it automatically if the User model exists
     members: Mapped[list["Member"]] = relationship("Member", back_populates="company", cascade="all, delete",
-                                                   passive_deletes=True, lazy="selectin")
+                                                   passive_deletes=True)
     join_requests: Mapped[list["JoinRequest"]] = relationship("JoinRequest", back_populates="company",
-                                                              cascade="all, delete", passive_deletes=True,
-                                                              lazy="selectin")
+                                                              cascade="all, delete", passive_deletes=True)
     invitations: Mapped[list["Invitation"]] = relationship("Invitation", back_populates="company",
-                                                           cascade="all, delete", passive_deletes=True, lazy="selectin")
+                                                           cascade="all, delete", passive_deletes=True)
     quizzes: Mapped[list["Quiz"]] = relationship("Quiz", back_populates="company", cascade="all, delete",
                                                  passive_deletes=True)

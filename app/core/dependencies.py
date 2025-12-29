@@ -9,11 +9,11 @@ from app.core.exceptions import NotAuthenticatedException
 from app.db import (redis as redis_module, postgres as postgres_module)
 from app.db.models.user_model import User as UserModel
 from app.services.auth_service import AuthService
-from app.services.company_invitation_service import CompanyInvitationService
-from app.services.company_join_request_service import CompanyJoinRequestService
-from app.services.company_member_service import CompanyMemberService
-from app.services.company_service import CompanyService
 from app.services.user_service import UserService
+from services.company.company_invitation_service import CompanyInvitationService
+from services.company.company_join_request_service import CompanyJoinRequestService
+from services.company.company_member_service import CompanyMemberService
+from services.company.company_service import CompanyService
 
 RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
 

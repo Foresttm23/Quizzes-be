@@ -16,10 +16,8 @@ class AttemptAnswer(Base):
     attempt_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("quiz_attempts.id", ondelete="CASCADE"))
     question_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("quiz_questions.id", ondelete="CASCADE"))
     # Can be None if user skipped or didn't answer.
-    selected_option_id: Mapped[uuid.UUID | None] = mapped_column(UUID,
-                                                                 ForeignKey("quiz_answer_options.id",
-                                                                            ondelete="CASCADE"),
-                                                                 nullable=True)
+    selected_option_id: Mapped[uuid.UUID | None] = mapped_column(UUID, ForeignKey("quiz_answer_options.id",
+                                                                                  ondelete="SET NULL"), nullable=True)
 
     attempt: Mapped["Attempt"] = relationship("Attempt", back_populates="answers")
     question: Mapped["Question"] = relationship("Question")

@@ -70,5 +70,6 @@ def init_db(database_url: str, engine_kwargs: dict[str, Any] | None = None):
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    global sessionmanager
     async with sessionmanager.session() as session:
         yield session

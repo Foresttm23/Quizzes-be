@@ -17,7 +17,7 @@ async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep
     Creates a company for authenticated user.
     This user is owner of the created company.
     """
-    company_info = await company_service.create_company(owner_id=user.id, company_info=company_info)
+    company_info = await company_service.create_company(acting_user_id=user.id, company_info=company_info)
     return company_info
 
 
@@ -53,7 +53,7 @@ async def update_company(company_service: CompanyServiceDep, user: GetUserJWTDep
     Updates a company by its id,
     if company.owner_id is equal to the currently authenticated user id.
     """
-    updated_company = await company_service.update_company(company_id=company_id, owner_id=user.id,
+    updated_company = await company_service.update_company(company_id=company_id, acting_user_id=user.id,
                                                            company_info=new_company_info)
     return updated_company
 
@@ -64,4 +64,4 @@ async def delete_company(company_service: CompanyServiceDep, user: GetUserJWTDep
     Deletes a company by its id,
     if company.owner_id is equal to the currently authenticated user id.
     """
-    await company_service.delete_company(company_id=company_id, owner_id=user.id)
+    await company_service.delete_company(company_id=company_id, acting_user_id=user.id)

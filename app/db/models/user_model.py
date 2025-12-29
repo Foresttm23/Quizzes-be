@@ -8,7 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.postgres import Base, TimestampMixin
 
 
-# TODO selecting is bad for pagination thus should be used directly in the db query nad not in the model
 class User(Base, TimestampMixin):
     __tablename__ = 'users'
 
@@ -21,11 +20,12 @@ class User(Base, TimestampMixin):
     # lazy="selectin", allows for efficient access for all the relationships.
     # By making a separate query for each of them.
     # The default "select", creates a different query when a relationship is asked.
-    companies: Mapped[list["Member"]] = relationship("Member", back_populates="user", lazy="selectin")
+    companies: Mapped[list["Member"]] = relationship("Member", back_populates="user", cascade="all, delete",
+                                                     passive_deletes=True)
     join_requests: Mapped[list["JoinRequest"]] = relationship("JoinRequest", back_populates="requesting_user",
-                                                              lazy="selectin")
+                                                              cascade="all, delete", passive_deletes=True)
     received_invitations: Mapped[list["Invitation"]] = relationship("Invitation", back_populates="invited_user",
-                                                                    lazy="selectin")
+                                                                    cascade="all, delete", passive_deletes=True)
     attempts: Mapped[list["Attempt"]] = relationship("Attempt", back_populates="user", passive_deletes=True,
                                                      cascade="all, delete")
 

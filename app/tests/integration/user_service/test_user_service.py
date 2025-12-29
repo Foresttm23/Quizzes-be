@@ -76,6 +76,7 @@ async def test_update_user_password_reuse_error(test_user_service: UserService, 
     with pytest.raises(PasswordReuseException):
         await test_user_service.update_user_password(user=created_user, new_password_info=new_password_info)
 
+
 # ------------------------------------PRETTY MUCH OBSOLETE, SINCE BASE SERVICE ALREADY TESTS THIS------------------------------------
 
 async def test_fetch_user_success(test_user_service: UserService, created_user: UserModel):

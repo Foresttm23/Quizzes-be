@@ -9,12 +9,12 @@ from app.core.logger import logger
 from app.db.postgres import init_db
 from app.db.redis import redis_client, pool
 from app.routers.auth_router import router as auth_router
-from app.routers.company_invitation_router import router as invitation_router
-from app.routers.company_join_request_router import router as company_join_request_router
-from app.routers.company_member_router import router as company_member_router
-from app.routers.company_router import router as company_router
 from app.routers.health_router import router as health_router
 from app.routers.user_router import router as user_router
+from routers.company.company_invitation_router import router as invitation_router
+from routers.company.company_join_request_router import router as company_join_request_router
+from routers.company.company_member_router import router as company_member_router
+from routers.company.company_router import router as company_router
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308

@@ -8,4 +8,3 @@ class LocalJWTSettings(BaseSettings):
 
     LOCAL_REFRESH_TOKEN_SECRET: str = "myothersecretkey"
     LOCAL_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-

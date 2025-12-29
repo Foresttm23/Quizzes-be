@@ -21,4 +21,4 @@ class Attempt(Base, TimestampMixin):
     quiz: Mapped["Quiz"] = relationship("Quiz", back_populates="attempts")
     user: Mapped["User"] = relationship("User", back_populates="attempts")
     answers: Mapped[list["AttemptAnswer"]] = relationship("AttemptAnswer", back_populates="attempt",
-                                                          cascade="all, delete-orphan")
+                                                          passive_deletes=True, cascade="all, delete")

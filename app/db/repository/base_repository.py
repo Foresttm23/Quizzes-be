@@ -4,10 +4,10 @@ from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import InstrumentedAttribute
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql import Select, Update, Delete
 
-from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException
+from app.core.exceptions import RecordAlreadyExistsException
 from app.db.postgres import Base
 from app.schemas.base_schemas import PaginationResponse
 
@@ -79,35 +79,40 @@ class BaseRepository(Generic[ModelType]):
         try:
             await self.db.commit()
         except IntegrityError as e:
-            raise RecordAlreadyExistsException()
+            raise RecordAlreadyExistsException() from e
 
-    async def get_instance_by_field_or_404(self, field: InstrumentedAttribute, value: Any) -> ModelType:
+    async def get_instance_by_field_or_none(self, field: InstrumentedAttribute, value: Any,
+                                            relationships: set[
+                                                               InstrumentedAttribute] | None = None) -> ModelType | None:
         """
         Gets instance by single field.
         :param field:
         :param value:
-        :return: instance
-        :raises InstanceNotFoundException: If not found
+        :param relationships:
+        :return: instance | None
         """
-        instance = await self.get_instance_by_filters_or_404(filters={field: value})
+        instance = await self.get_instance_by_filters_or_none(filters={field: value}, relationships=relationships)
         return instance
 
-    async def get_instance_by_filters_or_404(self, filters: dict[InstrumentedAttribute, Any]) -> ModelType:
+    async def get_instance_by_filters_or_none(self, filters: dict[InstrumentedAttribute, Any],
+                                              relationships: set[
+                                                                 InstrumentedAttribute] | None = None) -> ModelType | None:
         """
         Gets instance by many field.
         :param filters:
-        :return: instance
-        :raises InstanceNotFoundException: If not found
+        :param relationships:
+        :return: instance | None
         """
         query = select(self.model)
 
         for attr, value in filters.items():
             query = query.where(attr == value)
 
-        instance = await self.db.scalar(query)
-        if instance is None:
-            raise InstanceNotFoundException()
+        if relationships:
+            for rel in relationships:
+                query = query.options(selectinload(rel))
 
+        instance = await self.db.scalar(query)
         return instance
 
     @staticmethod

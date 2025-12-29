@@ -7,12 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import InvalidRecipientException
 from app.db.models.company.invitation_model import Invitation as CompanyInvitationModel
 from app.db.models.company.member_model import Member as CompanyMemberModel
-from app.db.repository.company_invitation_repository import CompanyInvitationRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company_inv_req_schemas.company_inv_req_schema import UpdateInvitationSchema
 from app.services.base_service import BaseService
-from app.services.company_member_service import CompanyMemberService
 from app.utils.enum_utils import CompanyRole, MessageStatus
+from core.exceptions import InstanceNotFoundException
+from db.repository.company.company_invitation_repository import CompanyInvitationRepository
+from services.company.company_member_service import CompanyMemberService
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
@@ -35,8 +36,11 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         :param acting_user_id: id of a user with admin or higher role in a company
         :return: invitation
         """
-        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
-                                                                      required_role=CompanyRole.ADMIN)
+        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
+                                                                                   user_id=acting_user_id)
+        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
+                                                                required_role=CompanyRole.ADMIN)
+
         await self.company_member_service.assert_user_not_in_company(company_id=company_id, user_id=invited_user_id)
 
         new_invitation = CompanyInvitationModel(id=uuid4(), company_id=company_id, invited_user_id=invited_user_id,
@@ -84,10 +88,11 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         :param acting_user_id: id of a user with admin or higher role in a company
         :return: invitation
         """
-        invitation = await self.repo.get_instance_by_field_or_404(CompanyInvitationModel.id, value=invitation_id)
-        await self.company_member_service.assert_user_has_permissions(company_id=invitation.company_id,
-                                                                      user_id=acting_user_id,
-                                                                      required_role=CompanyRole.ADMIN)
+        invitation = await self.get_invitation(invitation_id=invitation_id)
+        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=invitation.company_id,
+                                                                                   user_id=acting_user_id)
+        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
+                                                                required_role=CompanyRole.ADMIN)
 
         invitation = await self._update_status(invitation=invitation, new_status=MessageStatus.CANCELED)
         await self.repo.save_and_refresh(invitation)
@@ -101,8 +106,10 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int, page_size: int) -> \
             PaginationResponse[SchemaType]:
-        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
-                                                                      required_role=CompanyRole.ADMIN)
+        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
+                                                                                   user_id=acting_user_id)
+        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
+                                                                required_role=CompanyRole.ADMIN)
 
         filters = {CompanyInvitationModel.company_id: company_id, CompanyInvitationModel.status: MessageStatus.PENDING}
         invitations = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
@@ -122,8 +129,14 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         :param invited_user_id:
         :return: invitation
         """
-        invitation = await self.repo.get_instance_by_field_or_404(CompanyInvitationModel.id, value=invitation_id)
+        invitation = await self.get_invitation(invitation_id=invitation_id)
         if invitation.invited_user_id != invited_user_id:
             raise InvalidRecipientException()
 
+        return invitation
+
+    async def get_invitation(self, invitation_id: UUID) -> CompanyInvitationModel:
+        invitation = await self.repo.get_instance_by_field_or_none(CompanyInvitationModel.id, value=invitation_id)
+        if not invitation:
+            raise InstanceNotFoundException(instance_name=self.display_name)
         return invitation

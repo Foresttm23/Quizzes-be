@@ -3,18 +3,21 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.exceptions import InvalidRecipientException
 from app.db.models.company.join_request_model import JoinRequest as CompanyJoinRequestModel
 from app.db.models.company.member_model import Member as CompanyMemberModel
-from app.db.repository.company_join_request_repository import CompanyJoinRequestRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company_inv_req_schemas.company_inv_req_schema import UpdateRequestSchema
 from app.services.base_service import BaseService
-from app.services.company_member_service import CompanyMemberService
 from app.utils.enum_utils import MessageStatus, CompanyRole
+from core.exceptions import InstanceNotFoundException
+from db.repository.company.company_join_request_repository import CompanyJoinRequestRepository
+from services.company.company_member_service import CompanyMemberService
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
+
 
 class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
     @property
@@ -78,7 +81,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :param requesting_user_id: id of a user with admin or higher role in a company
         :return: request
         """
-        request = await self.repo.get_instance_by_field_or_404(CompanyJoinRequestModel.id, value=request_id)
+        request = await self.get_request(request_id=request_id)
         if request.requesting_user_id != requesting_user_id:
             raise InvalidRecipientException()
 
@@ -90,8 +93,10 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
                                       page_size: int = 100) -> PaginationResponse[SchemaType]:
-        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=acting_user_id,
-                                                                      required_role=CompanyRole.ADMIN)
+        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
+                                                                                   user_id=acting_user_id)
+        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
+                                                                required_role=CompanyRole.ADMIN)
 
         filters = {CompanyJoinRequestModel.company_id: company_id,
                    CompanyJoinRequestModel.status: MessageStatus.PENDING}
@@ -112,8 +117,17 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :param acting_user_id: id of a user with admin or higher role in a company
         :return: request
         """
-        request = await self.repo.get_instance_by_field_or_404(CompanyJoinRequestModel.id, value=request_id)
-        await self.company_member_service.assert_user_has_permissions(company_id=request.company_id,
-                                                                      user_id=acting_user_id,
-                                                                      required_role=CompanyRole.ADMIN)
+        request = await self.get_request(request_id=request_id)
+        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=request.company_id,
+                                                                                   user_id=acting_user_id)
+        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
+                                                                required_role=CompanyRole.ADMIN)
+        return request
+
+    async def get_request(self, request_id: UUID,
+                          relationships: set[InstrumentedAttribute] | None = None) -> CompanyJoinRequestModel:
+        request = await self.repo.get_instance_by_field_or_none(CompanyJoinRequestModel.id, value=request_id,
+                                                                relationships=relationships)
+        if not request:
+            raise InstanceNotFoundException(instance_name=self.display_name)
         return request

@@ -1,11 +1,12 @@
-from typing import TypeVar
+from typing import TypeVar, Any
 from uuid import uuid4, UUID
 
 from pydantic import BaseModel
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
-from app.core.exceptions import InvalidPasswordException
+from app.core.exceptions import InvalidPasswordException, InstanceNotFoundException
 from app.core.exceptions import PasswordReuseException
 from app.core.logger import logger
 from app.db.models.user_model import User as UserModel
@@ -27,12 +28,19 @@ class UserService(BaseService[UserRepository]):
     def __init__(self, db: AsyncSession):
         super().__init__(repo=UserRepository(db=db))
 
-    async def get_by_email(self, email: EmailStr) -> UserModel:
-        user = await self.repo.get_instance_by_field_or_404(field=UserModel.email, value=email)
+    async def get_by_email(self, email: EmailStr, relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
+        user = await self._get_user_by_field(field=UserModel.email, value=email, relationships=relationships)
         return user
 
-    async def get_by_id(self, user_id: UUID) -> UserModel:
-        user = await self.repo.get_instance_by_field_or_404(field=UserModel.id, value=user_id)
+    async def get_by_id(self, user_id: UUID, relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
+        user = await self._get_user_by_field(field=UserModel.id, value=user_id, relationships=relationships)
+        return user
+
+    async def _get_user_by_field(self, field: InstrumentedAttribute, value: Any,
+                                 relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
+        user = await self.repo.get_instance_by_field_or_none(field=field, value=value, relationships=relationships)
+        if not user:
+            raise InstanceNotFoundException(instance_name=self.display_name)
         return user
 
     async def get_users_paginated(self, page: int, page_size: int) -> PaginationResponse[SchemaType]:

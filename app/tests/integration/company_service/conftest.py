@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.company.company_model import Company as CompanyModel
 from app.db.models.user_model import User as UserModel
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest
-from app.services.company_member_service import CompanyMemberService
-from app.services.company_service import CompanyService
+from services.company.company_member_service import CompanyMemberService
+from services.company.company_service import CompanyService
 
 pytestmark = pytest.mark.asyncio
 
@@ -37,5 +37,5 @@ async def created_company(test_company_service: CompanyService, company_owner: U
     """Creates and returns a default Company instance for testing."""
     company_info = CompanyCreateRequest(name=DEFAULT_COMPANY_NAME, description=DEFAULT_COMPANY_DESCRIPTION,
                                         is_visible=True)
-    company = await test_company_service.create_company(owner_id=company_owner.id, company_info=company_info)
+    company = await test_company_service.create_company(acting_user_id=company_owner.id, company_info=company_info)
     return company

@@ -9,8 +9,8 @@ from app.core.config import settings
 from app.db.models.user_model import User as UserModel
 from app.db.postgres import DBSessionManager
 from app.schemas.user_schemas.user_request_schema import RegisterRequest
-from app.services.company_member_service import CompanyMemberService
 from app.services.user_service import UserService
+from services.company.company_member_service import CompanyMemberService
 
 DEFAULT_EMAIL = "test@example.com"
 DEFAULT_USERNAME = "testuser"
