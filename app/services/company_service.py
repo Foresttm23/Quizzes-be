@@ -1,6 +1,7 @@
-from typing import Any, Sequence
+from typing import Sequence
 from uuid import UUID, uuid4
 
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InstanceNotFoundException
@@ -9,10 +10,10 @@ from app.db.models.company_member_model import CompanyMember as CompanyMemberMod
 from app.db.models.company_model import Company as CompanyModel
 from app.db.repository.company_repository import CompanyRepository
 from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest, CompanyUpdateInfoRequest
-from app.schemas.company_schemas.company_response_schema import CompanyDetailsResponse
 from app.services.base_service import BaseService
 from app.services.company_member_service import CompanyMemberService
 from app.utils.enum_utils import CompanyRole
+from schemas.base_schemas import PaginationResponse
 
 
 class CompanyService(BaseService[CompanyRepository]):
@@ -24,30 +25,34 @@ class CompanyService(BaseService[CompanyRepository]):
         super().__init__(repo=CompanyRepository(db=db))
         self.company_member_service = company_member_service
 
-    async def fetch_companies_data_paginated(self, page: int, page_size: int, user_id: UUID | None = None) -> dict[
-        Any, list[CompanyDetailsResponse]]:
+    async def get_companies_paginated(self, page: int, page_size: int, user_id: UUID | None = None) -> \
+            PaginationResponse[CompanyModel]:
         if not user_id:
-            return await self._fetch_visible_companies_paginated(page=page, page_size=page_size)
+            return await self._get_visible_companies_paginated(page=page, page_size=page_size)
 
-        user_company_ids = await self.company_member_service.fetch_user_company_ids(user_id=user_id)
+        user_company_ids = await self.company_member_service.get_user_company_ids(user_id=user_id)
 
         if not user_company_ids:
-            return await self._fetch_visible_companies_paginated(page=page, page_size=page_size)
+            return await self._get_visible_companies_paginated(page=page, page_size=page_size)
 
-        return await self._fetch_visible_and_user_companies_paginated(page=page, page_size=page_size,
-                                                                      user_company_ids=user_company_ids)
+        return await self._get_visible_and_user_companies_paginated(page=page, page_size=page_size,
+                                                                    user_company_ids=user_company_ids)
 
-    async def _fetch_visible_companies_paginated(self, page: int, page_size: int):
-        filters = {"is_visible": True}
+    async def _get_visible_companies_paginated(self, page: int, page_size: int):
+        filters = {CompanyModel.is_visible: True}
         return await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
 
-    async def _fetch_visible_and_user_companies_paginated(self, page: int, page_size: int,
-                                                          user_company_ids: Sequence[UUID]):
-        filters = {"__or__": [{"is_visible": True}, {"id__in": user_company_ids}]}
-        return await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
+    async def _get_visible_and_user_companies_paginated(self, page: int, page_size: int,
+                                                        user_company_ids: Sequence[UUID]):
+        condition = or_(CompanyModel.is_visible.is_(True), CompanyModel.id.in_(user_company_ids))
 
-    async def fetch_company_by_id(self, company_id: UUID, user_id: UUID | None = None) -> CompanyModel:
-        company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
+        stmt = select(CompanyModel).where(condition)
+        stmt = stmt.order_by(CompanyModel.id.desc())
+
+        return await self.repo.paginate_query(stmt, page, page_size)
+
+    async def get_by_id(self, company_id: UUID, user_id: UUID | None = None) -> CompanyModel:
+        company = await self.repo.get_instance_by_field_or_404(CompanyModel.id, value=company_id)
 
         if company.is_visible:
             return company
@@ -68,24 +73,25 @@ class CompanyService(BaseService[CompanyRepository]):
 
         logger.info(f"Created new Company: {company.id} owner {owner_member.user_id}")
 
-        await self.repo.save_changes_and_refresh(company, owner_member)
+        await self.repo.save_and_refresh(company, owner_member)
 
         return company
 
     async def update_company(self, company_id: UUID, owner_id: UUID,
                              company_info: CompanyUpdateInfoRequest) -> CompanyModel:
-        company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
-        await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=owner_id,
-                                                               required_role=CompanyRole.ADMIN)
+        company = await self.repo.get_instance_by_field_or_404(CompanyModel.id, value=company_id)
+        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=owner_id,
+                                                                      required_role=CompanyRole.ADMIN)
 
         company = await self._update_instance(instance=company, new_data=company_info)
-        await self.repo.save_changes_and_refresh(company)
+        await self.repo.save_and_refresh(company)
 
         return company
 
     async def delete_company(self, company_id: UUID, owner_id: UUID):
-        company: CompanyModel = await self.repo.get_instance_by_field_or_404(field_name="id", field_value=company_id)
-        await self.company_member_service.assert_user_has_role(company_id=company_id, user_id=owner_id,
-                                                               required_role=CompanyRole.OWNER)
+        company = await self.repo.get_instance_by_field_or_404(CompanyModel.id, value=company_id)
+        await self.company_member_service.assert_user_has_permissions(company_id=company_id, user_id=owner_id,
+                                                                      required_role=CompanyRole.OWNER)
 
         await self._delete_instance(instance=company)
+        await self.repo.commit()

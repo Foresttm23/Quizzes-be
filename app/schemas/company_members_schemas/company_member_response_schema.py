@@ -12,3 +12,7 @@ class CompanyMemberDetailsResponse(BaseResponseModel):
     role: CompanyRole
     joined_at: datetime
     user: UserDetailsResponse
+
+
+class UpdateMemberRoleSchema(BaseResponseModel):
+    role: CompanyRole

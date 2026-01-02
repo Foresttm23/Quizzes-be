@@ -1,19 +1,20 @@
-from http.client import HTTPException
 from typing import Type, TypeVar, Generic, Any
 
 from pydantic import BaseModel
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
-from sqlalchemy.sql.selectable import Select
+from sqlalchemy.sql import Select, Update, Delete
 
-from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException, \
-    InvalidSQLModelFieldNameException
+from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException
 from app.db.postgres import Base
+from schemas.base_schemas import PaginationResponse
 
 ModelType = TypeVar("ModelType", bound=Base)
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
+
+BaseQuery = Select | Update | Delete
 
 
 class BaseRepository(Generic[ModelType]):
@@ -22,79 +23,89 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get_instances_data_paginated(self, page: int, page_size: int,
-                                           filters: dict[str, Any] | None = None) -> dict:
-        """
-        Returns a dict of instances and metadata in specified range.
-        Can accept filter fields in format {"field_name": value}.
-        """
-        offset = (page - 1) * page_size
+                                           filters: dict[InstrumentedAttribute, Any] | None = None) -> \
+            PaginationResponse[ModelType]:
+        stmt = select(self.model)
+        stmt = self._apply_filters(filters, stmt)
+        stmt = stmt.order_by(self.model.id.desc())
 
-        filters_query = self._apply_filters(filters)
-        # This queries adds on top of the previous queries,
-        # so in the end we will get a final query to execute
-        query = filters_query.offset(offset).limit(page_size)
-        result = await self.db.scalars(query)
-        items = result.all()
+        result = await self.paginate_query(stmt, page, page_size)
+        return result
 
-        count_query = select(func.count()).select_from(filters_query.subquery())
-
+    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[ModelType]:
+        count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
+
         total_pages = (total + page_size - 1) // page_size
 
-        return {"total": total, "page": page, "page_size": page_size, "total_pages": total_pages,
-                "has_next": page < total_pages, "has_prev": page > 1, "data": items}
+        offset = (page - 1) * page_size
+        stmt = stmt.offset(offset).limit(page_size)
 
-    def _apply_filters(self, filters: dict[str, Any]) -> Select:
+        result = await self.db.scalars(stmt)
+        items = result.all()
+
+        return PaginationResponse(total=total, page=page, page_size=page_size, total_pages=total_pages,
+                                  has_next=page < total_pages, has_prev=page > 1, data=items)
+
+    @staticmethod
+    def _apply_filters(filters: dict[InstrumentedAttribute, Any], base_query: BaseQuery) -> BaseQuery:
         """
         Returns conditions and query of stacked queries.
         """
-        query = select(self.model)
         if not filters:
-            return query
+            return base_query
 
-        for key, value in filters.items():
-            # Only add valid attributes
-            if hasattr(self.model, key):
-                query = query.where(and_(getattr(self.model, key) == value))
+        query = base_query  # Solely for readability
+        for attr, value in filters.items():
+            query = query.where(attr == value)
 
         return query
 
-    async def _commit_with_handling(self, *args: Base) -> None:
+    async def save_and_refresh(self, *instances: Base) -> None:
         """
-        Commits current state of commits and refreshes instances.
-        If *args is None only commits.
+        Adds instances, commits and refreshes them.
         If there is duplicate of unique field, IntegrityError is called and session is rolled back.
+        """
+        self.db.add_all(instances)
+        await self.commit()
+
+        for instance in instances:
+            await self.db.refresh(instance)
+
+    async def commit(self) -> None:
+        """
+        Commits the current transaction.
         """
         try:
             await self.db.commit()
-        except (IntegrityError, HTTPException) as e:
+        except IntegrityError as e:
             raise RecordAlreadyExistsException()
 
-        for instance in args:
-            await self.db.refresh(instance)
+    async def get_instance_by_field_or_404(self, field: InstrumentedAttribute, value: Any) -> ModelType:
+        """
+        Gets instance by single field.
+        :param field:
+        :param value:
+        :return: instance
+        :raises InstanceNotFoundException: If not found
+        """
+        instance = await self.get_instance_by_filters_or_404(filters={field: value})
+        return instance
 
-    async def save_changes_and_refresh(self, *args: Base) -> None:
+    async def get_instance_by_filters_or_404(self, filters: dict[InstrumentedAttribute, Any]) -> ModelType:
         """
-        Wrapper for commit_with_handling() that also adds an instance to db.
+        Gets instance by many field.
+        :param filters:
+        :return: instance
+        :raises InstanceNotFoundException: If not found
         """
-        self.db.add_all(args)
-        await self._commit_with_handling(*args)
+        query = select(self.model)
 
-    async def get_instance_by_field_or_404(self, field_name: str, field_value: Any) -> ModelType:
-        """
-        Gets instance by field.
-        If no instance exists, raise error.
-        Else returns instance.
-        """
-        if not hasattr(self.model, field_name):
-            raise InvalidSQLModelFieldNameException(field_name)
-
-        # Assigned a specific type hint, so that ide won't show warning
-        field: InstrumentedAttribute = getattr(self.model, field_name)
-        query = select(self.model).where(field == field_value)
+        for attr, value in filters.items():
+            query = query.where(attr == value)
 
         instance = await self.db.scalar(query)
-        if not instance:
+        if instance is None:
             raise InstanceNotFoundException()
 
         return instance
@@ -108,11 +119,11 @@ class BaseRepository(Generic[ModelType]):
         changes = {}
 
         update_data = new_instance_info.model_dump(exclude_unset=True)
-        for key, new_value in update_data.items():
-            old_value = getattr(instance, key)
+        for attr, new_value in update_data.items():
+            old_value = getattr(instance, attr)
             if old_value != new_value:
-                changes[key] = {"from": old_value, "to": new_value}
-                setattr(instance, key, new_value)
+                changes[attr] = {"from": old_value, "to": new_value}
+                setattr(instance, attr, new_value)
 
         return changes
 
@@ -121,5 +132,3 @@ class BaseRepository(Generic[ModelType]):
         Function to delete instance and commit changes.
         """
         await self.db.delete(instance)
-        # We don't provide a value, since we don't need neither to update nor return user
-        await self._commit_with_handling()
