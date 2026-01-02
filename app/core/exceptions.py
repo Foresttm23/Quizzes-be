@@ -19,14 +19,6 @@ class InstanceNotFoundException(HTTPException):
         )
 
 
-class FieldsNotProvidedException(HTTPException):
-    def __init__(self):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provide at least 1 field."
-        )
-
-
 class UserIncorrectPasswordOrEmailException(HTTPException):
     def __init__(self):
         super().__init__(
@@ -47,7 +39,7 @@ class PasswordReuseException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password cannot be the same as the current password"
+            detail="New password can't be the same as the current password"
         )
 
 
@@ -112,6 +104,22 @@ class InvalidRecipientException(HTTPException):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Different recipient for invitation/request"
+        )
+
+
+class PermissionDeniedException(HTTPException):
+    def __init__(self, message: str):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permissions: {message}"
+        )
+
+
+class ResourceConflictException(HTTPException):
+    def __init__(self, message: str):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Conflict: {message}"
         )
 
 

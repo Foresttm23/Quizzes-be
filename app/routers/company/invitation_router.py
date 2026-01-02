@@ -5,7 +5,7 @@ from fastapi import APIRouter, status, Query
 from app.core.config import settings
 from app.core.dependencies import GetUserJWTDep, CompanyInvitationServiceDep
 from app.schemas.base_schemas import PaginationResponse
-from app.schemas.company_inv_req_schemas.company_inv_req_schema import InvitationDetailsResponse, \
+from schemas.company.inv_req_schema import InvitationDetailsResponse, \
     AcceptInvitationResponse, CreateInvitationRequest
 
 router = APIRouter(prefix="/company-invitations", tags=["Company Invitations"])
@@ -14,9 +14,9 @@ router = APIRouter(prefix="/company-invitations", tags=["Company Invitations"])
 @router.post("/{company_id}", response_model=InvitationDetailsResponse, status_code=status.HTTP_201_CREATED)
 async def create_invitation(company_invitation_service: CompanyInvitationServiceDep, acting_user: GetUserJWTDep,
                             company_id: UUID, request_data: CreateInvitationRequest):
-    invitation = await company_invitation_service.send_to_user(company_id=company_id,
-                                                               invited_user_id=request_data.invited_user_id,
-                                                               acting_user_id=acting_user.id)
+    invitation = await company_invitation_service.create_invitation(company_id=company_id,
+                                                                    invited_user_id=request_data.invited_user_id,
+                                                                    acting_user_id=acting_user.id)
 
     return invitation
 

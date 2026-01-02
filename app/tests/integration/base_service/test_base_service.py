@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InstanceNotFoundException
-from app.db.models.user_model import User as UserModel
+from db.models.user.user_model import User as UserModel
 from .test_base_service_setup import _TestService, _TestCreateSchema, _TestUpdateSchema
 
 pytestmark = pytest.mark.asyncio
@@ -37,7 +37,7 @@ async def test_fetch_instances_paginated(test_base_service: _TestService, page, 
     await test_base_service.helper_create_instance(_TestCreateSchema(email="1@example.com", username="user1"))
     await test_base_service.helper_create_instance(_TestCreateSchema(email="2@example.com", username="user2"))
 
-    paginated_results = await test_base_service.repo.get_instances_data_paginated(page=page, page_size=page_size)
+    paginated_results = await test_base_service.repo.get_instances_paginated(page=page, page_size=page_size)
 
     from app.core.logger import logger
     logger.critical(paginated_results["total"])
@@ -53,13 +53,13 @@ async def test_fetch_instances_paginated(test_base_service: _TestService, page, 
 
 
 async def test_fetch_instances_paginated_no_instances(test_base_service: _TestService):
-    paginated_results = await test_base_service.repo.get_instances_data_paginated(page=1, page_size=1)
+    paginated_results = await test_base_service.repo.get_instances_paginated(page=1, page_size=1)
     assert paginated_results["data"] == []
 
 
 async def test_update_instance_success(test_base_service: _TestService, created_instance: UserModel):
     new_data = _TestUpdateSchema(username="new_instance_name")
-    updated_instance = await test_base_service._update_instance(instance=created_instance, new_data=new_data)
+    updated_instance = test_base_service._update_instance(instance=created_instance, new_data=new_data)
     await test_base_service.repo.save_and_refresh(updated_instance)
 
     assert updated_instance.username == "new_instance_name"
@@ -71,7 +71,7 @@ async def test_update_instance_no_changes(test_base_service: _TestService, creat
     original_username = created_instance.username
 
     new_data = _TestUpdateSchema(username=created_instance.username, email=created_instance.email)
-    updated_instance = await test_base_service._update_instance(instance=created_instance, new_data=new_data)
+    updated_instance = test_base_service._update_instance(instance=created_instance, new_data=new_data)
     await test_base_service.repo.save_and_refresh(updated_instance)
 
     assert updated_instance.username == original_username

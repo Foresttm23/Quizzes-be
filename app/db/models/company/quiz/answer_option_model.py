@@ -17,3 +17,6 @@ class AnswerOption(Base):
     is_correct: Mapped[bool] = mapped_column(Boolean, default=False)
 
     question: Mapped["Question"] = relationship("Question", back_populates="options")
+
+    def clone(self) -> "AnswerOption":
+        return AnswerOption(id=uuid.uuid4(), text=self.text, is_correct=self.is_correct)

@@ -7,13 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotAuthenticatedException
 from app.db import (redis as redis_module, postgres as postgres_module)
-from app.db.models.user_model import User as UserModel
-from app.services.auth_service import AuthService
-from app.services.user_service import UserService
-from services.company.company_invitation_service import CompanyInvitationService
-from services.company.company_join_request_service import CompanyJoinRequestService
-from services.company.company_member_service import CompanyMemberService
+from db.models.user.user_model import User as UserModel
+from services.auth.auth_service import AuthService
 from services.company.company_service import CompanyService
+from services.company.invitation_service import CompanyInvitationService
+from services.company.join_request_service import CompanyJoinRequestService
+from services.company.member_service import CompanyMemberService
+from services.company.quiz.quiz_service import QuizService
+from services.user.user_service import UserService
 
 RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
 
@@ -108,3 +109,10 @@ async def get_user_from_refresh_jwt(jwt: JWTCredentialsDep, auth_service: AuthSe
 
 
 GetUserRefreshJWTDep = Annotated[UserModel, Depends(get_user_from_refresh_jwt)]
+
+
+async def get_company_quiz_service(db: DBSessionDep, company_member_service: CompanyMemberServiceDep) -> QuizService:
+    return QuizService(db=db, company_member_service=company_member_service)
+
+
+CompanyQuizServiceDep = Annotated[QuizService, Depends(get_company_quiz_service)]

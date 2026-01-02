@@ -1,6 +1,8 @@
 from typing import TypeVar, Any
 from uuid import uuid4, UUID
 
+from app.schemas.user_schemas.user_request_schema import RegisterRequest, UserInfoUpdateRequest
+from app.schemas.user_schemas.user_request_schema import UserPasswordUpdateRequest
 from pydantic import BaseModel
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,13 +11,11 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app.core.exceptions import InvalidPasswordException, InstanceNotFoundException
 from app.core.exceptions import PasswordReuseException
 from app.core.logger import logger
-from app.db.models.user_model import User as UserModel
-from app.db.repository.user_repository import UserRepository
 from app.schemas.base_schemas import PaginationResponse
-from app.schemas.user_schemas.user_request_schema import RegisterRequest, UserInfoUpdateRequest
-from app.schemas.user_schemas.user_request_schema import UserPasswordUpdateRequest
 from app.services.base_service import BaseService
 from app.utils.password_utils import hash_password, verify_password
+from db.models.user.user_model import User as UserModel
+from db.repository.user.user_repository import UserRepository
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
@@ -45,7 +45,7 @@ class UserService(BaseService[UserRepository]):
 
     async def get_users_paginated(self, page: int, page_size: int) -> PaginationResponse[SchemaType]:
         # We can now add filter fields.
-        users_data = await self.repo.get_instances_data_paginated(page=page, page_size=page_size)
+        users_data = await self.repo.get_instances_paginated(page=page, page_size=page_size)
         return users_data
 
     async def create_user(self, user_info: RegisterRequest) -> UserModel:
@@ -63,7 +63,7 @@ class UserService(BaseService[UserRepository]):
         user = UserModel(id=uuid4(), **user_data, hashed_password=hashed_password)
 
         await self.repo.save_and_refresh(user)
-        logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider}")
+        logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
 
         return user
 
@@ -77,21 +77,21 @@ class UserService(BaseService[UserRepository]):
                          username=f"user_{uuid4().hex[:12]}", hashed_password=None, auth_provider="auth0")
 
         await self.repo.save_and_refresh(user)
-
-        logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider}")
+        logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
 
         return user
 
     async def update_user_info(self, user: UserModel, new_user_info: UserInfoUpdateRequest) -> UserModel:
         """Method for updating user details by id"""
-        user = await self._update_instance(instance=user, new_data=new_user_info)
+        user = self._update_instance(instance=user, new_data=new_user_info, by=user.id)
         await self.repo.save_and_refresh(user)
+        logger.info(f"Updated {self.display_name}: {user.id} by system")
+
         return user
 
     async def update_user_password(self, user: UserModel, new_password_info: UserPasswordUpdateRequest) -> UserModel:
         """Method for updating user password by id"""
         self._verify_and_update_password(user=user, new_password_info=new_password_info)
-
         await self.repo.save_and_refresh(user)
 
         logger.info(f"{self.display_name}: {user.id} updated")

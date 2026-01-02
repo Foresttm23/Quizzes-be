@@ -3,10 +3,10 @@ from datetime import datetime
 
 from pydantic import EmailStr
 
-from app.schemas.base_schemas import BaseResponseModel
+from app.schemas.base_schemas import Base
 
 
-class UserDetailsResponse(BaseResponseModel):
+class UserDetailsResponse(Base):
     id: uuid.UUID
     email: EmailStr
     username: str
@@ -16,7 +16,7 @@ class UserDetailsResponse(BaseResponseModel):
     updated_at: datetime
 
 
-class TokenResponse(BaseResponseModel):
+class TokenResponse(Base):
     access_token: str
     refresh_token: str
     token_type: str

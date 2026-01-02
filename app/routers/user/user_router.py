@@ -1,13 +1,13 @@
 from uuid import UUID
 
+from app.schemas.user_schemas.user_request_schema import UserInfoUpdateRequest, UserPasswordUpdateRequest
+from app.schemas.user_schemas.user_response_schema import UserDetailsResponse
 from fastapi import APIRouter, status, Query
 
 from app.core.config import settings
 from app.core.dependencies import GetUserJWTDep, UserServiceDep
 from app.core.exceptions import ExternalAuthProviderException
 from app.schemas.base_schemas import PaginationResponse
-from app.schemas.user_schemas.user_request_schema import UserInfoUpdateRequest, UserPasswordUpdateRequest
-from app.schemas.user_schemas.user_response_schema import UserDetailsResponse
 
 router = APIRouter(prefix="/users", tags=["Users"])
 

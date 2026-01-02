@@ -1,18 +1,19 @@
-from typing import Type, TypeVar, Generic, Any
+from typing import Type, TypeVar, Generic, Any, Sequence
 
-from pydantic import BaseModel
+from pydantic import BaseModel as BaseSchema
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql import Select, Update, Delete
+from sqlalchemy.sql.base import ExecutableOption
 
 from app.core.exceptions import RecordAlreadyExistsException
-from app.db.postgres import Base
+from app.db.postgres import Base as BaseModel
 from app.schemas.base_schemas import PaginationResponse
 
-ModelType = TypeVar("ModelType", bound=Base)
-SchemaType = TypeVar("SchemaType", bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=BaseModel)
+SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
 BaseQuery = Select | Update | Delete
 
@@ -22,9 +23,9 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.db = db
 
-    async def get_instances_data_paginated(self, page: int, page_size: int,
-                                           filters: dict[InstrumentedAttribute, Any] | None = None) -> \
-            PaginationResponse[SchemaType]:
+    async def get_instances_paginated(self, page: int, page_size: int,
+                                      filters: dict[InstrumentedAttribute, Any] | None = None) -> PaginationResponse[
+        SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
         stmt = stmt.order_by(self.model.id.desc())
@@ -78,29 +79,33 @@ class BaseRepository(Generic[ModelType]):
         """
         try:
             await self.db.commit()
-        except IntegrityError as e:
-            raise RecordAlreadyExistsException() from e
+        except IntegrityError:
+            raise RecordAlreadyExistsException()
 
     async def get_instance_by_field_or_none(self, field: InstrumentedAttribute, value: Any,
-                                            relationships: set[
-                                                               InstrumentedAttribute] | None = None) -> ModelType | None:
+                                            relationships: set[InstrumentedAttribute] | None = None,
+                                            options: ExecutableOption | None = None) -> ModelType | None:
         """
         Gets instance by single field.
         :param field:
         :param value:
         :param relationships:
+        :param options:
         :return: instance | None
         """
-        instance = await self.get_instance_by_filters_or_none(filters={field: value}, relationships=relationships)
+
+        instance = await self.get_instance_by_filters_or_none(filters={field: value}, relationships=relationships,
+                                                              options=options)
         return instance
 
     async def get_instance_by_filters_or_none(self, filters: dict[InstrumentedAttribute, Any],
-                                              relationships: set[
-                                                                 InstrumentedAttribute] | None = None) -> ModelType | None:
+                                              relationships: set[InstrumentedAttribute] | None = None,
+                                              options: Sequence[ExecutableOption] | None = None) -> ModelType | None:
         """
         Gets instance by many field.
-        :param filters:
-        :param relationships:
+        :param filters: Executes the .where() DB query to the passed args
+        :param relationships: Executes selectinload to find 1 layer relationships (Quiz->Questions)
+        :param options: Executes selectinload to find 2 layer relationships (Quiz->Questions->Answers)
         :return: instance | None
         """
         query = select(self.model)
@@ -111,6 +116,9 @@ class BaseRepository(Generic[ModelType]):
         if relationships:
             for rel in relationships:
                 query = query.options(selectinload(rel))
+
+        if options:
+            query = query.options(selectinload(*options))
 
         instance = await self.db.scalar(query)
         return instance
@@ -132,7 +140,7 @@ class BaseRepository(Generic[ModelType]):
 
         return changes
 
-    async def delete_instance(self, instance: ModelType) -> None:
+    async def delete_instance(self, instance: BaseModel) -> None:
         """
         Function to delete instance and commit changes.
         """

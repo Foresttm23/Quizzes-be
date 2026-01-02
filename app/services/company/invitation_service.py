@@ -1,21 +1,17 @@
-from typing import TypeVar
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidRecipientException
+from app.core.logger import logger
 from app.db.models.company.invitation_model import Invitation as CompanyInvitationModel
 from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.schemas.base_schemas import PaginationResponse
-from app.schemas.company_inv_req_schemas.company_inv_req_schema import UpdateInvitationSchema
 from app.services.base_service import BaseService
 from app.utils.enum_utils import CompanyRole, MessageStatus
 from core.exceptions import InstanceNotFoundException
-from db.repository.company.company_invitation_repository import CompanyInvitationRepository
-from services.company.company_member_service import CompanyMemberService
-
-SchemaType = TypeVar("SchemaType", bound=BaseModel)
+from db.repository.company.invitation_repository import CompanyInvitationRepository
+from services.company.member_service import CompanyMemberService
 
 
 class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
@@ -27,8 +23,8 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         super().__init__(repo=CompanyInvitationRepository(db=db))
         self.company_member_service = company_member_service
 
-    async def send_to_user(self, company_id: UUID, invited_user_id: UUID,
-                           acting_user_id: UUID) -> CompanyInvitationModel:
+    async def create_invitation(self, company_id: UUID, invited_user_id: UUID,
+                                acting_user_id: UUID) -> CompanyInvitationModel:
         """
         Send invitation from a company to a user
         :param company_id:
@@ -38,8 +34,7 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         """
         acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
                                                                                    user_id=acting_user_id)
-        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
-                                                                required_role=CompanyRole.ADMIN)
+        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
         await self.company_member_service.assert_user_not_in_company(company_id=company_id, user_id=invited_user_id)
 
@@ -47,6 +42,9 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
                                                 status=MessageStatus.PENDING)
 
         await self.repo.save_and_refresh(new_invitation)
+        logger.info(
+            f"Created new invitation: {new_invitation.id} invited_user {invited_user_id} by: company {company_id} member {acting_user_id}")
+
         return new_invitation
 
     async def accept_from_company(self, invitation_id: UUID, invited_user_id: UUID) -> tuple[
@@ -60,10 +58,11 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         invitation = await self._get_and_verify_invited_user_id(invitation_id=invitation_id,
                                                                 invited_user_id=invited_user_id)
 
-        invitation = await self._update_status(invitation=invitation, new_status=MessageStatus.ACCEPTED)
+        invitation.status = MessageStatus.ACCEPTED
 
         new_member = CompanyMemberModel(company_id=invitation.company_id, user_id=invitation.invited_user_id)
         await self.repo.save_and_refresh(invitation, new_member)
+        logger.info(f"Accepted invitation: {invitation.id} company {invitation.company_id} by {invited_user_id}")
 
         return invitation, new_member
 
@@ -77,8 +76,12 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         invitation = await self._get_and_verify_invited_user_id(invitation_id=invitation_id,
                                                                 invited_user_id=invited_user_id)
 
-        invitation = await self._update_status(invitation=invitation, new_status=MessageStatus.DECLINED)
+        invitation.status = MessageStatus.DECLINED
+
         await self.repo.save_and_refresh(invitation)
+        logger.info(
+            f"Declined company invitation: {invitation.id} company {invitation.company_id} by {invitation.invited_user_id}")
+
         return invitation
 
     async def cancel_by_company(self, invitation_id: UUID, acting_user_id: UUID) -> CompanyInvitationModel:
@@ -91,35 +94,32 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         invitation = await self.get_invitation(invitation_id=invitation_id)
         acting_user_role = await self.company_member_service.repo.get_company_role(company_id=invitation.company_id,
                                                                                    user_id=acting_user_id)
-        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
-                                                                required_role=CompanyRole.ADMIN)
+        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
-        invitation = await self._update_status(invitation=invitation, new_status=MessageStatus.CANCELED)
+        invitation.status = MessageStatus.CANCELED
+
         await self.repo.save_and_refresh(invitation)
+        logger.info(
+            f"Cancel invitation: {invitation.id} user {invitation.invited_user_id} by: company {invitation.company_id} member {acting_user_id}")
+
         return invitation
 
-    async def get_pending_for_user(self, user_id: UUID, page: int, page_size: int) -> PaginationResponse[SchemaType]:
+    async def get_pending_for_user(self, user_id: UUID, page: int, page_size: int) -> PaginationResponse[
+        CompanyInvitationModel]:
         filters = {CompanyInvitationModel.invited_user_id: user_id,
                    CompanyInvitationModel.status: MessageStatus.PENDING}
-        invitations = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
+        invitations = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return invitations
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int, page_size: int) -> \
-            PaginationResponse[SchemaType]:
+            PaginationResponse[CompanyInvitationModel]:
         acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
                                                                                    user_id=acting_user_id)
-        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
-                                                                required_role=CompanyRole.ADMIN)
+        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
         filters = {CompanyInvitationModel.company_id: company_id, CompanyInvitationModel.status: MessageStatus.PENDING}
-        invitations = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
+        invitations = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return invitations
-
-    async def _update_status(self, invitation: CompanyInvitationModel,
-                             new_status: MessageStatus) -> CompanyInvitationModel:
-        new_invitation_data = UpdateInvitationSchema(invitation_status=new_status)
-        invitation = await self._update_instance(instance=invitation, new_data=new_invitation_data)
-        return invitation
 
     async def _get_and_verify_invited_user_id(self, invitation_id: UUID,
                                               invited_user_id: UUID) -> CompanyInvitationModel:

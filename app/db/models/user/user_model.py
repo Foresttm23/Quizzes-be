@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 # from app.db.models.company.invitation_model import Invitation
 # from app.db.models.company.join_request_model import JoinRequest
 # from app.db.models.company.member_model import Member
-# from db.models.company.quiz.user_attempt.attempt_model import Attempt
+# from db.models.company.quiz.attempt.attempt_model import Attempt
 from app.db.postgres import Base, TimestampMixin
 
 

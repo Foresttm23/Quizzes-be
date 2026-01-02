@@ -6,8 +6,7 @@ from app.core.config import settings
 from app.core.dependencies import CompanyMemberServiceDep
 from app.core.dependencies import GetUserJWTDep
 from app.schemas.base_schemas import PaginationResponse
-from app.schemas.company_members_schemas.company_member_response_schema import CompanyMemberDetailsResponse
-from app.schemas.company_members_schemas.company_member_response_schema import UpdateMemberRoleSchema
+from app.schemas.company.member_schema import CompanyMemberDetailsResponse, UpdateMemberRoleSchema
 from app.utils.enum_utils import CompanyRole
 
 router = APIRouter(prefix="/company-members", tags=["Company Members"])

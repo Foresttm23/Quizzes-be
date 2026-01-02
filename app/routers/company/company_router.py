@@ -5,14 +5,15 @@ from fastapi import APIRouter, status, Query
 from app.core.config import settings
 from app.core.dependencies import CompanyServiceDep, GetUserJWTDep, GetOptionalUserJWTDep
 from app.schemas.base_schemas import PaginationResponse
-from app.schemas.company_schemas.company_request_schema import CompanyCreateRequest, CompanyUpdateInfoRequest
-from app.schemas.company_schemas.company_response_schema import CompanyDetailsResponse
+from app.schemas.company.company_schema import CompanyCreateRequestSchema, CompanyUpdateInfoRequestSchema, \
+    CompanyDetailsResponseSchema
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
 
-@router.post("/", response_model=CompanyDetailsResponse, status_code=status.HTTP_201_CREATED)
-async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep, company_info: CompanyCreateRequest):
+@router.post("/", response_model=CompanyDetailsResponseSchema, status_code=status.HTTP_201_CREATED)
+async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep,
+                         company_info: CompanyCreateRequestSchema):
     """
     Creates a company for authenticated user.
     This user is owner of the created company.
@@ -21,7 +22,7 @@ async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep
     return company_info
 
 
-@router.get("/", response_model=PaginationResponse[CompanyDetailsResponse], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=PaginationResponse[CompanyDetailsResponseSchema], status_code=status.HTTP_200_OK)
 async def get_companies(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep,
                         page: int = Query(default=1, ge=1),
                         page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE)):
@@ -37,7 +38,7 @@ async def get_companies(company_service: CompanyServiceDep, user: GetOptionalUse
     return companies_data
 
 
-@router.get("/{company_id}", response_model=CompanyDetailsResponse, status_code=status.HTTP_200_OK)
+@router.get("/{company_id}", response_model=CompanyDetailsResponseSchema, status_code=status.HTTP_200_OK)
 async def get_company(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID):
     """Returns a company by its id"""
     user_id = user.id if user else None
@@ -46,9 +47,9 @@ async def get_company(company_service: CompanyServiceDep, user: GetOptionalUserJ
     return company
 
 
-@router.patch("/{company_id}", response_model=CompanyDetailsResponse, status_code=status.HTTP_200_OK)
+@router.patch("/{company_id}", response_model=CompanyDetailsResponseSchema, status_code=status.HTTP_200_OK)
 async def update_company(company_service: CompanyServiceDep, user: GetUserJWTDep, company_id: UUID,
-                         new_company_info: CompanyUpdateInfoRequest):
+                         new_company_info: CompanyUpdateInfoRequestSchema):
     """
     Updates a company by its id,
     if company.owner_id is equal to the currently authenticated user id.

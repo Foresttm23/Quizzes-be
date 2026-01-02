@@ -19,3 +19,6 @@ class Question(Base, TimestampMixin):
     quiz: Mapped["Quiz"] = relationship("Quiz", back_populates="questions")
     options: Mapped[list["AnswerOption"]] = relationship("AnswerOption", back_populates="question",
                                                          cascade="all, delete-orphan", passive_deletes=True)
+
+    def clone(self) -> "Question":
+        return Question(id=uuid.uuid4(), text=self.text, options=[opt.clone() for opt in self.options])

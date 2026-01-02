@@ -1,9 +1,9 @@
+from app.schemas.user_schemas.user_request_schema import RegisterRequest, LoginRequest
+from app.schemas.user_schemas.user_response_schema import UserDetailsResponse, TokenResponse
 from fastapi import APIRouter, status
 
 from app.core.dependencies import AuthServiceDep, GetUserRefreshJWTDep
 from app.core.exceptions import ExternalAuthProviderException
-from app.schemas.user_schemas.user_request_schema import RegisterRequest, LoginRequest
-from app.schemas.user_schemas.user_response_schema import UserDetailsResponse, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 

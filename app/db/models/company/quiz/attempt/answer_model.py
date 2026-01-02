@@ -1,11 +1,11 @@
-# app/db/models/company/quiz/attempt_answer_model.py
+# app/db/models/company/quiz/answer_model.py
 import uuid
 
 from sqlalchemy import ForeignKey, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 # from app.db.models.company.quiz.answer_option_model import AnswerOption
-# from db.models.company.quiz.user_attempt.attempt_model import Attempt
+# from db.models.company.quiz.attempt.attempt_model import Attempt
 # from app.db.models.company.quiz.question_model import Question
 from app.db.postgres import Base
 

@@ -1,22 +1,18 @@
-from typing import TypeVar
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from app.core.exceptions import InvalidRecipientException
+from app.core.exceptions import PermissionDeniedException
+from app.core.logger import logger
 from app.db.models.company.join_request_model import JoinRequest as CompanyJoinRequestModel
 from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.schemas.base_schemas import PaginationResponse
-from app.schemas.company_inv_req_schemas.company_inv_req_schema import UpdateRequestSchema
 from app.services.base_service import BaseService
 from app.utils.enum_utils import MessageStatus, CompanyRole
 from core.exceptions import InstanceNotFoundException
-from db.repository.company.company_join_request_repository import CompanyJoinRequestRepository
-from services.company.company_member_service import CompanyMemberService
-
-SchemaType = TypeVar("SchemaType", bound=BaseModel)
+from db.repository.company.join_request_repository import CompanyJoinRequestRepository
+from services.company.member_service import CompanyMemberService
 
 
 class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
@@ -37,6 +33,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         """
         await self.company_member_service.assert_user_not_in_company(company_id=company_id, user_id=requesting_user_id)
         new_request = CompanyJoinRequestModel(id=uuid4(), company_id=company_id, requesting_user_id=requesting_user_id)
+        logger.info(f"Created new join_request: {new_request.id} requesting_user_id {requesting_user_id}")
 
         await self.repo.save_and_refresh(new_request)
         return new_request
@@ -50,13 +47,14 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :return: request, new_member
         """
         request = await self._get_and_assert_role(request_id=request_id, acting_user_id=acting_user_id)
-
-        new_request_data = UpdateRequestSchema(status=MessageStatus.ACCEPTED)
-        request = await self._update_instance(instance=request, new_data=new_request_data)
+        request.status = MessageStatus.ACCEPTED
 
         new_member = CompanyMemberModel(company_id=request.company_id, user_id=request.requesting_user_id)
 
         await self.repo.save_and_refresh(request, new_member)
+        logger.info(
+            f"Accepted request: {request.id} company {request.company_id} requesting_user {request.requesting_user_id} by {acting_user_id}")
+
         return request, new_member
 
     async def decline_request(self, request_id: UUID, acting_user_id: UUID) -> CompanyJoinRequestModel:
@@ -67,11 +65,12 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :return: request
         """
         request = await self._get_and_assert_role(request_id=request_id, acting_user_id=acting_user_id)
-
-        new_request_data = UpdateRequestSchema(status=MessageStatus.DECLINED)
-        await self._update_instance(instance=request, new_data=new_request_data)
+        request.status = MessageStatus.DECLINED
 
         await self.repo.save_and_refresh(request)
+        logger.info(
+            f"Declined request: {request.id} company {request.company_id} requesting_user {request.requesting_user_id} by {acting_user_id}")
+
         return request
 
     async def cancel_request(self, request_id: UUID, requesting_user_id: UUID) -> CompanyJoinRequestModel:
@@ -83,31 +82,32 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         """
         request = await self.get_request(request_id=request_id)
         if request.requesting_user_id != requesting_user_id:
-            raise InvalidRecipientException()
+            raise PermissionDeniedException(message="Can't cancel other people requests.")
 
-        new_request_data = UpdateRequestSchema(status=MessageStatus.CANCELED)
-        await self._update_instance(instance=request, new_data=new_request_data)
+        request.status = MessageStatus.CANCELED
 
         await self.repo.save_and_refresh(request)
+        logger.info(
+            f"Canceled request: {request.id} company {request.company_id} by requesting_user {request.requesting_user_id}")
+
         return request
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
-                                      page_size: int = 100) -> PaginationResponse[SchemaType]:
+                                      page_size: int = 100) -> PaginationResponse[CompanyJoinRequestModel]:
         acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
                                                                                    user_id=acting_user_id)
-        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
-                                                                required_role=CompanyRole.ADMIN)
+        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
         filters = {CompanyJoinRequestModel.company_id: company_id,
                    CompanyJoinRequestModel.status: MessageStatus.PENDING}
-        requests = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
+        requests = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return requests
 
     async def get_pending_for_user(self, user_id: UUID, page: int = 1, page_size: int = 100) -> PaginationResponse[
-        SchemaType]:
+        CompanyJoinRequestModel]:
         filters = {CompanyJoinRequestModel.requesting_user_id: user_id,
                    CompanyJoinRequestModel.status: MessageStatus.PENDING}
-        requests = await self.repo.get_instances_data_paginated(page=page, page_size=page_size, filters=filters)
+        requests = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return requests
 
     async def _get_and_assert_role(self, request_id: UUID, acting_user_id: UUID) -> CompanyJoinRequestModel:
@@ -120,8 +120,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         request = await self.get_request(request_id=request_id)
         acting_user_role = await self.company_member_service.repo.get_company_role(company_id=request.company_id,
                                                                                    user_id=acting_user_id)
-        self.company_member_service.assert_user_has_permissions(user_role=acting_user_role,
-                                                                required_role=CompanyRole.ADMIN)
+        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
         return request
 
     async def get_request(self, request_id: UUID,

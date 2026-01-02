@@ -1,14 +1,15 @@
 from datetime import timedelta
 
+from app.schemas.user_schemas.user_request_schema import LoginRequest, RegisterRequest
+
 from app.core.config import settings
 from app.core.exceptions import InvalidJWTException, InvalidJWTRefreshException
 from app.core.exceptions import UserIncorrectPasswordOrEmailException, InstanceNotFoundException
 from app.core.logger import logger
-from app.db.models.user_model import User as UserModel
-from app.schemas.user_schemas.user_request_schema import LoginRequest, RegisterRequest
-from app.services.user_service import UserService
 from app.utils.auth_utils import AuthUtils
 from app.utils.password_utils import verify_password
+from db.models.user.user_model import User as UserModel
+from services.user.user_service import UserService
 
 
 class AuthService:

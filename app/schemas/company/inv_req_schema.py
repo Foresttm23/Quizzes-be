@@ -1,21 +1,20 @@
 from datetime import datetime
 from uuid import UUID
 
-from app.schemas.base_schemas import BaseRequestModel
-from app.schemas.base_schemas import BaseResponseModel
-from app.schemas.company_members_schemas.company_member_response_schema import CompanyMemberDetailsResponse
+from app.schemas.base_schemas import Base
 from app.utils.enum_utils import MessageStatus
+from schemas.company.member_schema import CompanyMemberDetailsResponse
 
 
-class UpdateRequestSchema(BaseResponseModel):
+class UpdateRequestSchema(Base):
     status: MessageStatus
 
 
-class UpdateInvitationSchema(BaseResponseModel):
+class UpdateInvitationSchema(Base):
     invitation_status: MessageStatus
 
 
-class RequestDetailsResponse(BaseResponseModel):
+class RequestDetailsResponse(Base):
     id: UUID
     company_id: UUID
     requesting_user_id: UUID
@@ -24,12 +23,12 @@ class RequestDetailsResponse(BaseResponseModel):
     updated_at: datetime
 
 
-class AcceptRequestResponse(BaseResponseModel):
+class AcceptRequestResponse(Base):
     request: RequestDetailsResponse
     new_member: CompanyMemberDetailsResponse
 
 
-class InvitationDetailsResponse(BaseResponseModel):
+class InvitationDetailsResponse(Base):
     id: UUID
     company_id: UUID
     invited_user_id: UUID
@@ -38,10 +37,10 @@ class InvitationDetailsResponse(BaseResponseModel):
     updated_at: datetime
 
 
-class AcceptInvitationResponse(BaseResponseModel):
+class AcceptInvitationResponse(Base):
     invitation: InvitationDetailsResponse
     new_member: CompanyMemberDetailsResponse
 
 
-class CreateInvitationRequest(BaseRequestModel):
+class CreateInvitationRequest(Base):
     invited_user_id: UUID

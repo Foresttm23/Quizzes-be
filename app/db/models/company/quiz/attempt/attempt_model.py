@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import ForeignKey, Float, Boolean, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-# from app.db.models.company.quiz.user_attempt.attempt_answer_model import AttemptAnswer
+# from app.db.models.company.quiz.attempt.attempt_answer_model import AttemptAnswer
 # from app.db.models.company.quiz.quiz_model import Quiz
 # from app.db.models.user_model import User
 from app.db.postgres import Base, TimestampMixin

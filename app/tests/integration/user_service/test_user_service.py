@@ -1,13 +1,13 @@
 import pytest
+from app.schemas.user_schemas.user_request_schema import RegisterRequest, UserInfoUpdateRequest, \
+    UserPasswordUpdateRequest
 from pydantic import SecretStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InstanceNotFoundException, RecordAlreadyExistsException, PasswordReuseException
-from app.db.models.user_model import User as UserModel
-from app.schemas.user_schemas.user_request_schema import RegisterRequest, UserInfoUpdateRequest, \
-    UserPasswordUpdateRequest
-from app.services.user_service import UserService
 from app.utils.password_utils import verify_password
+from db.models.user.user_model import User as UserModel
+from services.user.user_service import UserService
 
 pytestmark = pytest.mark.asyncio
 

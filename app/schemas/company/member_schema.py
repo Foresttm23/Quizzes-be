@@ -1,12 +1,13 @@
 from datetime import datetime
 from uuid import UUID
 
-from app.schemas.base_schemas import BaseResponseModel
 from app.schemas.user_schemas.user_response_schema import UserDetailsResponse
+
+from app.schemas.base_schemas import Base
 from app.utils.enum_utils import CompanyRole
 
 
-class CompanyMemberDetailsResponse(BaseResponseModel):
+class CompanyMemberDetailsResponse(Base):
     company_id: UUID
     user_id: UUID
     role: CompanyRole
@@ -14,5 +15,5 @@ class CompanyMemberDetailsResponse(BaseResponseModel):
     user: UserDetailsResponse
 
 
-class UpdateMemberRoleSchema(BaseResponseModel):
+class UpdateMemberRoleSchema(Base):
     role: CompanyRole
