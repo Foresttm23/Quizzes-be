@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.models.user_model import User as UserModel
-from app.services.auth_service import AuthService
+from app.db.models.user.user_model import User as UserModel
+from app.services.auth.auth_service import AuthService
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def mock_auth_utils():
 
 @pytest.fixture
 def auth_service(mock_user_service, mock_auth_utils, mocker):
-    mocker.patch('app.services.auth_service.AuthUtils', return_value=mock_auth_utils)
+    mocker.patch("app.services.auth_service.AuthUtils", return_value=mock_auth_utils)
     service = AuthService(user_service=mock_user_service)
 
     return service
