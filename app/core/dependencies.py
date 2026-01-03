@@ -6,15 +6,15 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotAuthenticatedException
-from app.db import (redis as redis_module, postgres as postgres_module)
-from db.models.user.user_model import User as UserModel
-from services.auth.auth_service import AuthService
-from services.company.company_service import CompanyService
-from services.company.invitation_service import CompanyInvitationService
-from services.company.join_request_service import CompanyJoinRequestService
-from services.company.member_service import CompanyMemberService
-from services.company.quiz.quiz_service import QuizService
-from services.user.user_service import UserService
+from app.db import redis as redis_module, postgres as postgres_module
+from app.db.models.user.user_model import User as UserModel
+from app.services.auth.auth_service import AuthService
+from app.services.company.company_service import CompanyService
+from app.services.company.invitation_service import CompanyInvitationService
+from app.services.company.join_request_service import CompanyJoinRequestService
+from app.services.company.member_service import CompanyMemberService
+from app.services.company.quiz.quiz_service import QuizService
+from app.services.user.user_service import UserService
 
 RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
 

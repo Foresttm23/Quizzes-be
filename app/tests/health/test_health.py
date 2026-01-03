@@ -26,8 +26,4 @@ async def test_postgresql_connection_health(init_db_for_tests):
 def test_health_check():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {
-        "statusCode": 200,
-        "detail": "ok",
-        "result": "working"
-    }
+    assert response.json() == {"statusCode": 200, "detail": "ok", "result": "working"}

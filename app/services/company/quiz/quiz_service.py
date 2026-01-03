@@ -1,4 +1,4 @@
-from typing import Sequence
+from typing import Sequence, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,19 +6,19 @@ from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql.base import ExecutableOption
 
 from app.core.exceptions import InstanceNotFoundException
+from app.core.exceptions import ResourceConflictException
 from app.core.logger import logger
 from app.db.models import AnswerOption as AnswerOptionModel
 from app.db.models import Question as QuestionModel
 from app.db.models import Quiz as QuizModel
 from app.db.repository.company.quiz.quiz_repository import CompanyQuizRepository
+from app.schemas.base_schemas import PaginationResponse
+from app.schemas.company.quiz.answer_option_schema import AnswerOptionsCreateRequestSchema
+from app.schemas.company.quiz.question_schema import (QuestionUpdateRequestSchema, QuestionCreateRequestSchema, )
+from app.schemas.company.quiz.quiz_schema import (QuizCreateRequestSchema, QuizUpdateRequestSchema, )
 from app.services.base_service import BaseService
 from app.services.company.member_service import CompanyMemberService
 from app.utils.enum_utils import CompanyRole
-from core.exceptions import ResourceConflictException
-from schemas.base_schemas import PaginationResponse
-from schemas.company.quiz.answer_option_schema import AnswerOptionsCreateRequestSchema
-from schemas.company.quiz.question_schema import QuestionUpdateRequestSchema, QuestionCreateRequestSchema
-from schemas.company.quiz.quiz_schema import QuizCreateRequestSchema, QuizUpdateRequestSchema
 
 
 class QuizService(BaseService[CompanyQuizRepository]):
@@ -30,23 +30,59 @@ class QuizService(BaseService[CompanyQuizRepository]):
         super().__init__(repo=CompanyQuizRepository(db=db))
         self.company_member_service = company_member_service
 
-    # TODO Everyone can get any quiz by id, make "scope" visibility
-    async def get_quiz(self, company_id, quiz_id: UUID, relationships: set[InstrumentedAttribute] | None = None,
+    async def get_quiz(self, company_id, user_id: UUID | None, quiz_id: UUID,
+                       relationships: set[InstrumentedAttribute] | None = None,
                        options: Sequence[ExecutableOption] | None = None) -> QuizModel:
-        filters = {QuizModel.company_id: company_id, QuizModel.id: quiz_id}
-        quiz = await self.repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships,
-                                                               options=options)
+        is_admin = False
+        if user_id:
+            is_admin = self.has_admin_permission(company_id=company_id, user_id=user_id)
+
+        if is_admin:
+            quiz = await self._get_all_quiz(company_id=company_id, quiz_id=quiz_id, relationships=relationships,
+                                            options=options)
+        else:
+            quiz = await self._get_visible_quiz(company_id=company_id, quiz_id=quiz_id, relationships=relationships,
+                                                options=options)
+
         if not quiz:
             raise InstanceNotFoundException(instance_name=self.display_name)
+
         return quiz
 
-    async def get_quizzes_paginated(self, company_id: UUID, page: int, page_size: int, user_id: UUID | None = None) -> \
-            PaginationResponse[QuizModel]:
-        if user_id is None:
-            return await self._get_visible_quizzes_paginated(company_id=company_id, page=page, page_size=page_size)
+    async def _get_visible_quiz(self, company_id: UUID, quiz_id: UUID,
+                                relationships: set[InstrumentedAttribute] | None = None,
+                                options: Sequence[ExecutableOption] | None = None) -> QuizModel:
+        filters = self._get_visible_quiz_filters(company_id=company_id, quiz_id=quiz_id)
+        quiz = await self.repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships,
+                                                               options=options)
+        return quiz
 
-        allowed = self.has_admin_permission(company_id=company_id, user_id=user_id)
-        if allowed:
+    async def _get_all_quiz(self, company_id: UUID, quiz_id: UUID,
+                            relationships: set[InstrumentedAttribute] | None = None,
+                            options: Sequence[ExecutableOption] | None = None) -> QuizModel:
+        filters = self._get_all_quiz_filters(company_id=company_id, quiz_id=quiz_id)
+        quiz = await self.repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships,
+                                                               options=options)
+        return quiz
+
+    @classmethod
+    def _get_visible_quiz_filters(cls, company_id: UUID, quiz_id: UUID) -> dict[InstrumentedAttribute, Any]:
+        filters = {QuizModel.company_id: company_id, QuizModel.id: quiz_id, QuizModel.is_published: True,
+                   QuizModel.is_visible: True, }
+        return filters
+
+    @classmethod
+    def _get_all_quiz_filters(cls, company_id: UUID, quiz_id: UUID) -> dict[InstrumentedAttribute, Any]:
+        filters = {QuizModel.company_id: company_id, QuizModel.id: quiz_id}
+        return filters
+
+    async def get_quizzes_paginated(self, company_id: UUID, user_id: UUID | None, page: int, page_size: int) -> \
+            PaginationResponse[QuizModel]:
+        is_admin = False
+        if user_id:
+            is_admin = self.has_admin_permission(company_id=company_id, user_id=user_id)
+
+        if is_admin:
             return await self._get_all_quizzes_paginated(company_id=company_id, page=page, page_size=page_size)
         else:
             return await self._get_visible_quizzes_paginated(company_id=company_id, page=page, page_size=page_size)
@@ -56,12 +92,22 @@ class QuizService(BaseService[CompanyQuizRepository]):
         return questions
 
     async def _get_visible_quizzes_paginated(self, company_id, page: int, page_size: int):
-        filters = {QuizModel.company_id: company_id, QuizModel.is_visible: True, QuizModel.is_published: True}
+        filters = self._get_visible_quizzes_filters(company_id=company_id)
         return await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
 
     async def _get_all_quizzes_paginated(self, company_id, page: int, page_size: int):
-        filters = {QuizModel.company_id: company_id}
+        filters = self._get_all_quizzes_filters(company_id=company_id)
         return await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
+
+    @classmethod
+    def _get_visible_quizzes_filters(cls, company_id: UUID) -> dict[InstrumentedAttribute, Any]:
+        filters = {QuizModel.company_id: company_id, QuizModel.is_visible: True, QuizModel.is_published: True, }
+        return filters
+
+    @classmethod
+    def _get_all_quizzes_filters(cls, company_id: UUID) -> dict[InstrumentedAttribute, Any]:
+        filters = {QuizModel.company_id: company_id}
+        return filters
 
     async def create_quiz(self, company_id: UUID, acting_user_id: UUID,
                           quiz_info: QuizCreateRequestSchema) -> QuizModel:
@@ -83,7 +129,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
         return new_quiz
 
     async def create_question(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID,
-                              question_info: QuestionCreateRequestSchema) -> QuestionModel:
+                              question_info: QuestionCreateRequestSchema, ) -> QuestionModel:
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
         await self._assert_quiz_not_published(company_id=company_id, quiz_id=quiz_id)
 
@@ -96,7 +142,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
         return question
 
     async def create_answer_options(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID, question_id: UUID,
-                                    options_info: AnswerOptionsCreateRequestSchema):
+                                    options_info: AnswerOptionsCreateRequestSchema, ):
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
         await self._assert_quiz_not_published(company_id=company_id, quiz_id=quiz_id)
 
@@ -155,7 +201,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
         last_ver = await self.repo.get_last_version_number(company_id=company_id, root_id=root_id)
         new_quiz = QuizModel(id=uuid4(), company_id=curr_quiz.company_id, title=curr_quiz.title,
                              description=curr_quiz.description, allowed_attempts=curr_quiz.allowed_attempts,
-                             is_published=False, is_visible=False, root_quiz_id=root_id, version=last_ver + 1)
+                             is_published=False, is_visible=False, root_quiz_id=root_id, version=last_ver + 1, )
 
         for old_q in curr_quiz.questions:
             new_quiz.questions.append(old_q.clone())
@@ -178,7 +224,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
         for q in quiz.questions:
             q_options: Sequence[AnswerOptionModel] = q.options
 
-            text = (q.text[:50] + '..') if len(q.text) > 50 else q.text
+            text = (q.text[:50] + "..") if len(q.text) > 50 else q.text
             if len(q_options) < 2:
                 raise ResourceConflictException(f"Question '{text}' is incomplete (needs 2+ options).")
 
@@ -190,7 +236,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
 
         if quiz.root_quiz_id:
             await self.repo.hide_other_versions(company_id=company_id, root_id=quiz.root_quiz_id,
-                                                exclude_quiz_id=quiz.id)
+                                                exclude_quiz_id=quiz.id, )
 
         quiz.is_published = True
         quiz.is_visible = True
@@ -201,7 +247,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
         return quiz
 
     async def update_quiz(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID,
-                          quiz_info: QuizUpdateRequestSchema) -> QuizModel:
+                          quiz_info: QuizUpdateRequestSchema, ) -> QuizModel:
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
         quiz = await self.get_quiz(company_id=company_id, quiz_id=quiz_id)
@@ -213,7 +259,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
         return quiz
 
     async def update_question(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID, question_id: UUID,
-                              question_info: QuestionUpdateRequestSchema) -> QuestionModel:
+                              question_info: QuestionUpdateRequestSchema, ) -> QuestionModel:
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
         await self._assert_quiz_not_published(company_id=company_id, quiz_id=quiz_id)
 
@@ -233,7 +279,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
                                  full_question_info: QuestionUpdateRequestSchema) -> QuestionModel:
         question.options.clear()
         for opt in full_question_info.options:
-            new_opt = AnswerOptionModel(id=uuid4(), text=opt.text, is_correct=opt.is_correct, question_id=question.id)
+            new_opt = AnswerOptionModel(id=uuid4(), text=opt.text, is_correct=opt.is_correct, question_id=question.id, )
             question.options.append(new_opt)
 
         return question

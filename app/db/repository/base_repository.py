@@ -24,7 +24,7 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get_instances_paginated(self, page: int, page_size: int,
-                                      filters: dict[InstrumentedAttribute, Any] | None = None) -> PaginationResponse[
+                                      filters: dict[InstrumentedAttribute, Any] | None = None, ) -> PaginationResponse[
         SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
@@ -46,7 +46,7 @@ class BaseRepository(Generic[ModelType]):
         items = result.all()
 
         return PaginationResponse(total=total, page=page, page_size=page_size, total_pages=total_pages,
-                                  has_next=page < total_pages, has_prev=page > 1, data=items)
+                                  has_next=page < total_pages, has_prev=page > 1, data=items, )
 
     @staticmethod
     def _apply_filters(filters: dict[InstrumentedAttribute, Any], base_query: BaseQuery) -> BaseQuery:
@@ -62,7 +62,7 @@ class BaseRepository(Generic[ModelType]):
 
         return query
 
-    async def save_and_refresh(self, *instances: Base) -> None:
+    async def save_and_refresh(self, *instances: BaseModel) -> None:
         """
         Adds instances, commits and refreshes them.
         If there is duplicate of unique field, IntegrityError is called and session is rolled back.
@@ -84,7 +84,7 @@ class BaseRepository(Generic[ModelType]):
 
     async def get_instance_by_field_or_none(self, field: InstrumentedAttribute, value: Any,
                                             relationships: set[InstrumentedAttribute] | None = None,
-                                            options: ExecutableOption | None = None) -> ModelType | None:
+                                            options: ExecutableOption | None = None, ) -> ModelType | None:
         """
         Gets instance by single field.
         :param field:
@@ -100,7 +100,7 @@ class BaseRepository(Generic[ModelType]):
 
     async def get_instance_by_filters_or_none(self, filters: dict[InstrumentedAttribute, Any],
                                               relationships: set[InstrumentedAttribute] | None = None,
-                                              options: Sequence[ExecutableOption] | None = None) -> ModelType | None:
+                                              options: Sequence[ExecutableOption] | None = None, ) -> ModelType | None:
         """
         Gets instance by many field.
         :param filters: Executes the .where() DB query to the passed args

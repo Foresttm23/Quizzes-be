@@ -1,15 +1,14 @@
 from datetime import timedelta
 
-from app.schemas.user_schemas.user_request_schema import LoginRequest, RegisterRequest
-
 from app.core.config import settings
 from app.core.exceptions import InvalidJWTException, InvalidJWTRefreshException
-from app.core.exceptions import UserIncorrectPasswordOrEmailException, InstanceNotFoundException
+from app.core.exceptions import (UserIncorrectPasswordOrEmailException, InstanceNotFoundException, )
 from app.core.logger import logger
+from app.db.models.user.user_model import User as UserModel
+from app.schemas.user.user_request_schema import LoginRequest, RegisterRequest
+from app.services.user.user_service import UserService
 from app.utils.auth_utils import AuthUtils
 from app.utils.password_utils import verify_password
-from db.models.user.user_model import User as UserModel
-from services.user.user_service import UserService
 
 
 class AuthService:
@@ -22,8 +21,8 @@ class AuthService:
         access_token = self._create_access_token(user=user)
         refresh_token = self._create_refresh_token(user=user)
 
-        logger.debug({"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"})
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        logger.debug({"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", })
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", }
 
     async def register_user(self, sign_up_data: RegisterRequest) -> UserModel:
         """

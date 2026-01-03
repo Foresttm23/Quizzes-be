@@ -3,12 +3,12 @@ from uuid import UUID
 from pydantic import Field, field_validator
 
 from app.schemas.base_schemas import Base, BaseUpdateMixin
-from app.schemas.company.quiz.answer_option_schema import AnswerOptionsCreateRequestSchema
-from schemas.company.quiz.answer_option_schema import AnswerOptionsStudentResponseSchema
+from app.schemas.company.quiz.answer_option_schema import (AnswerOptionsCreateRequestSchema, )
+from app.schemas.company.quiz.answer_option_schema import AnswerOptionsStudentResponseSchema
 
 
 class QuestionOptionsMixin:
-    @field_validator('options')
+    @field_validator("options")
     @classmethod
     def validate_option(cls, options: list[AnswerOptionsCreateRequestSchema] | None):
         if options is None:

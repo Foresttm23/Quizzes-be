@@ -3,16 +3,16 @@ from uuid import UUID, uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
+from app.core.exceptions import InstanceNotFoundException
 from app.core.exceptions import PermissionDeniedException
 from app.core.logger import logger
-from app.db.models.company.join_request_model import JoinRequest as CompanyJoinRequestModel
+from app.db.models.company.join_request_model import (JoinRequest as CompanyJoinRequestModel, )
 from app.db.models.company.member_model import Member as CompanyMemberModel
+from app.db.repository.company.join_request_repository import CompanyJoinRequestRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.services.base_service import BaseService
+from app.services.company.member_service import CompanyMemberService
 from app.utils.enum_utils import MessageStatus, CompanyRole
-from core.exceptions import InstanceNotFoundException
-from db.repository.company.join_request_repository import CompanyJoinRequestRepository
-from services.company.member_service import CompanyMemberService
 
 
 class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
@@ -93,20 +93,20 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         return request
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
-                                      page_size: int = 100) -> PaginationResponse[CompanyJoinRequestModel]:
+                                      page_size: int = 100, ) -> PaginationResponse[CompanyJoinRequestModel]:
         acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
                                                                                    user_id=acting_user_id)
         self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
         filters = {CompanyJoinRequestModel.company_id: company_id,
-                   CompanyJoinRequestModel.status: MessageStatus.PENDING}
+                   CompanyJoinRequestModel.status: MessageStatus.PENDING, }
         requests = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return requests
 
     async def get_pending_for_user(self, user_id: UUID, page: int = 1, page_size: int = 100) -> PaginationResponse[
         CompanyJoinRequestModel]:
         filters = {CompanyJoinRequestModel.requesting_user_id: user_id,
-                   CompanyJoinRequestModel.status: MessageStatus.PENDING}
+                   CompanyJoinRequestModel.status: MessageStatus.PENDING, }
         requests = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return requests
 

@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import Field
 
 from app.schemas.base_schemas import Base
-from schemas.base_schemas import BaseUpdateMixin
+from app.schemas.base_schemas import BaseUpdateMixin
 
 
 class QuizCreateRequestSchema(Base):

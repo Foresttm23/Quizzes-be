@@ -14,6 +14,7 @@ from routers.company.company_router import router as company_router
 from routers.company.invitation_router import router as invitation_router
 from routers.company.join_request_router import router as company_join_request_router
 from routers.company.member_router import router as company_member_router
+from routers.company.quiz.quiz_router import router as company_quiz_router
 from routers.user.user_router import router as user_router
 
 
@@ -21,12 +22,12 @@ from routers.user.user_router import router as user_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info(f"Startup")
+    logger.info("Startup")
     sessionmanager = init_db(settings.DB.DATABASE_URL)
 
     yield
     # Shutdown
-    logger.info(f"Shutdown")
+    logger.info("Shutdown")
     await redis_client.aclose()
     await pool.disconnect()
     await sessionmanager.close()
@@ -41,9 +42,10 @@ app.include_router(company_router)
 app.include_router(company_member_router)
 app.include_router(invitation_router)
 app.include_router(company_join_request_router)
+app.include_router(company_quiz_router)
 
 app.add_middleware(CORSMiddleware, allow_origins=settings.APP.ORIGINS, allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"], )
 
-if __name__ == '__main__':
-    uvicorn.run("app.main:app", host=settings.APP.HOST, port=settings.APP.PORT, reload=settings.APP.RELOAD)
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host=settings.APP.HOST, port=settings.APP.PORT, reload=settings.APP.RELOAD, )

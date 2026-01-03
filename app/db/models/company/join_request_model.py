@@ -15,7 +15,7 @@ class JoinRequest(Base, TimestampMixin):
     __tablename__ = "company_join_requests"
 
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"),
-                                                  nullable=False)
+                                                  nullable=False, )
     requesting_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True),
                                                           ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[MessageStatus] = mapped_column(SQLEnum(MessageStatus, native_enum=True),

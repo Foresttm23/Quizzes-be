@@ -2,15 +2,15 @@ import pytest
 import pytest_asyncio
 from alembic import command
 from alembic.config import Config
-from app.schemas.user_schemas.user_request_schema import RegisterRequest
 from pydantic import SecretStr
 from sqlalchemy import NullPool, text
 
 from app.core.config import settings
+from app.db.models.user.user_model import User as UserModel
 from app.db.postgres import DBSessionManager
-from db.models.user.user_model import User as UserModel
-from services.company.member_service import CompanyMemberService
-from services.user.user_service import UserService
+from app.schemas.user.user_request_schema import RegisterRequest
+from app.services.company.member_service import CompanyMemberService
+from app.services.user.user_service import UserService
 
 DEFAULT_EMAIL = "test@example.com"
 DEFAULT_USERNAME = "testuser"
@@ -54,7 +54,9 @@ async def test_session_manager():
     # NullPool ensures that the connections won't be shared/reused
     # so each test is in a clean state,
     # "must have" for async db environment
-    test_session_manager = DBSessionManager(settings.TESTDB.TEST_DATABASE_URL, {"poolclass": NullPool})
+    test_session_manager = DBSessionManager(
+        settings.TESTDB.TEST_DATABASE_URL, {"poolclass": NullPool}
+    )
     yield test_session_manager
     await test_session_manager.close()
 
@@ -76,7 +78,9 @@ async def clean_testdb(testdb_session):
     Main fixture to ensure tests execute in a 'clean' state.
     """
     await testdb_session.execute(text("TRUNCATE TABLE users RESTART IDENTITY CASCADE;"))
-    await testdb_session.execute(text("TRUNCATE TABLE companies RESTART IDENTITY CASCADE;"))
+    await testdb_session.execute(
+        text("TRUNCATE TABLE companies RESTART IDENTITY CASCADE;")
+    )
     await testdb_session.commit()
 
 
@@ -100,14 +104,19 @@ async def test_company_member_service(testdb_session):
 
 @pytest_asyncio.fixture
 async def created_user(test_user_service: UserService) -> UserModel:
-    user_info = RegisterRequest(email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD)
+    user_info = RegisterRequest(
+        email=DEFAULT_EMAIL, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD
+    )
     user = await test_user_service.create_user(user_info=user_info)
     return user
 
 
 @pytest_asyncio.fixture
 async def created_user_other(test_user_service: UserService) -> UserModel:
-    user_info = RegisterRequest(email="other_" + DEFAULT_EMAIL, username="other_" + DEFAULT_USERNAME,
-                                password=DEFAULT_PASSWORD)
+    user_info = RegisterRequest(
+        email="other_" + DEFAULT_EMAIL,
+        username="other_" + DEFAULT_USERNAME,
+        password=DEFAULT_PASSWORD,
+    )
     user = await test_user_service.create_user(user_info=user_info)
     return user

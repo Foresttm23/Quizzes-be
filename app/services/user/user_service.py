@@ -1,8 +1,6 @@
 from typing import TypeVar, Any
 from uuid import uuid4, UUID
 
-from app.schemas.user_schemas.user_request_schema import RegisterRequest, UserInfoUpdateRequest
-from app.schemas.user_schemas.user_request_schema import UserPasswordUpdateRequest
 from pydantic import BaseModel
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,11 +9,13 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app.core.exceptions import InvalidPasswordException, InstanceNotFoundException
 from app.core.exceptions import PasswordReuseException
 from app.core.logger import logger
+from app.db.models.user.user_model import User as UserModel
+from app.db.repository.user.user_repository import UserRepository
 from app.schemas.base_schemas import PaginationResponse
+from app.schemas.user.user_request_schema import (RegisterRequest, UserInfoUpdateRequest, )
+from app.schemas.user.user_request_schema import UserPasswordUpdateRequest
 from app.services.base_service import BaseService
 from app.utils.password_utils import hash_password, verify_password
-from db.models.user.user_model import User as UserModel
-from db.repository.user.user_repository import UserRepository
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
@@ -37,7 +37,7 @@ class UserService(BaseService[UserRepository]):
         return user
 
     async def _get_user_by_field(self, field: InstrumentedAttribute, value: Any,
-                                 relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
+                                 relationships: set[InstrumentedAttribute] | None = None, ) -> UserModel:
         user = await self.repo.get_instance_by_field_or_none(field=field, value=value, relationships=relationships)
         if not user:
             raise InstanceNotFoundException(instance_name=self.display_name)
@@ -74,7 +74,7 @@ class UserService(BaseService[UserRepository]):
         # relying only on email will expose it, so a simple uuid is better
         user = UserModel(id=uuid4(), email=user_info["email"],
                          # .hex pretty much cleans the uuid from unique characters
-                         username=f"user_{uuid4().hex[:12]}", hashed_password=None, auth_provider="auth0")
+                         username=f"user_{uuid4().hex[:12]}", hashed_password=None, auth_provider="auth0", )
 
         await self.repo.save_and_refresh(user)
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
