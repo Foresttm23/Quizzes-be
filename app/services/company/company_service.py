@@ -9,12 +9,12 @@ from app.core.exceptions import InstanceNotFoundException
 from app.core.logger import logger
 from app.db.models.company.company_model import Company as CompanyModel
 from app.db.models.company.member_model import Member as CompanyMemberModel
+from app.db.repository.company.company_repository import CompanyRepository
 from app.schemas.base_schemas import PaginationResponse
+from app.schemas.company.company_schema import (CompanyCreateRequestSchema, CompanyUpdateInfoRequestSchema, )
 from app.services.base_service import BaseService
+from app.services.company.member_service import CompanyMemberService
 from app.utils.enum_utils import CompanyRole
-from db.repository.company.company_repository import CompanyRepository
-from schemas.company.company_schema import CompanyCreateRequestSchema, CompanyUpdateInfoRequestSchema
-from services.company.member_service import CompanyMemberService
 
 
 class CompanyService(BaseService[CompanyRepository]):
@@ -26,8 +26,8 @@ class CompanyService(BaseService[CompanyRepository]):
         super().__init__(repo=CompanyRepository(db=db))
         self.company_member_service = company_member_service
 
-    async def get_companies_paginated(self, page: int, page_size: int, user_id: UUID | None = None) -> \
-            PaginationResponse[CompanyModel]:
+    async def get_companies_paginated(self, user_id: UUID | None, page: int, page_size: int) -> PaginationResponse[
+        CompanyModel]:
         if not user_id:
             return await self._get_visible_companies_paginated(page=page, page_size=page_size)
 
@@ -52,7 +52,7 @@ class CompanyService(BaseService[CompanyRepository]):
 
         return await self.repo.paginate_query(query, page, page_size)
 
-    async def get_by_id(self, company_id: UUID, user_id: UUID | None = None) -> CompanyModel:
+    async def get_by_id(self, company_id: UUID, user_id: UUID | None) -> CompanyModel:
         company = await self.get_company(company_id=company_id)
         if company.is_visible:
             return company
@@ -76,7 +76,7 @@ class CompanyService(BaseService[CompanyRepository]):
         return company
 
     async def update_company(self, company_id: UUID, acting_user_id: UUID,
-                             company_info: CompanyUpdateInfoRequestSchema) -> CompanyModel:
+                             company_info: CompanyUpdateInfoRequestSchema, ) -> CompanyModel:
         company = await self.get_company(company_id=company_id)
         acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company.id,
                                                                                    user_id=acting_user_id)

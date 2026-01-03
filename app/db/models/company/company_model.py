@@ -14,15 +14,15 @@ class Company(Base, TimestampMixin):
 
     name: Mapped[str] = mapped_column(String, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.text('true'))
+    is_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.text("true"))
 
     # The str in "" syntax allows not importing every model needed.
     # SQLAlchemy will resolve it automatically if the User model exists
     members: Mapped[list["Member"]] = relationship("Member", back_populates="company", cascade="all, delete",
                                                    passive_deletes=True)
     join_requests: Mapped[list["JoinRequest"]] = relationship("JoinRequest", back_populates="company",
-                                                              cascade="all, delete", passive_deletes=True)
+                                                              cascade="all, delete", passive_deletes=True, )
     invitations: Mapped[list["Invitation"]] = relationship("Invitation", back_populates="company",
-                                                           cascade="all, delete", passive_deletes=True)
+                                                           cascade="all, delete", passive_deletes=True, )
     quizzes: Mapped[list["Quiz"]] = relationship("Quiz", back_populates="company", cascade="all, delete",
                                                  passive_deletes=True)

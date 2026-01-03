@@ -1,19 +1,18 @@
 from typing import Sequence, Any
 from uuid import UUID
 
-from pygments.lexers import q
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.exceptions import InstanceNotFoundException
-from app.core.exceptions import UserIsNotACompanyMemberException, CompanyPermissionException, \
-    UserAlreadyInCompanyException, ResourceConflictException
+from app.core.exceptions import (UserIsNotACompanyMemberException, CompanyPermissionException,
+                                 UserAlreadyInCompanyException, ResourceConflictException, )
 from app.core.logger import logger
 from app.db.models import Member as CompanyMemberModel
 from app.db.repository.company.member_repository import CompanyMemberRepository
+from app.schemas.base_schemas import PaginationResponse
 from app.services.base_service import BaseService
 from app.utils.enum_utils import CompanyRole
-from schemas.base_schemas import PaginationResponse
 
 
 class CompanyMemberService(BaseService[CompanyMemberRepository]):
@@ -25,7 +24,7 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
         super().__init__(repo=CompanyMemberRepository(db=db))
 
     async def get_members_paginated(self, page: int, page_size: int, company_id: UUID,
-                                    role: CompanyRole | None = None) -> PaginationResponse[CompanyMemberModel]:
+                                    role: CompanyRole | None = None, ) -> PaginationResponse[CompanyMemberModel]:
         filters: dict[InstrumentedAttribute, Any] = {CompanyMemberModel.company_id: company_id}
         if role:
             filters[CompanyMemberModel.role] = role
@@ -43,7 +42,7 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
         target_member = await self.get_member(company_id=company_id, user_id=target_user_id)
 
         acting_user_role = await self.repo.get_company_role(company_id=company_id, user_id=acting_user_id)
-        self.validate_user_role(user_role=acting_user_role, required_role=target_member.role, strictly_higher=True)
+        self.validate_user_role(user_role=acting_user_role, required_role=target_member.role, strictly_higher=True, )
 
         await self._delete_instance(target_member)
         await self.repo.commit()
@@ -72,7 +71,7 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
             raise UserIsNotACompanyMemberException()
 
     async def get_member(self, company_id: UUID, user_id: UUID,
-                         relationships: set[InstrumentedAttribute] | None = None) -> CompanyMemberModel:
+                         relationships: set[InstrumentedAttribute] | None = None, ) -> CompanyMemberModel:
         """
         :param company_id:
         :param user_id:
@@ -85,19 +84,19 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
             raise InstanceNotFoundException(instance_name=self.display_name)
         return member
 
-    async def _get_member_or_none(self, company_id: UUID, user_id: UUID,
-                                  relationships: set[InstrumentedAttribute] | None = None) -> CompanyMemberModel | None:
+    async def _get_member_or_none(self, company_id: UUID, user_id: UUID, relationships: set[
+                                                                                            InstrumentedAttribute] | None = None, ) -> CompanyMemberModel | None:
         """
         :param company_id:
         :param user_id:
         :param relationships:
         :return: Company Member | None
         """
-        filters = {CompanyMemberModel.company_id: company_id, CompanyMemberModel.user_id: user_id}
+        filters = {CompanyMemberModel.company_id: company_id, CompanyMemberModel.user_id: user_id, }
         return await self.repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships)
 
     @staticmethod
-    def validate_user_role(user_role: CompanyRole, required_role: CompanyRole, strictly_higher: bool = False) -> None:
+    def validate_user_role(user_role: CompanyRole, required_role: CompanyRole, strictly_higher: bool = False, ) -> None:
         if user_role is None:
             raise UserIsNotACompanyMemberException()
 
@@ -109,9 +108,9 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
                 raise CompanyPermissionException()
 
     async def assert_user_permissions(self, company_id: UUID, user_id: UUID, required_role: CompanyRole,
-                                      strictly_higher: bool = False) -> None:
+                                      strictly_higher: bool = False, ) -> None:
         user_role = await self.repo.get_company_role(company_id=company_id, user_id=user_id)
-        self.validate_user_role(user_role=user_role, required_role=required_role, strictly_higher=strictly_higher)
+        self.validate_user_role(user_role=user_role, required_role=required_role, strictly_higher=strictly_higher, )
 
     async def assert_user_not_in_company(self, company_id: UUID, user_id: UUID) -> None:
         member = await self._get_member_or_none(company_id=company_id, user_id=user_id)
@@ -119,7 +118,7 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
             raise UserAlreadyInCompanyException()
 
     async def has_user_permissions(self, company_id: UUID, user_id: UUID, required_role: CompanyRole,
-                                   strictly_higher: bool = False) -> bool:
+                                   strictly_higher: bool = False, ) -> bool:
         """
         :param company_id:
         :param user_id:
@@ -134,7 +133,7 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
             return False
 
     async def update_role(self, company_id: UUID, target_user_id: UUID, acting_user_id: UUID,
-                          new_role: CompanyRole) -> CompanyMemberModel:
+                          new_role: CompanyRole, ) -> CompanyMemberModel:
         target_member = await self.get_member(company_id=company_id, user_id=target_user_id)
 
         # Only Owner can update the member roles for now, can be changed in the future though

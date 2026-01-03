@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     AUTH0_JWT: Auth0JWTSettings = Auth0JWTSettings()
     REDIS: RedisSettings = RedisSettings()
 
-    model_config = SettingsConfigDict(env_file=".env", extra='ignore')
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 settings = Settings()

@@ -3,12 +3,18 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import InstanceNotFoundException, RecordAlreadyExistsException, \
-    UserIsNotACompanyMemberException
+from app.core.exceptions import (
+    InstanceNotFoundException,
+    RecordAlreadyExistsException,
+    UserIsNotACompanyMemberException,
+)
 from app.db.models.company.company_model import Company as CompanyModel
-from db.models.user.user_model import User as UserModel
-from schemas.company.company_schema import CompanyCreateRequestSchema, CompanyUpdateInfoRequestSchema
-from services.company.company_service import CompanyService
+from app.db.models.user.user_model import User as UserModel
+from app.schemas.company.company_schema import (
+    CompanyCreateRequestSchema,
+    CompanyUpdateInfoRequestSchema,
+)
+from app.services.company.company_service import CompanyService
 
 pytestmark = pytest.mark.asyncio
 
@@ -16,11 +22,17 @@ DEFAULT_COMPANY_NAME = "TestCompany Inc."
 DEFAULT_COMPANY_DESCRIPTION = "A default company for testing."
 
 
-async def test_create_company_success(testdb_session: AsyncSession, test_company_service: CompanyService,
-                                      company_owner: UserModel):
-    company_info = CompanyCreateRequestSchema(name="New Company", description="Another testing company.",
-                                              is_visible=True)
-    company = await test_company_service.create_company(acting_user_id=company_owner.id, company_info=company_info)
+async def test_create_company_success(
+        testdb_session: AsyncSession,
+        test_company_service: CompanyService,
+        company_owner: UserModel,
+):
+    company_info = CompanyCreateRequestSchema(
+        name="New Company", description="Another testing company.", is_visible=True
+    )
+    company = await test_company_service.create_company(
+        acting_user_id=company_owner.id, company_info=company_info
+    )
 
     assert company.id is not None
     assert company.name == "New Company"
@@ -33,67 +45,111 @@ async def test_create_company_success(testdb_session: AsyncSession, test_company
     assert company_owner.companies[0].company_id == company.id
 
 
-async def test_create_company_duplicate_name(test_company_service: CompanyService, company_owner: UserModel,
-                                             created_company: CompanyModel):
-    company_info_duplicate = CompanyCreateRequestSchema(name=created_company.name, description="Should Fail",
-                                                        is_visible=True)
+async def test_create_company_duplicate_name(
+        test_company_service: CompanyService,
+        company_owner: UserModel,
+        created_company: CompanyModel,
+):
+    company_info_duplicate = CompanyCreateRequestSchema(
+        name=created_company.name, description="Should Fail", is_visible=True
+    )
 
     with pytest.raises(RecordAlreadyExistsException):
-        await test_company_service.create_company(acting_user_id=company_owner.id, company_info=company_info_duplicate)
+        await test_company_service.create_company(
+            acting_user_id=company_owner.id, company_info=company_info_duplicate
+        )
 
 
-async def test_update_company_info_success(test_company_service: CompanyService, created_company: CompanyModel,
-                                           company_owner: UserModel):
-    new_info = CompanyUpdateInfoRequestSchema(name="New Updated Name", description="Updated Description",
-                                              is_visible=True)
+async def test_update_company_info_success(
+        test_company_service: CompanyService,
+        created_company: CompanyModel,
+        company_owner: UserModel,
+):
+    new_info = CompanyUpdateInfoRequestSchema(
+        name="New Updated Name", description="Updated Description", is_visible=True
+    )
 
-    updated_company = await test_company_service.update_company(company_id=created_company.id,
-                                                                acting_user_id=company_owner.id, company_info=new_info)
+    updated_company = await test_company_service.update_company(
+        company_id=created_company.id,
+        acting_user_id=company_owner.id,
+        company_info=new_info,
+    )
     assert updated_company.name == "New Updated Name"
     assert updated_company.description == "Updated Description"
     assert updated_company.members[0].user_id == company_owner.id
     assert updated_company.is_visible is not None
 
 
-async def test_update_company_info_permission_error(test_company_service: CompanyService, created_company: CompanyModel,
-                                                    company_owner_other: UserModel):
-    new_info = CompanyUpdateInfoRequestSchema(name="Attempted Update", description=None, is_visible=True)
+async def test_update_company_info_permission_error(
+        test_company_service: CompanyService,
+        created_company: CompanyModel,
+        company_owner_other: UserModel,
+):
+    new_info = CompanyUpdateInfoRequestSchema(
+        name="Attempted Update", description=None, is_visible=True
+    )
 
     with pytest.raises(UserIsNotACompanyMemberException):
-        await test_company_service.update_company(company_id=created_company.id, acting_user_id=company_owner_other.id,
-                                                  company_info=new_info)
+        await test_company_service.update_company(
+            company_id=created_company.id,
+            acting_user_id=company_owner_other.id,
+            company_info=new_info,
+        )
 
 
-async def test_update_company_info_not_found(test_company_service: CompanyService, company_owner: UserModel):
+async def test_update_company_info_not_found(
+        test_company_service: CompanyService, company_owner: UserModel
+):
     non_existent_id = uuid.uuid4()
-    new_info = CompanyUpdateInfoRequestSchema(name="Attempted Update", description=None, is_visible=None)
+    new_info = CompanyUpdateInfoRequestSchema(
+        name="Attempted Update", description=None, is_visible=None
+    )
 
     with pytest.raises(InstanceNotFoundException):
-        await test_company_service.update_company(company_id=non_existent_id, acting_user_id=company_owner.id,
-                                                  company_info=new_info)
+        await test_company_service.update_company(
+            company_id=non_existent_id,
+            acting_user_id=company_owner.id,
+            company_info=new_info,
+        )
 
 
-async def test_delete_company_success(test_company_service: CompanyService, testdb_session: AsyncSession,
-                                      created_company: CompanyModel, company_owner: UserModel):
+async def test_delete_company_success(
+        test_company_service: CompanyService,
+        testdb_session: AsyncSession,
+        created_company: CompanyModel,
+        company_owner: UserModel,
+):
     """Basic deletion of the instance, but we have to check if the company deletion were made in cascade"""
-    await test_company_service.delete_company(company_id=created_company.id, acting_user_id=company_owner.id)
+    await test_company_service.delete_company(
+        company_id=created_company.id, acting_user_id=company_owner.id
+    )
 
     company = await testdb_session.get(CompanyModel, created_company.id)
     assert company is None
     assert company_owner.companies == []
 
 
-async def test_delete_company_permission_error(test_company_service: CompanyService, created_company: CompanyModel,
-                                               company_owner_other: UserModel):
+async def test_delete_company_permission_error(
+        test_company_service: CompanyService,
+        created_company: CompanyModel,
+        company_owner_other: UserModel,
+):
     with pytest.raises(UserIsNotACompanyMemberException):
-        await test_company_service.delete_company(company_id=created_company.id, acting_user_id=company_owner_other.id)
+        await test_company_service.delete_company(
+            company_id=created_company.id, acting_user_id=company_owner_other.id
+        )
 
 
 # ------------------------------------PRETTY MUCH OBSOLETE, SINCE BASE SERVICE ALREADY TESTS THIS------------------------------------
 # -------------------------BUT SINCE IT INTERACTS MOSTLY WITH 2 MODELS (USER, COMPANY), CAN STILL BE USEFUL--------------------------
 
-async def test_fetch_company_by_id_success(test_company_service: CompanyService, created_company: CompanyModel):
-    company_from_db = await test_company_service.get_by_id(company_id=created_company.id)
+
+async def test_fetch_company_by_id_success(
+        test_company_service: CompanyService, created_company: CompanyModel
+):
+    company_from_db = await test_company_service.get_by_id(
+        company_id=created_company.id
+    )
     assert company_from_db.id == created_company.id
     assert company_from_db.name == created_company.name
     assert company_from_db.members[0].user_id == created_company.members[0].user_id
@@ -105,26 +161,46 @@ async def test_fetch_company_by_id_not_found(test_company_service: CompanyServic
         await test_company_service.get_by_id(company_id=non_existent_id)
 
 
-async def test_fetch_companies_paginated_success(test_company_service: CompanyService, company_owner: UserModel):
-    company1_info = CompanyCreateRequestSchema(name="Page 1 Co", description="Co 1", is_visible=True)
-    company2_info = CompanyCreateRequestSchema(name="Page 2 Co", description="Co 2", is_visible=True)
-    await test_company_service.create_company(acting_user_id=company_owner.id, company_info=company1_info)
-    await test_company_service.create_company(acting_user_id=company_owner.id, company_info=company2_info)
+async def test_fetch_companies_paginated_success(
+        test_company_service: CompanyService, company_owner: UserModel
+):
+    company1_info = CompanyCreateRequestSchema(
+        name="Page 1 Co", description="Co 1", is_visible=True
+    )
+    company2_info = CompanyCreateRequestSchema(
+        name="Page 2 Co", description="Co 2", is_visible=True
+    )
+    await test_company_service.create_company(
+        acting_user_id=company_owner.id, company_info=company1_info
+    )
+    await test_company_service.create_company(
+        acting_user_id=company_owner.id, company_info=company2_info
+    )
 
-    paginated_companies = await test_company_service.get_companies_paginated(page=1, page_size=1)
+    paginated_companies = await test_company_service.get_companies_paginated(
+        page=1, page_size=1
+    )
 
     assert paginated_companies["page"] == 1
     assert len(paginated_companies["data"]) == 1
     assert paginated_companies["has_next"] is True
 
 
-async def test_fetch_companies_paginated_no_companies(test_company_service: CompanyService):
-    paginated_companies = await test_company_service.get_companies_paginated(page=1, page_size=1)
+async def test_fetch_companies_paginated_no_companies(
+        test_company_service: CompanyService,
+):
+    paginated_companies = await test_company_service.get_companies_paginated(
+        page=1, page_size=1
+    )
     assert paginated_companies["data"] == []
 
 
-async def test_delete_company_not_found(test_company_service: CompanyService, company_owner: UserModel):
+async def test_delete_company_not_found(
+        test_company_service: CompanyService, company_owner: UserModel
+):
     non_existent_id = uuid.uuid4()
 
     with pytest.raises(InstanceNotFoundException):
-        await test_company_service.delete_company(company_id=non_existent_id, acting_user_id=company_owner.id)
+        await test_company_service.delete_company(
+            company_id=non_existent_id, acting_user_id=company_owner.id
+        )

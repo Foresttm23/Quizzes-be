@@ -9,7 +9,7 @@ from app.db.postgres import Base, TimestampMixin
 
 
 class User(Base, TimestampMixin):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     username: Mapped[str] = mapped_column(String, unique=True)
@@ -23,9 +23,9 @@ class User(Base, TimestampMixin):
     companies: Mapped[list["Member"]] = relationship("Member", back_populates="user", cascade="all, delete",
                                                      passive_deletes=True)
     join_requests: Mapped[list["JoinRequest"]] = relationship("JoinRequest", back_populates="requesting_user",
-                                                              cascade="all, delete", passive_deletes=True)
+                                                              cascade="all, delete", passive_deletes=True, )
     received_invitations: Mapped[list["Invitation"]] = relationship("Invitation", back_populates="invited_user",
-                                                                    cascade="all, delete", passive_deletes=True)
+                                                                    cascade="all, delete", passive_deletes=True, )
     attempts: Mapped[list["Attempt"]] = relationship("Attempt", back_populates="user", passive_deletes=True,
                                                      cascade="all, delete")
 

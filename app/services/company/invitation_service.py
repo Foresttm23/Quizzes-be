@@ -2,16 +2,16 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import InstanceNotFoundException
 from app.core.exceptions import InvalidRecipientException
 from app.core.logger import logger
 from app.db.models.company.invitation_model import Invitation as CompanyInvitationModel
 from app.db.models.company.member_model import Member as CompanyMemberModel
+from app.db.repository.company.invitation_repository import CompanyInvitationRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.services.base_service import BaseService
+from app.services.company.member_service import CompanyMemberService
 from app.utils.enum_utils import CompanyRole, MessageStatus
-from core.exceptions import InstanceNotFoundException
-from db.repository.company.invitation_repository import CompanyInvitationRepository
-from services.company.member_service import CompanyMemberService
 
 
 class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
@@ -39,7 +39,7 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
         await self.company_member_service.assert_user_not_in_company(company_id=company_id, user_id=invited_user_id)
 
         new_invitation = CompanyInvitationModel(id=uuid4(), company_id=company_id, invited_user_id=invited_user_id,
-                                                status=MessageStatus.PENDING)
+                                                status=MessageStatus.PENDING, )
 
         await self.repo.save_and_refresh(new_invitation)
         logger.info(
@@ -107,7 +107,7 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
     async def get_pending_for_user(self, user_id: UUID, page: int, page_size: int) -> PaginationResponse[
         CompanyInvitationModel]:
         filters = {CompanyInvitationModel.invited_user_id: user_id,
-                   CompanyInvitationModel.status: MessageStatus.PENDING}
+                   CompanyInvitationModel.status: MessageStatus.PENDING, }
         invitations = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return invitations
 
@@ -117,7 +117,8 @@ class CompanyInvitationService(BaseService[CompanyInvitationRepository]):
                                                                                    user_id=acting_user_id)
         self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
-        filters = {CompanyInvitationModel.company_id: company_id, CompanyInvitationModel.status: MessageStatus.PENDING}
+        filters = {CompanyInvitationModel.company_id: company_id,
+                   CompanyInvitationModel.status: MessageStatus.PENDING, }
         invitations = await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters)
         return invitations
 

@@ -62,21 +62,13 @@ class AuthUtils:
 
     @staticmethod
     def _handle_local_token_encode(data: dict, secret_key: str) -> str:
-        encoded_jwt = jwt.encode(
-            data,
-            key=secret_key,
-            algorithm=settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM
-        )
+        encoded_jwt = jwt.encode(data, key=secret_key, algorithm=settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM)
         return encoded_jwt
 
     @staticmethod
     def _handle_local_token_decode(token: str, secret_key: str) -> dict:
         try:
-            payload = jwt.decode(
-                token,
-                key=secret_key,
-                algorithms=[settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM],
-            )
+            payload = jwt.decode(token, key=secret_key, algorithms=[settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM], )
         except JWTError:
             raise InvalidJWTException()
 

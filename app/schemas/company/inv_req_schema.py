@@ -2,8 +2,8 @@ from datetime import datetime
 from uuid import UUID
 
 from app.schemas.base_schemas import Base
+from app.schemas.company.member_schema import CompanyMemberDetailsResponse
 from app.utils.enum_utils import MessageStatus
-from schemas.company.member_schema import CompanyMemberDetailsResponse
 
 
 class UpdateRequestSchema(Base):
