@@ -96,14 +96,14 @@ async def get_questions(quiz_service: CompanyQuizServiceDep, user: GetUserJWTDep
 async def update_question_full(quiz_service: CompanyQuizServiceDep, user: GetUserJWTDep, company_id: UUID,
                                quiz_id: UUID, question_id: UUID, question_info: QuestionUpdateRequestSchema, ):
     question = await quiz_service.update_question(company_id=company_id, acting_user_id=user.id, quiz_id=quiz_id,
-                                                  question_id=question_id, question_info=question_info)
+                                                  question_id=question_id, question_info=question_info, )
     return question
 
 
 @router.post("/{company_id}/{quiz_id}/versions", response_model=QuizDetailsResponseSchema,
              status_code=status.HTTP_201_CREATED, )
 async def create_new_quiz_version_within_company(quiz_service: CompanyQuizServiceDep, user: GetUserJWTDep,
-                                                 company_id: UUID, quiz_id: UUID):
+                                                 company_id: UUID, quiz_id: UUID, ):
     quiz = await quiz_service.create_new_version_within_company(company_id=company_id, acting_user_id=user.id,
                                                                 curr_quiz_id=quiz_id)
     return quiz

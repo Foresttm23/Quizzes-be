@@ -243,7 +243,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
 
         if quiz.root_quiz_id:
             await self.repo.hide_other_versions(company_id=company_id, root_id=quiz.root_quiz_id,
-                                                exclude_quiz_id=quiz.id)
+                                                exclude_quiz_id=quiz.id, )
 
         quiz.is_published = True
         quiz.is_visible = True
