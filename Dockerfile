@@ -19,7 +19,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked
 
 # For development docker-compose will overwrite folder
-COPY ./app /package/app
+COPY src /package/src
 
 # Since I cant execute it on Windows
 COPY start.sh .

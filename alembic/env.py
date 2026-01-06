@@ -12,9 +12,9 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), ".."
 
 # Import all models.
 # Since all models defined in this file, we can import *, or just Base for simplicity
-from app.db.models import Base  # type: ignore # noqa
+from src.db.models import Base  # type: ignore # noqa
 
-from app.core.config import settings
+from core.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
