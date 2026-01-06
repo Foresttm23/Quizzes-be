@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.user.user_model import User as UserModel
+from db.models.user_model import User as UserModel
 from .test_base_service_setup import (
     _TestService,
     _TestUserRepository,

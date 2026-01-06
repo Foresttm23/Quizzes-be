@@ -8,27 +8,27 @@ from sqlalchemy.sql.base import ExecutableOption
 from app.core.exceptions import InstanceNotFoundException
 from app.core.exceptions import ResourceConflictException
 from app.core.logger import logger
-from app.db.models import AnswerOption as AnswerOptionModel
-from app.db.models import Question as QuestionModel
-from app.db.models import Quiz as QuizModel
-from app.db.repository.company.quiz.quiz_repository import CompanyQuizRepository
+from app.db.models import CompanyQuiz as QuizModel
+from app.db.models import CompanyQuizQuestion as QuestionModel
+from app.db.models import QuestionAnswerOption as AnswerOptionModel
+from app.db.repository.company.quiz.quiz_repository import QuizRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company.quiz.answer_option_schema import AnswerOptionsCreateRequestSchema
 from app.schemas.company.quiz.question_schema import (QuestionUpdateRequestSchema, QuestionCreateRequestSchema, )
 from app.schemas.company.quiz.quiz_schema import (QuizCreateRequestSchema, QuizUpdateRequestSchema, )
 from app.services.base_service import BaseService
-from app.services.company.member_service import CompanyMemberService
+from app.services.company.member_service import MemberService
 from app.utils.enum_utils import CompanyRole
 
 
-class QuizService(BaseService[CompanyQuizRepository]):
+class QuizService(BaseService[QuizRepository]):
     @property
     def display_name(self) -> str:
         return "Quiz"
 
-    def __init__(self, db: AsyncSession, company_member_service: CompanyMemberService):
-        super().__init__(repo=CompanyQuizRepository(db=db))
-        self.company_member_service = company_member_service
+    def __init__(self, db: AsyncSession, member_service: MemberService):
+        super().__init__(repo=QuizRepository(db=db))
+        self.member_service = member_service
 
     async def get_quiz(self, company_id, user_id: UUID | None, quiz_id: UUID,
                        relationships: set[InstrumentedAttribute] | None = None,
@@ -167,7 +167,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
     async def delete_quiz(self, company_id: UUID, quiz_id: UUID, acting_user_id: UUID) -> None:
         # Only owner can delete quizzes
         await self._assert_owner_permissions(company_id=company_id, user_id=acting_user_id)
-        quiz = await self.get_quiz(company_id=company_id, quiz_id=quiz_id)
+        quiz = await self.get_quiz(company_id=company_id, user_id=acting_user_id, quiz_id=quiz_id)
         await self.repo.delete_instance(quiz)
         logger.info(f"Deleted quiz: {quiz_id} company {company_id} by {acting_user_id}")
 
@@ -195,7 +195,8 @@ class QuizService(BaseService[CompanyQuizRepository]):
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
         options = [selectinload(QuizModel.questions).selectinload(QuestionModel.options)]
-        curr_quiz = await self.get_quiz(company_id=company_id, quiz_id=curr_quiz_id, options=options)
+        curr_quiz = await self.get_quiz(company_id=company_id, user_id=acting_user_id, quiz_id=curr_quiz_id,
+                                        options=options)
 
         root_id = curr_quiz.root_quiz_id if curr_quiz.root_quiz_id else curr_quiz_id
         last_ver = await self.repo.get_last_version_number(company_id=company_id, root_id=root_id)
@@ -223,8 +224,23 @@ class QuizService(BaseService[CompanyQuizRepository]):
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
         options = [selectinload(QuizModel.questions).selectinload(QuestionModel.options)]
-        quiz = await self.get_quiz(company_id=company_id, quiz_id=quiz_id, options=options)
+        quiz = await self.get_quiz(company_id=company_id, user_id=acting_user_id, quiz_id=quiz_id, options=options)
+        self._validate_quiz(quiz=quiz)
 
+        if quiz.root_quiz_id:
+            await self.repo.hide_other_versions(company_id=company_id, root_id=quiz.root_quiz_id,
+                                                exclude_quiz_id=quiz.id, )
+
+        quiz.is_published = True
+        quiz.is_visible = True
+
+        await self.repo.save_and_refresh(quiz)
+        logger.info(f"Published quiz: {quiz.id} version {quiz.version} by {acting_user_id}")
+
+        return quiz
+
+    @staticmethod
+    def _validate_quiz(quiz: QuizModel) -> None:
         if len(quiz.questions) < 2:
             raise ResourceConflictException("Quiz must have at least 2 questions.")
 
@@ -241,23 +257,11 @@ class QuizService(BaseService[CompanyQuizRepository]):
             if not any(not opt.is_correct for opt in q_options):
                 raise ResourceConflictException(f"Question '{text}' has no incorrect answer marked.")
 
-        if quiz.root_quiz_id:
-            await self.repo.hide_other_versions(company_id=company_id, root_id=quiz.root_quiz_id,
-                                                exclude_quiz_id=quiz.id, )
-
-        quiz.is_published = True
-        quiz.is_visible = True
-
-        await self.repo.save_and_refresh(quiz)
-        logger.info(f"Published quiz: {quiz.id} version {quiz.version} by {acting_user_id}")
-
-        return quiz
-
     async def update_quiz(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID,
-                          quiz_info: QuizUpdateRequestSchema, ) -> QuizModel:
+                          quiz_info: QuizUpdateRequestSchema) -> QuizModel:
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
-        quiz = await self.get_quiz(company_id=company_id, quiz_id=quiz_id)
+        quiz = await self.get_quiz(company_id=company_id, user_id=acting_user_id, quiz_id=quiz_id)
         quiz = self._update_instance(instance=quiz, new_data=quiz_info, by=acting_user_id)
 
         await self.repo.save_and_refresh(quiz)
@@ -266,7 +270,7 @@ class QuizService(BaseService[CompanyQuizRepository]):
         return quiz
 
     async def update_question(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID, question_id: UUID,
-                              question_info: QuestionUpdateRequestSchema, ) -> QuestionModel:
+                              question_info: QuestionUpdateRequestSchema) -> QuestionModel:
         await self._assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
         await self._assert_quiz_not_published(company_id=company_id, quiz_id=quiz_id)
 
@@ -308,12 +312,12 @@ class QuizService(BaseService[CompanyQuizRepository]):
             raise InstanceNotFoundException(instance_name="Question")
 
     async def _assert_admin_permissions(self, company_id: UUID, user_id: UUID) -> None:
-        await self.company_member_service.assert_user_permissions(company_id=company_id, user_id=user_id,
-                                                                  required_role=CompanyRole.ADMIN)
+        await self.member_service.assert_user_permissions(company_id=company_id, user_id=user_id,
+                                                          required_role=CompanyRole.ADMIN)
 
     async def _assert_owner_permissions(self, company_id: UUID, user_id: UUID) -> None:
-        await self.company_member_service.assert_user_permissions(company_id=company_id, user_id=user_id,
-                                                                  required_role=CompanyRole.OWNER)
+        await self.member_service.assert_user_permissions(company_id=company_id, user_id=user_id,
+                                                          required_role=CompanyRole.OWNER)
 
     async def has_admin_permission(self, company_id: UUID, user_id: UUID) -> bool:
         """
@@ -321,5 +325,11 @@ class QuizService(BaseService[CompanyQuizRepository]):
         :param user_id:
         :return: True if admin, False otherwise.
         """
-        return await self.company_member_service.has_user_permissions(company_id=company_id, user_id=user_id,
-                                                                      required_role=CompanyRole.ADMIN)
+        return await self.member_service.has_user_permissions(company_id=company_id, user_id=user_id,
+                                                              required_role=CompanyRole.ADMIN)
+
+    async def get_quiz_allowed_attempts(self, company_id: UUID, quiz_id: UUID) -> int:
+        allowed_attempts = await self.repo.get_quiz_allowed_attempts(company_id=company_id, quiz_id=quiz_id)
+        if allowed_attempts is None:
+            raise InstanceNotFoundException(instance_name="Quiz")
+        return allowed_attempts

@@ -2,11 +2,11 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.company.company_model import Company as CompanyModel
-from app.db.models.user.user_model import User as UserModel
 from app.schemas.company.company_schema import CompanyCreateRequestSchema
 from app.services.company.company_service import CompanyService
-from app.services.company.member_service import CompanyMemberService
+from app.services.company.member_service import MemberService
+from db.models.company_models import Company as CompanyModel
+from db.models.user_model import User as UserModel
 
 pytestmark = pytest.mark.asyncio
 
@@ -26,11 +26,11 @@ async def company_owner_other(created_user_other: UserModel) -> UserModel:
 
 @pytest_asyncio.fixture
 async def test_company_service(
-        test_company_member_service: CompanyMemberService, testdb_session: AsyncSession
+        test_company_member_service: MemberService, testdb_session: AsyncSession
 ) -> CompanyService:
     """Fixture to provide the CompanyService instance wired to the test database."""
     return CompanyService(
-        db=testdb_session, company_member_service=test_company_member_service
+        db=testdb_session, member_service=test_company_member_service
     )
 
 

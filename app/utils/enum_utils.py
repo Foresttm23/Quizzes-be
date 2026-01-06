@@ -8,8 +8,14 @@ class CompanyRole(IntEnum):
     GUEST = 0
 
 
-class MessageStatus(Enum):
+class MessageStatus(str, Enum):
     PENDING = "pending"
     ACCEPTED = "accepted"
     DECLINED = "declined"
     CANCELED = "canceled"
+
+
+class AttemptStatus(str, Enum):
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    EXPIRED = "expired"

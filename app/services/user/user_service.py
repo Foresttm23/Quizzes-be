@@ -9,13 +9,13 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app.core.exceptions import InvalidPasswordException, InstanceNotFoundException
 from app.core.exceptions import PasswordReuseException
 from app.core.logger import logger
-from app.db.models.user.user_model import User as UserModel
 from app.db.repository.user.user_repository import UserRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.user.user_request_schema import (RegisterRequest, UserInfoUpdateRequest, )
 from app.schemas.user.user_request_schema import UserPasswordUpdateRequest
 from app.services.base_service import BaseService
 from app.utils.password_utils import hash_password, verify_password
+from db.models.user_model import User as UserModel
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 

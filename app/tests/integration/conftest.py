@@ -6,11 +6,11 @@ from pydantic import SecretStr
 from sqlalchemy import NullPool, text
 
 from app.core.config import settings
-from app.db.models.user.user_model import User as UserModel
 from app.db.postgres import DBSessionManager
 from app.schemas.user.user_request_schema import RegisterRequest
-from app.services.company.member_service import CompanyMemberService
+from app.services.company.member_service import MemberService
 from app.services.user.user_service import UserService
+from db.models.user_model import User as UserModel
 
 DEFAULT_EMAIL = "test@example.com"
 DEFAULT_USERNAME = "testuser"
@@ -99,7 +99,7 @@ async def test_company_member_service(testdb_session):
     With this we don't have to call testdb_session in all the tests.
     Unless we need to call db directly to check the saved data.
     """
-    return CompanyMemberService(db=testdb_session)
+    return MemberService(db=testdb_session)
 
 
 @pytest_asyncio.fixture

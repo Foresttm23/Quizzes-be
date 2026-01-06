@@ -7,7 +7,6 @@ from app.core.exceptions import (
     RecordAlreadyExistsException,
     PasswordReuseException,
 )
-from app.db.models.user.user_model import User as UserModel
 from app.schemas.user.user_request_schema import (
     RegisterRequest,
     UserInfoUpdateRequest,
@@ -15,6 +14,7 @@ from app.schemas.user.user_request_schema import (
 )
 from app.services.user.user_service import UserService
 from app.utils.password_utils import verify_password
+from db.models.user_model import User as UserModel
 
 pytestmark = pytest.mark.asyncio
 

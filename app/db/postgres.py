@@ -28,6 +28,10 @@ class TimestampMixin:
                                                  onupdate=func.now())
 
 
+class AttemptMixin:
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
 class DBSessionManager:
     def __init__(self, database_url: str, engine_kwargs: dict[str, Any] | None = None):

@@ -6,23 +6,23 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app.core.exceptions import InstanceNotFoundException
 from app.core.exceptions import PermissionDeniedException
 from app.core.logger import logger
-from app.db.models.company.join_request_model import (JoinRequest as CompanyJoinRequestModel, )
-from app.db.models.company.member_model import Member as CompanyMemberModel
-from app.db.repository.company.join_request_repository import CompanyJoinRequestRepository
+from app.db.repository.company.join_request_repository import JoinRequestRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.services.base_service import BaseService
-from app.services.company.member_service import CompanyMemberService
+from app.services.company.member_service import MemberService
 from app.utils.enum_utils import MessageStatus, CompanyRole
+from db.models.company_models import (JoinRequest as CompanyJoinRequestModel, )
+from db.models.company_models import Member as CompanyMemberModel
 
 
-class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
+class JoinRequestService(BaseService[JoinRequestRepository]):
     @property
     def display_name(self) -> str:
         return "JoinRequest"
 
-    def __init__(self, db: AsyncSession, company_member_service: CompanyMemberService):
-        super().__init__(repo=CompanyJoinRequestRepository(db=db))
-        self.company_member_service = company_member_service
+    def __init__(self, db: AsyncSession, member_service: MemberService):
+        super().__init__(repo=JoinRequestRepository(db=db))
+        self.member_service = member_service
 
     async def create_join_request(self, company_id: UUID, requesting_user_id: UUID) -> CompanyJoinRequestModel:
         """
@@ -31,7 +31,7 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :param requesting_user_id: is the same as user.id from JWT token
         :return: request
         """
-        await self.company_member_service.assert_user_not_in_company(company_id=company_id, user_id=requesting_user_id)
+        await self.member_service.assert_user_not_in_company(company_id=company_id, user_id=requesting_user_id)
         new_request = CompanyJoinRequestModel(id=uuid4(), company_id=company_id, requesting_user_id=requesting_user_id)
         logger.info(f"Created new join_request: {new_request.id} requesting_user_id {requesting_user_id}")
 
@@ -94,9 +94,9 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
 
     async def get_pending_for_company(self, company_id: UUID, acting_user_id: UUID, page: int = 1,
                                       page_size: int = 100, ) -> PaginationResponse[CompanyJoinRequestModel]:
-        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company_id,
-                                                                                   user_id=acting_user_id)
-        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
+        acting_user_role = await self.member_service.repo.get_company_role(company_id=company_id,
+                                                                           user_id=acting_user_id)
+        self.member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
         filters = {CompanyJoinRequestModel.company_id: company_id,
                    CompanyJoinRequestModel.status: MessageStatus.PENDING, }
@@ -118,9 +118,9 @@ class CompanyJoinRequestService(BaseService[CompanyJoinRequestRepository]):
         :return: request
         """
         request = await self.get_request(request_id=request_id)
-        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=request.company_id,
-                                                                                   user_id=acting_user_id)
-        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
+        acting_user_role = await self.member_service.repo.get_company_role(company_id=request.company_id,
+                                                                           user_id=acting_user_id)
+        self.member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
         return request
 
     async def get_request(self, request_id: UUID,

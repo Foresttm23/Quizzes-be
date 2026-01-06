@@ -8,13 +8,13 @@ from app.core.exceptions import (
     RecordAlreadyExistsException,
     UserIsNotACompanyMemberException,
 )
-from app.db.models.company.company_model import Company as CompanyModel
-from app.db.models.user.user_model import User as UserModel
 from app.schemas.company.company_schema import (
     CompanyCreateRequestSchema,
     CompanyUpdateInfoRequestSchema,
 )
 from app.services.company.company_service import CompanyService
+from db.models.company_models import Company as CompanyModel
+from db.models.user_model import User as UserModel
 
 pytestmark = pytest.mark.asyncio
 

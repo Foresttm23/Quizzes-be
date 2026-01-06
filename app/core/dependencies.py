@@ -7,14 +7,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotAuthenticatedException
 from app.db import redis as redis_module, postgres as postgres_module
-from app.db.models.user.user_model import User as UserModel
 from app.services.auth.auth_service import AuthService
 from app.services.company.company_service import CompanyService
-from app.services.company.invitation_service import CompanyInvitationService
-from app.services.company.join_request_service import CompanyJoinRequestService
-from app.services.company.member_service import CompanyMemberService
+from app.services.company.invitation_service import InvitationService
+from app.services.company.join_request_service import JoinRequestService
+from app.services.company.member_service import MemberService
 from app.services.company.quiz.quiz_service import QuizService
 from app.services.user.user_service import UserService
+from db.models.user_model import User as UserModel
 
 RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
 
@@ -49,34 +49,34 @@ async def get_auth_service(user_service: UserServiceDep) -> AuthService:
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
-async def get_company_member_service(db: DBSessionDep) -> CompanyMemberService:
-    return CompanyMemberService(db=db)
+async def get_company_member_service(db: DBSessionDep) -> MemberService:
+    return MemberService(db=db)
 
 
-CompanyMemberServiceDep = Annotated[CompanyMemberService, Depends(get_company_member_service)]
+CompanyMemberServiceDep = Annotated[MemberService, Depends(get_company_member_service)]
 
 
-async def get_company_service(db: DBSessionDep, company_member_service: CompanyMemberServiceDep) -> CompanyService:
-    return CompanyService(db=db, company_member_service=company_member_service)
+async def get_company_service(db: DBSessionDep, member_service: CompanyMemberServiceDep) -> CompanyService:
+    return CompanyService(db=db, member_service=member_service)
 
 
 CompanyServiceDep = Annotated[CompanyService, Depends(get_company_service)]
 
 
 async def get_company_join_request_service(db: DBSessionDep,
-                                           company_member_service: CompanyMemberServiceDep) -> CompanyJoinRequestService:
-    return CompanyJoinRequestService(db=db, company_member_service=company_member_service)
+                                           member_service: CompanyMemberServiceDep) -> JoinRequestService:
+    return JoinRequestService(db=db, member_service=member_service)
 
 
-CompanyJoinRequestServiceDep = Annotated[CompanyJoinRequestService, Depends(get_company_join_request_service)]
+CompanyJoinRequestServiceDep = Annotated[JoinRequestService, Depends(get_company_join_request_service)]
 
 
 async def get_company_invitation_service(db: DBSessionDep,
-                                         company_member_service: CompanyMemberServiceDep) -> CompanyInvitationService:
-    return CompanyInvitationService(db=db, company_member_service=company_member_service)
+                                         member_service: CompanyMemberServiceDep) -> InvitationService:
+    return InvitationService(db=db, member_service=member_service)
 
 
-CompanyInvitationServiceDep = Annotated[CompanyInvitationService, Depends(get_company_invitation_service)]
+CompanyInvitationServiceDep = Annotated[InvitationService, Depends(get_company_invitation_service)]
 
 
 async def get_user_from_jwt(jwt: JWTCredentialsDep, auth_service: AuthServiceDep) -> UserModel:
@@ -111,8 +111,8 @@ async def get_user_from_refresh_jwt(jwt: JWTCredentialsDep, auth_service: AuthSe
 GetUserRefreshJWTDep = Annotated[UserModel, Depends(get_user_from_refresh_jwt)]
 
 
-async def get_company_quiz_service(db: DBSessionDep, company_member_service: CompanyMemberServiceDep) -> QuizService:
-    return QuizService(db=db, company_member_service=company_member_service)
+async def get_company_quiz_service(db: DBSessionDep, member_service: CompanyMemberServiceDep) -> QuizService:
+    return QuizService(db=db, member_service=member_service)
 
 
 CompanyQuizServiceDep = Annotated[QuizService, Depends(get_company_quiz_service)]

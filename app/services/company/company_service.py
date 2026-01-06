@@ -7,14 +7,14 @@ from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.exceptions import InstanceNotFoundException
 from app.core.logger import logger
-from app.db.models.company.company_model import Company as CompanyModel
-from app.db.models.company.member_model import Member as CompanyMemberModel
 from app.db.repository.company.company_repository import CompanyRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.schemas.company.company_schema import (CompanyCreateRequestSchema, CompanyUpdateInfoRequestSchema, )
 from app.services.base_service import BaseService
-from app.services.company.member_service import CompanyMemberService
+from app.services.company.member_service import MemberService
 from app.utils.enum_utils import CompanyRole
+from db.models.company_models import Company as CompanyModel
+from db.models.company_models import Member as CompanyMemberModel
 
 
 class CompanyService(BaseService[CompanyRepository]):
@@ -22,16 +22,16 @@ class CompanyService(BaseService[CompanyRepository]):
     def display_name(self) -> str:
         return "Company"
 
-    def __init__(self, db: AsyncSession, company_member_service: CompanyMemberService):
+    def __init__(self, db: AsyncSession, member_service: MemberService):
         super().__init__(repo=CompanyRepository(db=db))
-        self.company_member_service = company_member_service
+        self.member_service = member_service
 
     async def get_companies_paginated(self, user_id: UUID | None, page: int, page_size: int) -> PaginationResponse[
         CompanyModel]:
         if not user_id:
             return await self._get_visible_companies_paginated(page=page, page_size=page_size)
 
-        user_company_ids = await self.company_member_service.get_user_company_ids(user_id=user_id)
+        user_company_ids = await self.member_service.get_user_company_ids(user_id=user_id)
 
         if not user_company_ids:
             return await self._get_visible_companies_paginated(page=page, page_size=page_size)
@@ -61,7 +61,7 @@ class CompanyService(BaseService[CompanyRepository]):
         if not user_id:
             raise InstanceNotFoundException()
 
-        await self.company_member_service.assert_user_in_company(company_id=company_id, user_id=user_id)
+        await self.member_service.assert_user_in_company(company_id=company_id, user_id=user_id)
         return company
 
     async def create_company(self, acting_user_id: UUID, company_info: CompanyCreateRequestSchema) -> CompanyModel:
@@ -78,9 +78,9 @@ class CompanyService(BaseService[CompanyRepository]):
     async def update_company(self, company_id: UUID, acting_user_id: UUID,
                              company_info: CompanyUpdateInfoRequestSchema, ) -> CompanyModel:
         company = await self.get_company(company_id=company_id)
-        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company.id,
-                                                                                   user_id=acting_user_id)
-        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
+        acting_user_role = await self.member_service.repo.get_company_role(company_id=company.id,
+                                                                           user_id=acting_user_id)
+        self.member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.ADMIN)
 
         company = self._update_instance(instance=company, new_data=company_info, by=acting_user_id)
         await self.repo.save_and_refresh(company)
@@ -90,9 +90,9 @@ class CompanyService(BaseService[CompanyRepository]):
 
     async def delete_company(self, company_id: UUID, acting_user_id: UUID):
         company = await self.get_company(company_id=company_id)
-        acting_user_role = await self.company_member_service.repo.get_company_role(company_id=company.id,
-                                                                                   user_id=acting_user_id)
-        self.company_member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.OWNER)
+        acting_user_role = await self.member_service.repo.get_company_role(company_id=company.id,
+                                                                           user_id=acting_user_id)
+        self.member_service.validate_user_role(user_role=acting_user_role, required_role=CompanyRole.OWNER)
 
         await self._delete_instance(instance=company)
         await self.repo.commit()

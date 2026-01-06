@@ -3,8 +3,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.models.user.user_model import User as UserModel
 from app.services.auth.auth_service import AuthService
+from db.models.user_model import User as UserModel
 
 
 @pytest.fixture

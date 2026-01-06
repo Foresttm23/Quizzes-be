@@ -1,6 +1,7 @@
 from typing import Sequence, Any
 from uuid import UUID
 
+from pygments.lexers import q
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
@@ -9,19 +10,19 @@ from app.core.exceptions import (UserIsNotACompanyMemberException, CompanyPermis
                                  UserAlreadyInCompanyException, ResourceConflictException, )
 from app.core.logger import logger
 from app.db.models import Member as CompanyMemberModel
-from app.db.repository.company.member_repository import CompanyMemberRepository
+from app.db.repository.company.member_repository import MemberRepository
 from app.schemas.base_schemas import PaginationResponse
 from app.services.base_service import BaseService
 from app.utils.enum_utils import CompanyRole
 
 
-class CompanyMemberService(BaseService[CompanyMemberRepository]):
+class MemberService(BaseService[MemberRepository]):
     @property
     def display_name(self) -> str:
         return "CompanyMember"
 
     def __init__(self, db: AsyncSession):
-        super().__init__(repo=CompanyMemberRepository(db=db))
+        super().__init__(repo=MemberRepository(db=db))
 
     async def get_members_paginated(self, page: int, page_size: int, company_id: UUID,
                                     role: CompanyRole | None = None, ) -> PaginationResponse[CompanyMemberModel]:
@@ -146,3 +147,10 @@ class CompanyMemberService(BaseService[CompanyMemberRepository]):
         logger.info(f"Updated role: {new_role} user {target_member.id} company {company_id} by {acting_user_id}")
 
         return target_member
+
+    async def get_and_lock_member_row(self, company_id: UUID, user_id: UUID) -> None:
+        member = await self.repo.get_and_lock_member_row(company_id=company_id, user_id=user_id)
+        if member is None:
+            raise UserIsNotACompanyMemberException()
+
+        return member
