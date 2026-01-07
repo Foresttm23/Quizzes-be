@@ -1,3 +1,5 @@
+from uuid import UUID, uuid4
+
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,6 +10,7 @@ class AppSettings(BaseSettings):
     RELOAD: bool = True
 
     ORIGINS: list[str] = ["http://other.com", "https://other.com"]
+    UUID_TRANSFORM_SECRET: UUID = uuid4()
 
     # Limits
     MAX_PAGE_SIZE: int = 100

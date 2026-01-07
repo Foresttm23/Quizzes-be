@@ -66,7 +66,11 @@ class QuizAttempt(Base, AttemptMixin):
     quiz_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("company_quiz.id", ondelete="CASCADE"))
 
     score: Mapped[float] = mapped_column(Float, default=0.0)
-    status: Mapped[AttemptStatus] = mapped_column(SQLEnum(AttemptStatus), default=AttemptStatus.IN_PROGRESS)
+    status: Mapped[AttemptStatus] = mapped_column(SQLEnum(AttemptStatus, native_enum=False),
+                                                  default=AttemptStatus.IN_PROGRESS,
+                                                  server_default=AttemptStatus.IN_PROGRESS.value)
+
+    # TODO TIME LIMIT
 
     quiz: Mapped["CompanyQuiz"] = relationship("CompanyQuiz", back_populates="attempts")
     user: Mapped["User"] = relationship("User", back_populates="attempts")

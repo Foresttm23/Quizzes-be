@@ -4,7 +4,18 @@ from datetime import datetime
 from pydantic import EmailStr, Field, SecretStr
 
 from core.schemas import Base
+from .enums import AuthProviderEnum, JWTTypeEnum
 
+
+class JWTSchema(Base):
+    sub: str
+    email: EmailStr
+    auth_provider: AuthProviderEnum
+
+
+class JWTRefreshSchema(JWTSchema):
+    sub: str
+    type: JWTTypeEnum
 
 class UserDetailsResponse(Base):
     id: uuid.UUID

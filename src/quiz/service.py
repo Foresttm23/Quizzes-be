@@ -6,19 +6,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql.base import ExecutableOption
 
-from company.service import MemberService
-from core.exceptions import InstanceNotFoundException, ResourceConflictException
-from core.logger import logger
-from core.schemas import PaginationResponse
-from core.service import BaseService
 from src.company.enums import CompanyRole
+from src.company.service import MemberService
+from src.core.exceptions import InstanceNotFoundException, ResourceConflictException
+from src.core.logger import logger
+from src.core.schemas import PaginationResponse
+from src.core.service import BaseService
 from .enums import AttemptStatus
 from .models import AttemptAnswerSelection as AttemptAnswerSelectionModel, CompanyQuiz as QuizModel, \
     CompanyQuizQuestion as QuestionModel, QuizAttempt as AttemptModel, QuizAttemptAnswer as AnswerModel, \
     QuestionAnswerOption as AnswerOptionModel
-from .repository import AttemptRepository, QuizRepository
+from .repository import AttemptRepository, QuizRepository, AnswerRepository, QuestionRepository
 from .schemas import AnswerOptionsCreateRequestSchema, SaveAnswerRequestSchema, QuestionUpdateRequestSchema, \
     QuestionCreateRequestSchema, QuizCreateRequestSchema, QuizUpdateRequestSchema
+from .utils import QuizUtils
 
 
 class QuizService(BaseService[QuizRepository]):
@@ -29,6 +30,8 @@ class QuizService(BaseService[QuizRepository]):
     def __init__(self, db: AsyncSession, member_service: MemberService):
         super().__init__(repo=QuizRepository(db=db))
         self.member_service = member_service
+        self.question_repo = QuestionRepository(db=db)
+        self.quiz_utils = QuizUtils()
 
     async def get_quiz(self, company_id, user_id: UUID | None, quiz_id: UUID,
                        relationships: set[InstrumentedAttribute] | None = None,
@@ -52,7 +55,7 @@ class QuizService(BaseService[QuizRepository]):
     async def _get_visible_quiz(self, company_id: UUID, quiz_id: UUID,
                                 relationships: set[InstrumentedAttribute] | None = None,
                                 options: Sequence[ExecutableOption] | None = None) -> QuizModel:
-        filters = self._get_visible_quiz_filters(company_id=company_id, quiz_id=quiz_id)
+        filters = self.quiz_utils.get_visible_quiz_filters(company_id=company_id, quiz_id=quiz_id)
         quiz = await self.repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships,
                                                                options=options)
         return quiz
@@ -60,21 +63,10 @@ class QuizService(BaseService[QuizRepository]):
     async def _get_all_quiz(self, company_id: UUID, quiz_id: UUID,
                             relationships: set[InstrumentedAttribute] | None = None,
                             options: Sequence[ExecutableOption] | None = None) -> QuizModel:
-        filters = self._get_all_quiz_filters(company_id=company_id, quiz_id=quiz_id)
+        filters = self.quiz_utils.get_all_quiz_filters(company_id=company_id, quiz_id=quiz_id)
         quiz = await self.repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships,
                                                                options=options)
         return quiz
-
-    @classmethod
-    def _get_visible_quiz_filters(cls, company_id: UUID, quiz_id: UUID) -> dict[InstrumentedAttribute, Any]:
-        filters = {QuizModel.company_id: company_id, QuizModel.id: quiz_id, QuizModel.is_published: True,
-                   QuizModel.is_visible: True, }
-        return filters
-
-    @classmethod
-    def _get_all_quiz_filters(cls, company_id: UUID, quiz_id: UUID) -> dict[InstrumentedAttribute, Any]:
-        filters = {QuizModel.company_id: company_id, QuizModel.id: quiz_id}
-        return filters
 
     async def get_quizzes_paginated(self, company_id: UUID, user_id: UUID | None, page: int, page_size: int) -> \
             PaginationResponse[QuizModel]:
@@ -88,7 +80,7 @@ class QuizService(BaseService[QuizRepository]):
             return await self._get_visible_quizzes_paginated(company_id=company_id, page=page, page_size=page_size)
 
     async def get_questions_and_options(self, company_id: UUID, quiz_id: UUID) -> Sequence[QuestionModel]:
-        questions = await self.repo.get_questions_and_options(company_id=company_id, quiz_id=quiz_id)
+        questions = await self.question_repo.get_all_for_quiz(company_id=company_id, quiz_id=quiz_id)
         return questions
 
     async def _get_visible_quizzes_paginated(self, company_id, page: int, page_size: int):
@@ -202,7 +194,7 @@ class QuizService(BaseService[QuizRepository]):
         last_ver = await self.repo.get_last_version_number(company_id=company_id, root_id=root_id)
         new_quiz = QuizModel(id=uuid4(), company_id=curr_quiz.company_id, title=curr_quiz.title,
                              description=curr_quiz.description, allowed_attempts=curr_quiz.allowed_attempts,
-                             is_published=False, is_visible=False, root_quiz_id=root_id, version=last_ver + 1, )
+                             is_published=False, is_visible=False, root_quiz_id=root_id, version=last_ver + 1)
 
         for old_q in curr_quiz.questions:
             new_quiz.questions.append(old_q.clone())
@@ -225,7 +217,7 @@ class QuizService(BaseService[QuizRepository]):
 
         options = [selectinload(QuizModel.questions).selectinload(QuestionModel.options)]
         quiz = await self.get_quiz(company_id=company_id, user_id=acting_user_id, quiz_id=quiz_id, options=options)
-        self._validate_quiz(quiz=quiz)
+        self.quiz_utils.validate_quiz(quiz=quiz)
 
         if quiz.root_quiz_id:
             await self.repo.hide_other_versions(company_id=company_id, root_id=quiz.root_quiz_id,
@@ -238,24 +230,6 @@ class QuizService(BaseService[QuizRepository]):
         logger.info(f"Published quiz: {quiz.id} version {quiz.version} by {acting_user_id}")
 
         return quiz
-
-    @staticmethod
-    def _validate_quiz(quiz: QuizModel) -> None:
-        if len(quiz.questions) < 2:
-            raise ResourceConflictException("Quiz must have at least 2 questions.")
-
-        for q in quiz.questions:
-            q_options: Sequence[AnswerOptionModel] = q.options
-
-            text = (q.text[:50] + "..") if len(q.text) > 50 else q.text
-            if len(q_options) < 2:
-                raise ResourceConflictException(f"Question '{text}' is incomplete (needs 2+ options).")
-
-            if not any(opt.is_correct for opt in q_options):
-                raise ResourceConflictException(f"Question '{text}' has no correct answer marked.")
-
-            if not any(not opt.is_correct for opt in q_options):
-                raise ResourceConflictException(f"Question '{text}' has no incorrect answer marked.")
 
     async def update_quiz(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID,
                           quiz_info: QuizUpdateRequestSchema) -> QuizModel:
@@ -275,7 +249,7 @@ class QuizService(BaseService[QuizRepository]):
         await self._assert_quiz_not_published(company_id=company_id, quiz_id=quiz_id)
 
         question = await self.get_question(company_id=company_id, quiz_id=quiz_id, question_id=question_id)
-        question = self._update_instance(instance=question, new_data=question_info, by=acting_user_id)
+        question.text = question_info.text
 
         if question_info.options is not None:
             question = self._update_question_options(question=question, full_question_info=question_info)
@@ -302,7 +276,8 @@ class QuizService(BaseService[QuizRepository]):
         return question
 
     async def get_question(self, company_id: UUID, quiz_id: UUID, question_id: UUID) -> QuestionModel:
-        question = await self.repo.get_question_or_none(company_id=company_id, quiz_id=quiz_id, question_id=question_id)
+        question = await self.question_repo.get_question_or_none(company_id=company_id, quiz_id=quiz_id,
+                                                                 question_id=question_id)
         self._assert_valid_question(question=question)
         return question
 
@@ -344,6 +319,8 @@ class AttemptService(BaseService[AttemptRepository]):
         super().__init__(repo=AttemptRepository(db=db))
         self.member_service = member_service
         self.quiz_service = quiz_service
+        self.answer_repo = AnswerRepository(db=db)
+        self.quiz_utils = QuizUtils()
 
     async def start_attempt(self, company_id: UUID, quiz_id: UUID, user_id: UUID) -> tuple[
         Sequence[QuestionModel], AttemptModel]:
@@ -362,10 +339,10 @@ class AttemptService(BaseService[AttemptRepository]):
         load_options = [selectinload(AttemptModel.answers).options(selectinload(AnswerModel.selected_options),
                                                                    selectinload(AnswerModel.question).selectinload(
                                                                        QuestionModel.options))]
-        attempt = await self.get_attempt(user_id=user_id, quiz_id=quiz_id, attempt_id=attempt_id, options=load_options)
+        attempt = await self._get_attempt(user_id=user_id, quiz_id=quiz_id, attempt_id=attempt_id, options=load_options)
 
         attempt.finished_at = datetime.now(timezone.utc)
-        attempt.score = self._calc_score(attempt)
+        attempt.score = self.quiz_utils.calc_score(attempt)
         attempt.status = status
 
         await self.repo.save_and_refresh(attempt)
@@ -375,7 +352,7 @@ class AttemptService(BaseService[AttemptRepository]):
                           selected_option_info: SaveAnswerRequestSchema) -> AnswerModel:
         await self._assert_attempt_is_correct(user_id=user_id, quiz_id=quiz_id, attempt_id=attempt_id)
 
-        answer = await self.get_answer_or_none(question_id=question_id, attempt_id=attempt_id)
+        answer = await self._get_answer_or_none(question_id=question_id, attempt_id=attempt_id)
         if answer:
             answer.selected_options.clear()
         else:
@@ -402,32 +379,18 @@ class AttemptService(BaseService[AttemptRepository]):
         if attempt_id is None:
             raise InstanceNotFoundException(instance_name=self.display_name)
 
-    async def get_attempt(self, user_id: UUID, quiz_id: UUID, attempt_id: UUID,
-                          options: Sequence[ExecutableOption] | None = None) -> AttemptModel:
+    async def _get_attempt(self, user_id: UUID, quiz_id: UUID, attempt_id: UUID,
+                           options: Sequence[ExecutableOption] | None = None) -> AttemptModel:
         filters = {AttemptModel.user_id: user_id, AttemptModel.quiz_id: quiz_id, AttemptModel.id: attempt_id}
         attempt = await self.repo.get_instance_by_filters_or_none(filters=filters, options=options)
         if attempt is None:
             raise InstanceNotFoundException(instance_name=self.display_name)
         return attempt
 
-    async def get_answer_or_none(self, question_id: UUID, attempt_id: UUID) -> AnswerModel | None:  # TODO
+    async def _get_answer_or_none(self, question_id: UUID, attempt_id: UUID) -> AnswerModel | None:
         filters = {AnswerModel.attempt_id: attempt_id, AnswerModel.question_id: question_id}
         relationships = {AnswerModel.selected_options}
-        answer = await self.repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships)
+        answer = await self.answer_repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships)
         return answer
 
-    @staticmethod
-    def _calc_score(attempt: AttemptModel) -> float:
-        score = 0.0
-        for answer in attempt.answers:
-            question: QuestionModel = answer.question
-            user_selections: list[AttemptAnswerSelectionModel] = answer.selected_options
-            q_options: list[AnswerOptionModel] = question.options
-
-            selected_ids = {opt.id for opt in user_selections}
-            correct_ids = {opt.id for opt in q_options if opt.is_correct}
-
-            if selected_ids == correct_ids:
-                score += question.points
-
-        return score
+    # TODO WORKER TO AUTO END OLD ATTEMPTS

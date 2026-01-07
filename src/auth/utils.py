@@ -1,12 +1,13 @@
 from datetime import datetime, timezone, timedelta
-from uuid import UUID
+from uuid import UUID, uuid5
 
 import httpx
 from jose import JWTError, jws, JWSError, jwt
 from pwdlib import PasswordHash
 
-from core.config import settings
-from core.exceptions import InvalidJWTException, InvalidJWTFieldsException
+from src.auth.enums import JWTTypeEnum, AuthProviderEnum
+from src.core.config import settings
+from src.core.exceptions import InvalidJWTException
 
 
 class AuthUtils:
@@ -24,50 +25,30 @@ class AuthUtils:
     def create_access_token(self, data: dict, expires_delta: timedelta) -> str:
         """Creates a signed JWT access token."""
         expire = datetime.now(timezone.utc) + expires_delta
-        data.update({"exp": expire, "type": "access"})
+        data.update({"exp": expire, "type": JWTTypeEnum.ACCESS, "auth_provider": AuthProviderEnum.LOCAL})
 
         encoded_jwt = self._handle_local_token_encode(data=data, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET)
-
         return encoded_jwt
 
     def verify_local_token_and_get_payload(self, token: str) -> dict:
         payload = self._handle_local_token_decode(token=token, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET)
+        return payload
 
-        response = self.fill_jwt_fields_from_dict(data=payload)
+    async def verify_auth0_token_and_get_payload(self, token: str) -> dict:
+        payload = await self._handle_auth0_token_decode(token=token)
+        return payload
 
-        return response
-
-    async def verify_auth0_token_and_get_payload(self, token: str):
-        payload = self._handle_auth0_token_decode(token=token)
-
-        # Since Auth0 only issue an email
-        email: str = payload.get("email")
-        response = {"email": email}
-        self._check_jwt_fields(response)
-
-        return response
-
-    def create_refresh_token(self, data: dict, expires_delta: timedelta):
+    def create_refresh_token(self, data: dict, expires_delta: timedelta) -> str:
         expire = datetime.now(timezone.utc) + expires_delta
-        data.update({"exp": expire, "type": "refresh"})
+        data.update({"exp": expire, "type": JWTTypeEnum.REFRESH})
         encoded_jwt = self._handle_local_token_encode(data=data,
                                                       secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET)
 
         return encoded_jwt
 
-    def verify_refresh_token_and_get_payload(self, token: str):
+    def verify_refresh_token_and_get_payload(self, token: str) -> dict:
         payload = self._handle_local_token_decode(token=token, secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET)
         return payload
-
-    def fill_jwt_fields_from_dict(self, data: dict):
-        user_id: UUID = data.get("id")
-        email: str = data.get("email")
-        auth_provider: str = data.get("auth_provider")
-
-        response = {"id": str(user_id), "email": email, "auth_provider": auth_provider}
-        self._check_jwt_fields(response=response)
-
-        return response
 
     @staticmethod
     def _handle_local_token_encode(data: dict, secret_key: str) -> str:
@@ -91,7 +72,8 @@ class AuthUtils:
                 raise InvalidJWTException()
 
             payload = jwt.decode(token=token, key=public_key, audience=settings.AUTH0_JWT.AUTH0_JWT_AUDIENCE,
-                                 algorithms=settings.AUTH0_JWT.AUTH0_JWT_ALGORITHM, )
+                                 algorithms=settings.AUTH0_JWT.AUTH0_JWT_ALGORITHM)
+            payload["auth_provider"] = AuthProviderEnum.AUTH0
         except (JWTError, JWSError, KeyError):
             raise InvalidJWTException()
 
@@ -117,7 +99,5 @@ class AuthUtils:
         return None
 
     @staticmethod
-    def _check_jwt_fields(response: dict):
-        for key, value in response.items():
-            if value is None:
-                raise InvalidJWTFieldsException()
+    def generate_user_id_from_auth0(auth0_sub: str) -> UUID:
+        return uuid5(namespace=settings.APP.UUID_TRANSFORM_SECRET, name=auth0_sub)

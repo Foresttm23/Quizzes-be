@@ -49,8 +49,9 @@ class Invitation(Base, TimestampMixin):
 
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("company.id", ondelete="CASCADE"))
     invited_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"))
-    status: Mapped[MessageStatus] = mapped_column(SQLEnum(MessageStatus, native_enum=True),
-                                                  default=MessageStatus.PENDING)
+    status: Mapped[MessageStatus] = mapped_column(SQLEnum(MessageStatus, native_enum=False),
+                                                  default=MessageStatus.PENDING,
+                                                  server_default=MessageStatus.PENDING.value)
 
     company: Mapped["Company"] = relationship("Company", back_populates="invitations")
     invited_user: Mapped["User"] = relationship("User", back_populates="received_invitations")
@@ -63,10 +64,11 @@ class JoinRequest(Base, TimestampMixin):
 
     company_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("company.id", ondelete="CASCADE"),
                                                   nullable=False, )
-    requesting_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True),
-                                                          ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
-    status: Mapped[MessageStatus] = mapped_column(SQLEnum(MessageStatus, native_enum=True),
-                                                  default=MessageStatus.PENDING)
+    requesting_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user.id", ondelete="CASCADE"),
+                                                          nullable=False)
+    status: Mapped[MessageStatus] = mapped_column(SQLEnum(MessageStatus, native_enum=False),
+                                                  default=MessageStatus.PENDING,
+                                                  server_default=MessageStatus.PENDING.value)
 
     company: Mapped["Company"] = relationship("Company", back_populates="join_requests")
     requesting_user: Mapped["User"] = relationship("User", back_populates="join_requests")

@@ -2,9 +2,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, status, Query
 
-from core.config import settings
-from core.schemas import PaginationResponse
 from src.auth.dependencies import GetUserJWTDep, GetOptionalUserJWTDep
+from src.core.dependencies import PaginationParamDep
+from src.core.schemas import PaginationResponse
 from .dependencies import CompanyMemberServiceDep, CompanyServiceDep, CompanyInvitationServiceDep, \
     CompanyJoinRequestServiceDep
 from .enums import CompanyRole
@@ -31,15 +31,15 @@ async def create_company(company_service: CompanyServiceDep, user: GetUserJWTDep
 @companies_router.get("/", response_model=PaginationResponse[CompanyDetailsResponseSchema],
                       status_code=status.HTTP_200_OK)
 async def get_companies(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep,
-                        page: int = Query(default=1, ge=1),
-                        page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
+                        pagination: PaginationParamDep):
     """
     Get all companies by page and page_size.
     Filters can be added later.
     Crud operations in company_repository supports it.
     """
     user_id = user.id if user else None
-    companies_data = await company_service.get_companies_paginated(page=page, page_size=page_size, user_id=user_id)
+    companies_data = await company_service.get_companies_paginated(page=pagination.page, page_size=pagination.page_size,
+                                                                   user_id=user_id)
     return companies_data
 
 
@@ -116,21 +116,20 @@ async def cancel_invitation(company_invitation_service: CompanyInvitationService
 @companies_router.get("/{company_id}/invitations/pending", response_model=PaginationResponse[InvitationDetailsResponse],
                       status_code=status.HTTP_200_OK, )
 async def get_company_pending_invitations(company_invitation_service: CompanyInvitationServiceDep,
-                                          acting_user: GetUserJWTDep, company_id: UUID,
-                                          page: int = Query(default=1, ge=1),
-                                          page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
+                                          acting_user: GetUserJWTDep, company_id: UUID, pagination: PaginationParamDep):
     requests = await company_invitation_service.get_pending_for_company(company_id=company_id,
-                                                                        acting_user_id=acting_user.id, page=page,
-                                                                        page_size=page_size, )
+                                                                        acting_user_id=acting_user.id,
+                                                                        page=pagination.page,
+                                                                        page_size=pagination.page_size)
     return requests
 
 
 @invitations_router.get("/my-pending", response_model=PaginationResponse[InvitationDetailsResponse],
                         status_code=status.HTTP_200_OK, )
 async def get_my_pending_invitations(company_invitation_service: CompanyInvitationServiceDep, user: GetUserJWTDep,
-                                     page: int = Query(default=1, ge=1),
-                                     page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
-    requests = await company_invitation_service.get_pending_for_user(user_id=user.id, page=page, page_size=page_size)
+                                     pagination: PaginationParamDep):
+    requests = await company_invitation_service.get_pending_for_user(user_id=user.id, page=pagination.page,
+                                                                     page_size=pagination.page_size)
     return requests
 
 
@@ -171,20 +170,20 @@ async def cancel_request(company_join_request_service: CompanyJoinRequestService
 @companies_router.get("/{company_id}/join-requests/pending", response_model=PaginationResponse[RequestDetailsResponse],
                       status_code=status.HTTP_200_OK, )
 async def get_company_pending_requests(company_join_request_service: CompanyJoinRequestServiceDep,
-                                       acting_user: GetUserJWTDep, company_id: UUID, page: int = Query(default=1, ge=1),
-                                       page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
+                                       acting_user: GetUserJWTDep, company_id: UUID, pagination: PaginationParamDep):
     requests = await company_join_request_service.get_pending_for_company(company_id=company_id,
-                                                                          acting_user_id=acting_user.id, page=page,
-                                                                          page_size=page_size, )
+                                                                          acting_user_id=acting_user.id,
+                                                                          page=pagination.page,
+                                                                          page_size=pagination.page_size)
     return requests
 
 
 @requests_router.get("/my-pending", response_model=PaginationResponse[RequestDetailsResponse],
                      status_code=status.HTTP_200_OK, )
 async def get_my_pending_requests(company_join_request_service: CompanyJoinRequestServiceDep, user: GetUserJWTDep,
-                                  page: int = Query(default=1, ge=1),
-                                  page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
-    requests = await company_join_request_service.get_pending_for_user(user_id=user.id, page=page, page_size=page_size)
+                                  pagination: PaginationParamDep):
+    requests = await company_join_request_service.get_pending_for_user(user_id=user.id, page=pagination.page,
+                                                                       page_size=pagination.page_size)
     return requests
 
 
@@ -193,11 +192,10 @@ async def get_my_pending_requests(company_join_request_service: CompanyJoinReque
 
 @companies_router.get("/{company_id}/members", response_model=PaginationResponse[CompanyMemberDetailsResponse],
                       status_code=status.HTTP_200_OK, )
-async def get_company_members(member_service: CompanyMemberServiceDep, company_id: UUID,
-                              role: CompanyRole | None = Query(default=None), page: int = Query(default=1, ge=1),
-                              page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
-    company_members = await member_service.get_members_paginated(page=page, page_size=page_size, company_id=company_id,
-                                                                 role=role)
+async def get_company_members(member_service: CompanyMemberServiceDep, pagination: PaginationParamDep, company_id: UUID,
+                              role: CompanyRole | None = Query(default=None)):
+    company_members = await member_service.get_members_paginated(page=pagination.page, page_size=pagination.page_size,
+                                                                 company_id=company_id, role=role)
     return company_members
 
 

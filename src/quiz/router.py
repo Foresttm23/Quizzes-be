@@ -1,11 +1,11 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status, Query
+from fastapi import APIRouter, status
 from pydantic import TypeAdapter
 
-from core.config import settings
-from core.schemas import PaginationResponse
 from src.auth.dependencies import GetUserJWTDep, GetOptionalUserJWTDep
+from src.core.dependencies import PaginationParamDep
+from src.core.schemas import PaginationResponse
 from .dependencies import CompanyQuizServiceDep
 from .schemas import QuestionUserResponseSchema, QuestionUpdateRequestSchema, QuestionAdminResponseSchema, \
     QuestionCreateRequestSchema, QuizCreateRequestSchema, QuizDetailsResponseSchema, QuizUpdateRequestSchema
@@ -45,10 +45,10 @@ async def get_quiz(quiz_service: CompanyQuizServiceDep, user: GetOptionalUserJWT
 @quiz_router.get("/{company_id}/quizzes", response_model=PaginationResponse[QuizDetailsResponseSchema],
                  status_code=status.HTTP_200_OK, )
 async def get_quizzes(quiz_service: CompanyQuizServiceDep, user: GetOptionalUserJWTDep, company_id: UUID,
-                      page: int = Query(default=1, ge=1),
-                      page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
+                      pagination: PaginationParamDep):
     user_id = user.id if user else None
-    quizzes = await quiz_service.get_quizzes_paginated(company_id=company_id, page=page, page_size=page_size,
+    quizzes = await quiz_service.get_quizzes_paginated(company_id=company_id, page=pagination.page,
+                                                       page_size=pagination.page_size,
                                                        user_id=user_id)
     return quizzes
 

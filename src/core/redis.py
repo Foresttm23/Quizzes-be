@@ -1,5 +1,6 @@
+from redis import ConnectionPool, Redis
+
 from config import settings
-from core.redis import Redis, ConnectionPool
 
 pool = ConnectionPool.from_url(settings.REDIS.REDIS_URL, decode_responses=True)
 redis_client = Redis(connection_pool=pool)

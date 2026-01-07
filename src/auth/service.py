@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import timedelta
 from typing import TypeVar, Any
 from uuid import uuid4, UUID
@@ -13,9 +15,11 @@ from core.exceptions import InvalidJWTException, InvalidJWTRefreshException, Inv
 from core.logger import logger
 from core.schemas import PaginationResponse
 from core.service import BaseService
+from .enums import AuthProviderEnum, JWTTypeEnum
 from .models import User as UserModel
 from .repository import UserRepository
-from .schemas import LoginRequest, RegisterRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest
+from .schemas import LoginRequest, RegisterRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest, JWTSchema, \
+    JWTRefreshSchema
 from .utils import AuthUtils
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
@@ -60,23 +64,20 @@ class UserService(BaseService[UserRepository]):
         user_data = user_info.model_dump()
         user_data.pop("password")
 
-        # Since we don't want to commit real password from the user_info fields
-        # We specify directly what fields we need
         user = UserModel(id=uuid4(), **user_data, hashed_password=hashed_password)
-
         await self.repo.save_and_refresh(user)
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
 
         return user
 
     # Can be later renamed for something like create_user_from_external_jwt if we would have many providers.
-    async def create_user_from_auth0(self, user_info: dict) -> UserModel:
+    async def create_user_from_auth0(self, user_id: UUID, user_info: JWTSchema) -> UserModel:
         """Method for creating a user from a jwt token"""
         # Since username is unique, we would need to create a unique username
         # relying only on email will expose it, so a simple uuid is better
-        user = UserModel(id=uuid4(), email=user_info["email"],
-                         # .hex pretty much cleans the uuid from unique characters
-                         username=f"user_{uuid4().hex[:12]}", hashed_password=None, auth_provider="auth0", )
+        user = UserModel(id=user_id, email=user_info.email,  # .hex pretty much cleans the uuid from unique characters
+                         username=f"user_{uuid4().hex[:12]}", hashed_password=None,
+                         auth_provider=user_info.auth_provider)
 
         await self.repo.save_and_refresh(user)
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
@@ -121,15 +122,7 @@ class UserService(BaseService[UserRepository]):
 class AuthService:
     def __init__(self, user_service: UserService):
         self.user_service = user_service
-        self.utils = AuthUtils()
-
-    def create_token_pairs(self, user: UserModel):
-        # user: UserModel = await self.user_service.fetch_user(field_name="id", field_value=user_id)
-        access_token = self._create_access_token(user=user)
-        refresh_token = self._create_refresh_token(user=user)
-
-        logger.debug({"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", })
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", }
+        self.auth_utils = AuthUtils()
 
     async def register_user(self, sign_up_data: RegisterRequest) -> UserModel:
         """
@@ -139,50 +132,21 @@ class AuthService:
         user = await self.user_service.create_user(user_info=sign_up_data)
         return user
 
-    async def verify_token_and_get_payload(self, jwt_token: str) -> dict:
-        # Since we have 2 variation of registration we check them in order
-        try:
-            return self.utils.verify_local_token_and_get_payload(jwt_token)
-        except InvalidJWTException:
-            # If this raises error, code stops
-            return await self.utils.verify_auth0_token_and_get_payload(jwt_token)
-
-    def verify_local_token_and_get_payload(self, jwt_token: str) -> dict:
-        return self.utils.verify_local_token_and_get_payload(token=jwt_token)
-
-    async def handle_jwt_sign_in(self, jwt_payload: dict):
+    async def handle_jwt_sign_in(self, jwt_payload: JWTSchema) -> UserModel:  # TODO Return id or instance if asked.
         """Creates user from jwt if not found. Returns user in either way."""
+        auth_provider = jwt_payload.auth_provider
+        if auth_provider != AuthProviderEnum.LOCAL:
+            user_id = self.auth_utils.generate_user_id_from_auth0(auth0_sub=jwt_payload.sub)
+        else:
+            user_id = UUID(jwt_payload.sub)
+
         try:
-            user = await self.user_service.get_by_email(email=jwt_payload["email"])
+            user = await self.user_service.get_by_id(user_id=user_id)
         except InstanceNotFoundException:
             # Since user cannot possibly have a local JWT without already creating a user instance.
-            user = await self.user_service.create_user_from_auth0(user_info=jwt_payload)
+            user = await self.user_service.create_user_from_auth0(user_id=user_id, user_info=jwt_payload)
 
         return user
-
-    def verify_refresh_token_and_get_payload(self, token: str) -> dict:
-        payload = self.utils.verify_refresh_token_and_get_payload(token)
-        if payload.get("type") != "refresh":
-            raise InvalidJWTRefreshException()
-        return payload
-
-    def _create_access_token(self, user: UserModel) -> str:
-        """Creates a signed JWT access token."""
-        data = self.utils.fill_jwt_fields_from_dict(data=user.to_dict())
-        expires_delta = timedelta(minutes=settings.LOCAL_JWT.LOCAL_ACCESS_TOKEN_EXPIRE_MINUTES)
-
-        encoded_jwt = self.utils.create_access_token(data=data, expires_delta=expires_delta)
-
-        return encoded_jwt
-
-    def _create_refresh_token(self, user: UserModel) -> str:
-        """Creates a signed JWT access token."""
-        data = {"id": str(user.id)}
-        expires_delta = timedelta(days=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_EXPIRE_DAYS)
-
-        encoded_jwt = self.utils.create_refresh_token(data=data, expires_delta=expires_delta)
-
-        return encoded_jwt
 
     async def handle_email_password_sign_in(self, sign_in_data: LoginRequest):
         """Creates user from password and email if not found. Returns user in either way."""
@@ -194,8 +158,56 @@ class AuthService:
             raise UserIncorrectPasswordOrEmailException()
 
         plain_password = sign_in_data.password.get_secret_value()
-        if not user or not self.utils.verify_password(plain_password=plain_password,
-                                                      hashed_password=user.hashed_password):
+        if not user or not self.auth_utils.verify_password(plain_password=plain_password,
+                                                           hashed_password=user.hashed_password):
             raise UserIncorrectPasswordOrEmailException()
 
         return user
+
+
+class TokenService:
+    def __init__(self):
+        self.auth_utils = AuthUtils()
+
+    def create_token_pairs(self, user: UserModel) -> dict:
+        # user: UserModel = await self.user_service.fetch_user(field_name="id", field_value=user_id)
+        access_token = self._create_access_token(user=user)
+        refresh_token = self._create_refresh_token(user=user)
+
+        logger.debug({"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", })
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", }
+
+    async def verify_token_and_get_payload(self, jwt_token: str) -> JWTSchema:
+        # Since we have 2 variation of registration we check them in order
+        try:
+            payload_dict = self.auth_utils.verify_local_token_and_get_payload(jwt_token)
+        except InvalidJWTException:
+            # If this raises error, code stops
+            payload_dict = await self.auth_utils.verify_auth0_token_and_get_payload(jwt_token)
+
+        return JWTSchema(**payload_dict)
+
+    def verify_refresh_token_and_get_payload(self, token: str) -> JWTRefreshSchema:
+        payload_dict = self.auth_utils.verify_refresh_token_and_get_payload(token)
+        payload = JWTRefreshSchema(**payload_dict)
+        if payload.type != JWTTypeEnum.REFRESH:
+            raise InvalidJWTRefreshException()
+        return payload
+
+    def _create_access_token(self, user: UserModel) -> str:
+        """Creates a signed JWT access token."""
+        token_data = JWTSchema(sub=str(user.id), email=user.email, auth_provider=user.auth_provider)
+        expires_delta = timedelta(minutes=settings.LOCAL_JWT.LOCAL_ACCESS_TOKEN_EXPIRE_MINUTES)
+
+        data = token_data.model_dump()
+        encoded_jwt = self.auth_utils.create_access_token(data=data, expires_delta=expires_delta)
+        return encoded_jwt
+
+    def _create_refresh_token(self, user: UserModel) -> str:
+        """Creates a signed JWT access token."""
+        data = {"sub": str(user.id)}
+        expires_delta = timedelta(days=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_EXPIRE_DAYS)
+
+        encoded_jwt = self.auth_utils.create_refresh_token(data=data, expires_delta=expires_delta)
+
+        return encoded_jwt

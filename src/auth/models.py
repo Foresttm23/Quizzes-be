@@ -1,7 +1,8 @@
-from sqlalchemy import String, Boolean
+from sqlalchemy import String, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.models import Base, TimestampMixin
+from .enums import AuthProviderEnum
 
 
 class User(Base, TimestampMixin):
@@ -10,7 +11,9 @@ class User(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     username: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
-    auth_provider: Mapped[str] = mapped_column(String, default="local")
+    auth_provider: Mapped[AuthProviderEnum] = mapped_column(SQLEnum(AuthProviderEnum, native_enum=False),
+                                                            default=AuthProviderEnum.LOCAL,
+                                                            server_default=AuthProviderEnum.LOCAL.value)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # lazy="selectin", allows for efficient access for all the relationships.
@@ -31,5 +34,6 @@ class User(Base, TimestampMixin):
 
     def to_dict(self) -> dict:
         """Transform main fields of User Model into dict"""
-        return {"id": str(self.id), "email": self.email, "username": self.username, "auth_provider": self.auth_provider,
+        return {"sub": str(self.id), "email": self.email, "username": self.username,
+                "auth_provider": self.auth_provider,
                 "is_banned": self.is_banned, }

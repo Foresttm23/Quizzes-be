@@ -1,11 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status, Query
+from fastapi import APIRouter, status
 
-from core.config import settings
-from core.exceptions import ExternalAuthProviderException
-from core.schemas import PaginationResponse
+from src.core.dependencies import PaginationParamDep
+from src.core.exceptions import ExternalAuthProviderException
+from src.core.schemas import PaginationResponse
 from .dependencies import AuthServiceDep, GetUserRefreshJWTDep, GetUserJWTDep, UserServiceDep
+from .dependencies import TokenServiceDep
 from .schemas import RegisterRequest, LoginRequest, TokenResponse, UserDetailsResponse, UserInfoUpdateRequest, \
     UserPasswordUpdateRequest
 
@@ -21,18 +22,18 @@ async def register(auth_service: AuthServiceDep, register_data: RegisterRequest)
 
 
 @auth_router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-async def login(auth_service: AuthServiceDep, login_data: LoginRequest):
+async def login(token_service: TokenServiceDep, auth_service: AuthServiceDep, login_data: LoginRequest):
     """
     Endpoint for authenticating a user with password and email.
     For Auth0 log in call users/me or any with GetUserJWTDep.
     """
     user = await auth_service.handle_email_password_sign_in(sign_in_data=login_data)
-    tokens = auth_service.create_token_pairs(user=user)
+    tokens = token_service.create_token_pairs(user=user)
     return tokens
 
 
 @auth_router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-async def refresh_jwt(auth_service: AuthServiceDep, user: GetUserRefreshJWTDep):
+async def refresh_jwt(token_service: TokenServiceDep, user: GetUserRefreshJWTDep):
     """
     Endpoint for refreshing a refresh token.
     Accepts refresh token.
@@ -42,15 +43,14 @@ async def refresh_jwt(auth_service: AuthServiceDep, user: GetUserRefreshJWTDep):
     if user.auth_provider != "local":
         raise ExternalAuthProviderException(auth_provider=user.auth_provider, message="no local tokens issued")
 
-    tokens = auth_service.create_token_pairs(user=user)
+    tokens = token_service.create_token_pairs(user=user)
     return tokens
 
 
 @users_router.get("/", status_code=status.HTTP_200_OK, response_model=PaginationResponse[UserDetailsResponse], )
-async def get_users(user_service: UserServiceDep, page: int = Query(default=1, ge=1),
-                    page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE), ):
+async def get_users(user_service: UserServiceDep, pagination: PaginationParamDep):
     """Return a list of all users by page and page_size"""
-    users = await user_service.get_users_paginated(page=page, page_size=page_size)
+    users = await user_service.get_users_paginated(page=pagination.page, page_size=pagination.page_size)
     return users
 
 
