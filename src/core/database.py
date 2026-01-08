@@ -1,10 +1,13 @@
 import contextlib
-from typing import Any, AsyncIterator, AsyncGenerator
-
-from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker, create_async_engine, )
+from typing import Any, AsyncGenerator, AsyncIterator
 
 from exceptions import DBSessionNotInitializedException
 from logger import logger
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
@@ -46,5 +49,7 @@ def init_db(database_url: str, engine_kwargs: dict[str, Any] | None = None):
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     global sessionmanager
+    if sessionmanager is None:
+        raise DBSessionNotInitializedException()
     async with sessionmanager.session() as session:
         yield session

@@ -5,8 +5,9 @@ from uuid import UUID
 
 from pydantic import Field
 
-from auth.schemas import UserDetailsResponse
-from core.schemas import Base, BaseUpdateMixin
+from src.auth.schemas import UserDetailsResponse
+from src.core.schemas import Base, BaseUpdateMixin, ScoreStatsBase
+
 from .enums import CompanyRole, MessageStatus
 
 
@@ -73,3 +74,8 @@ class CompanyMemberDetailsResponse(Base):
 
 class UpdateMemberRoleSchema(Base):
     role: CompanyRole
+
+
+class UserAverageCompanyScoreResponseSchema(ScoreStatsBase):
+    user_id: UUID
+    company_id: UUID

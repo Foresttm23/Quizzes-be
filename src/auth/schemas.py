@@ -3,7 +3,8 @@ from datetime import datetime
 
 from pydantic import EmailStr, Field, SecretStr
 
-from core.schemas import Base
+from src.core.schemas import Base, ScoreStatsBase
+
 from .enums import AuthProviderEnum, JWTTypeEnum
 
 
@@ -16,6 +17,7 @@ class JWTSchema(Base):
 class JWTRefreshSchema(JWTSchema):
     sub: str
     type: JWTTypeEnum
+
 
 class UserDetailsResponse(Base):
     id: uuid.UUID
@@ -52,3 +54,7 @@ class UserInfoUpdateRequest(Base):
 class UserPasswordUpdateRequest(Base):
     current_password: SecretStr = Field(min_length=8)
     new_password: SecretStr = Field(min_length=8)
+
+
+class UserAverageSystemScoreResponseSchema(ScoreStatsBase):
+    pass

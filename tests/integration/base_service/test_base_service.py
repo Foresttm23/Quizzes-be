@@ -12,7 +12,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_fetch_instance_success(
-        test_base_service: _TestService, created_instance: UserModel
+    test_base_service: _TestService, created_instance: UserModel
 ):
     fetched_instance = await test_base_service.repo.get_instance_by_field_or_404(
         field=UserModel.id, value=created_instance.id
@@ -42,11 +42,11 @@ async def test_fetch_instance_not_found(test_base_service: _TestService):
     ],
 )
 async def test_fetch_instances_paginated(
-        test_base_service: _TestService,
-        page,
-        page_size,
-        expected_has_next,
-        expected_has_prev,
+    test_base_service: _TestService,
+    page,
+    page_size,
+    expected_has_next,
+    expected_has_prev,
 ):
     await test_base_service.helper_create_instance(
         _TestCreateSchema(email="1@example.com", username="user1")
@@ -81,7 +81,7 @@ async def test_fetch_instances_paginated_no_instances(test_base_service: _TestSe
 
 
 async def test_update_instance_success(
-        test_base_service: _TestService, created_instance: UserModel
+    test_base_service: _TestService, created_instance: UserModel
 ):
     new_data = _TestUpdateSchema(username="new_instance_name")
     updated_instance = test_base_service._update_instance(
@@ -95,7 +95,7 @@ async def test_update_instance_success(
 
 
 async def test_update_instance_no_changes(
-        test_base_service: _TestService, created_instance: UserModel
+    test_base_service: _TestService, created_instance: UserModel
 ):
     original_username = created_instance.username
 
@@ -114,9 +114,9 @@ async def test_update_instance_no_changes(
 
 
 async def test_delete_instance_success(
-        test_base_service: _TestService,
-        testdb_session: AsyncSession,
-        created_instance: UserModel,
+    test_base_service: _TestService,
+    testdb_session: AsyncSession,
+    created_instance: UserModel,
 ):
     instance_id = created_instance.id
 

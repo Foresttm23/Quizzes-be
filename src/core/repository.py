@@ -1,21 +1,22 @@
-from typing import Type, TypeVar, Generic, Any, Sequence
+from typing import Any, Generic, Sequence, Type, TypeVar
 
+from exceptions import RecordAlreadyExistsException
 from pydantic import BaseModel as BaseSchema
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
-from sqlalchemy.sql import Select, Update, Delete
+from sqlalchemy.sql import Delete, Select, Update
 from sqlalchemy.sql.base import ExecutableOption
-from src.base_schemas import PaginationResponse
 
-from database import Base as BaseModel
-from exceptions import RecordAlreadyExistsException
+from src.core.models import Base as BaseModel
+from src.core.schemas import PaginationResponse
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
-BaseQuery = Select | Update | Delete
+
+QueryType = TypeVar("QueryType", bound=Select[Any] | Update | Delete)
 
 
 class BaseRepository(Generic[ModelType]):
@@ -23,9 +24,12 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.db = db
 
-    async def get_instances_paginated(self, page: int, page_size: int,
-                                      filters: dict[InstrumentedAttribute, Any] | None = None, ) -> PaginationResponse[
-        SchemaType]:
+    async def get_instances_paginated(
+        self,
+        page: int,
+        page_size: int,
+        filters: dict[InstrumentedAttribute, Any] | None = None,
+    ) -> PaginationResponse[ModelType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
         stmt = stmt.order_by(self.model.id.desc())
@@ -33,7 +37,7 @@ class BaseRepository(Generic[ModelType]):
         result = await self.paginate_query(stmt, page, page_size)
         return result
 
-    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[SchemaType]:
+    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[ModelType]:
         count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
 
@@ -45,11 +49,18 @@ class BaseRepository(Generic[ModelType]):
         result = await self.db.scalars(stmt)
         items = result.all()
 
-        return PaginationResponse(total=total, page=page, page_size=page_size, total_pages=total_pages,
-                                  has_next=page < total_pages, has_prev=page > 1, data=items, )
+        return PaginationResponse(
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_prev=page > 1,
+            data=items,
+        )
 
     @staticmethod
-    def _apply_filters(filters: dict[InstrumentedAttribute, Any], base_query: BaseQuery) -> BaseQuery:
+    def _apply_filters(filters: dict[InstrumentedAttribute, Any] | None, base_query: QueryType) -> QueryType:
         """
         Returns conditions and query of stacked queries.
         """
@@ -82,25 +93,29 @@ class BaseRepository(Generic[ModelType]):
         except IntegrityError:
             raise RecordAlreadyExistsException()
 
-    async def get_instance_by_field_or_none(self, field: InstrumentedAttribute, value: Any,
-                                            relationships: set[InstrumentedAttribute] | None = None,
-                                            options: ExecutableOption | None = None, ) -> ModelType | None:
+    async def get_instance_by_field_or_none(
+        self,
+        field: InstrumentedAttribute,
+        value: Any,
+        relationships: set[InstrumentedAttribute] | None = None,
+    ) -> ModelType | None:
         """
         Gets instance by single field.
         :param field:
         :param value:
         :param relationships:
-        :param options:
         :return: instance | None
         """
 
-        instance = await self.get_instance_by_filters_or_none(filters={field: value}, relationships=relationships,
-                                                              options=options)
+        instance = await self.get_instance_by_filters_or_none(filters={field: value}, relationships=relationships)
         return instance
 
-    async def get_instance_by_filters_or_none(self, filters: dict[InstrumentedAttribute, Any],
-                                              relationships: set[InstrumentedAttribute] | None = None,
-                                              options: Sequence[ExecutableOption] | None = None, ) -> ModelType | None:
+    async def get_instance_by_filters_or_none(
+        self,
+        filters: dict[InstrumentedAttribute, Any],
+        relationships: set[InstrumentedAttribute] | None = None,
+        options: Sequence[ExecutableOption] | None = None,
+    ) -> ModelType | None:
         """
         Gets instance by many field.
         :param filters: Executes the .where() DB query to the passed args
@@ -118,13 +133,13 @@ class BaseRepository(Generic[ModelType]):
                 query = query.options(selectinload(rel))
 
         if options:
-            query = query.options(selectinload(*options))
+            query = query.options(*options)
 
         instance = await self.db.scalar(query)
         return instance
 
     @staticmethod
-    def apply_instance_updates(instance: ModelType, new_instance_info: SchemaType) -> dict:
+    def apply_instance_updates(instance: ModelType, new_instance_info: BaseSchema) -> dict:
         """
         Helper function for updating instance details and keeping track of changes.
         Takes instance and new_instance_info.

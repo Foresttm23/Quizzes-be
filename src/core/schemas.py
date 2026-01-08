@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Any, Sequence
+from typing import Any, Generic, Sequence, TypeVar
 
 from pydantic import BaseModel, model_validator
 
@@ -28,3 +28,9 @@ class PaginationResponse(Base, Generic[T]):
     has_next: bool
     has_prev: bool
     data: Sequence[T]
+
+
+class ScoreStatsBase(Base):
+    score: float
+    total_correct_answers: int
+    total_questions_answered: int

@@ -23,9 +23,9 @@ DEFAULT_COMPANY_DESCRIPTION = "A default company for testing."
 
 
 async def test_create_company_success(
-        testdb_session: AsyncSession,
-        test_company_service: CompanyService,
-        company_owner: UserModel,
+    testdb_session: AsyncSession,
+    test_company_service: CompanyService,
+    company_owner: UserModel,
 ):
     company_info = CompanyCreateRequestSchema(
         name="New Company", description="Another testing company.", is_visible=True
@@ -46,9 +46,9 @@ async def test_create_company_success(
 
 
 async def test_create_company_duplicate_name(
-        test_company_service: CompanyService,
-        company_owner: UserModel,
-        created_company: CompanyModel,
+    test_company_service: CompanyService,
+    company_owner: UserModel,
+    created_company: CompanyModel,
 ):
     company_info_duplicate = CompanyCreateRequestSchema(
         name=created_company.name, description="Should Fail", is_visible=True
@@ -61,9 +61,9 @@ async def test_create_company_duplicate_name(
 
 
 async def test_update_company_info_success(
-        test_company_service: CompanyService,
-        created_company: CompanyModel,
-        company_owner: UserModel,
+    test_company_service: CompanyService,
+    created_company: CompanyModel,
+    company_owner: UserModel,
 ):
     new_info = CompanyUpdateInfoRequestSchema(
         name="New Updated Name", description="Updated Description", is_visible=True
@@ -81,9 +81,9 @@ async def test_update_company_info_success(
 
 
 async def test_update_company_info_permission_error(
-        test_company_service: CompanyService,
-        created_company: CompanyModel,
-        company_owner_other: UserModel,
+    test_company_service: CompanyService,
+    created_company: CompanyModel,
+    company_owner_other: UserModel,
 ):
     new_info = CompanyUpdateInfoRequestSchema(
         name="Attempted Update", description=None, is_visible=True
@@ -98,7 +98,7 @@ async def test_update_company_info_permission_error(
 
 
 async def test_update_company_info_not_found(
-        test_company_service: CompanyService, company_owner: UserModel
+    test_company_service: CompanyService, company_owner: UserModel
 ):
     non_existent_id = uuid.uuid4()
     new_info = CompanyUpdateInfoRequestSchema(
@@ -114,10 +114,10 @@ async def test_update_company_info_not_found(
 
 
 async def test_delete_company_success(
-        test_company_service: CompanyService,
-        testdb_session: AsyncSession,
-        created_company: CompanyModel,
-        company_owner: UserModel,
+    test_company_service: CompanyService,
+    testdb_session: AsyncSession,
+    created_company: CompanyModel,
+    company_owner: UserModel,
 ):
     """Basic deletion of the instance, but we have to check if the company deletion were made in cascade"""
     await test_company_service.delete_company(
@@ -130,9 +130,9 @@ async def test_delete_company_success(
 
 
 async def test_delete_company_permission_error(
-        test_company_service: CompanyService,
-        created_company: CompanyModel,
-        company_owner_other: UserModel,
+    test_company_service: CompanyService,
+    created_company: CompanyModel,
+    company_owner_other: UserModel,
 ):
     with pytest.raises(UserIsNotACompanyMemberException):
         await test_company_service.delete_company(
@@ -145,7 +145,7 @@ async def test_delete_company_permission_error(
 
 
 async def test_fetch_company_by_id_success(
-        test_company_service: CompanyService, created_company: CompanyModel
+    test_company_service: CompanyService, created_company: CompanyModel
 ):
     company_from_db = await test_company_service.get_by_id(
         company_id=created_company.id
@@ -162,7 +162,7 @@ async def test_fetch_company_by_id_not_found(test_company_service: CompanyServic
 
 
 async def test_fetch_companies_paginated_success(
-        test_company_service: CompanyService, company_owner: UserModel
+    test_company_service: CompanyService, company_owner: UserModel
 ):
     company1_info = CompanyCreateRequestSchema(
         name="Page 1 Co", description="Co 1", is_visible=True
@@ -187,7 +187,7 @@ async def test_fetch_companies_paginated_success(
 
 
 async def test_fetch_companies_paginated_no_companies(
-        test_company_service: CompanyService,
+    test_company_service: CompanyService,
 ):
     paginated_companies = await test_company_service.get_companies_paginated(
         page=1, page_size=1
@@ -196,7 +196,7 @@ async def test_fetch_companies_paginated_no_companies(
 
 
 async def test_delete_company_not_found(
-        test_company_service: CompanyService, company_owner: UserModel
+    test_company_service: CompanyService, company_owner: UserModel
 ):
     non_existent_id = uuid.uuid4()
 

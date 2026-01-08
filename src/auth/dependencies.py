@@ -2,23 +2,23 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.core.dependencies import DBSessionDep
 from src.core.exceptions import NotAuthenticatedException
+
 from .models import User as UserModel
-from .service import AuthService, UserService, TokenService
+from .service import AuthService, TokenService, UserService
 
 security = HTTPBearer(auto_error=False)
 SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
 
 
-def get_jwt_from_header(header: SecurityDep) -> str:
+def get_jwt_from_header(header: SecurityDep) -> str | None:
     if header:
-        jwt = header.credentials
+        return header.credentials
     else:
-        jwt = None
-    return jwt
+        return None
 
 
 JWTCredentialsDep = Annotated[str, Depends(get_jwt_from_header)]
@@ -45,8 +45,9 @@ async def get_auth_service(user_service: UserServiceDep, token_service: TokenSer
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
-async def get_optional_user_from_jwt(jwt: JWTCredentialsDep, token_service: TokenServiceDep,
-                                     auth_service: AuthServiceDep) -> UserModel | None:
+async def get_optional_user_from_jwt(
+    jwt: JWTCredentialsDep, token_service: TokenServiceDep, auth_service: AuthServiceDep
+) -> UserModel | None:
     if not jwt:
         return None
     jwt_payload = await token_service.verify_token_and_get_payload(jwt_token=jwt)
@@ -66,8 +67,12 @@ async def get_user_from_jwt(user: GetOptionalUserJWTDep) -> UserModel:
 GetUserJWTDep = Annotated[UserModel, Depends(get_user_from_jwt)]
 
 
-async def get_user_from_refresh_jwt(jwt: JWTCredentialsDep, token_service: TokenServiceDep,
-                                    auth_service: AuthServiceDep, user_service: UserServiceDep) -> UserModel:
+async def get_user_from_refresh_jwt(
+    jwt: JWTCredentialsDep,
+    token_service: TokenServiceDep,
+    auth_service: AuthServiceDep,
+    user_service: UserServiceDep,
+) -> UserModel:
     jwt_refresh_payload = token_service.verify_refresh_token_and_get_payload(token=jwt)
     user = await user_service.get_by_id(user_id=UUID(jwt_refresh_payload.sub))
     return user

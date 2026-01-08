@@ -36,7 +36,7 @@ async def test_create_user_success(test_user_service: UserService):
 
 
 async def test_create_user_duplicate_email(
-        test_user_service: UserService, created_user: UserModel
+    test_user_service: UserService, created_user: UserModel
 ):
     user_info_duplicate = RegisterRequest(
         email=created_user.email, username=DEFAULT_USERNAME, password=DEFAULT_PASSWORD
@@ -57,7 +57,7 @@ async def test_create_user_from_jwt(test_user_service: UserService):
 
 
 async def test_update_user_info_username(
-        test_user_service: UserService, created_user: UserModel
+    test_user_service: UserService, created_user: UserModel
 ):
     new_user_info = UserInfoUpdateRequest(username="new_username")
     updated_user = await test_user_service.update_user_info(
@@ -68,7 +68,7 @@ async def test_update_user_info_username(
 
 
 async def test_update_user_password_success(
-        test_user_service: UserService, created_user: UserModel
+    test_user_service: UserService, created_user: UserModel
 ):
     new_password = "new_secure_password!@#"
     new_password_info = (
@@ -87,7 +87,7 @@ async def test_update_user_password_success(
 
 
 async def test_update_user_info_no_changes(
-        test_user_service: UserService, created_user: UserModel
+    test_user_service: UserService, created_user: UserModel
 ):
     new_user_info = UserInfoUpdateRequest(username=created_user.username)
     updated_user = await test_user_service.update_user_info(
@@ -98,7 +98,7 @@ async def test_update_user_info_no_changes(
 
 
 async def test_update_user_password_reuse_error(
-        test_user_service: UserService, created_user: UserModel
+    test_user_service: UserService, created_user: UserModel
 ):
     new_password_info = UserPasswordUpdateRequest(
         current_password=DEFAULT_PASSWORD, new_password=DEFAULT_PASSWORD
@@ -114,7 +114,7 @@ async def test_update_user_password_reuse_error(
 
 
 async def test_fetch_user_success(
-        test_user_service: UserService, created_user: UserModel
+    test_user_service: UserService, created_user: UserModel
 ):
     user_from_db = await test_user_service.get_by_id(user_id=created_user.id)
     assert user_from_db.id == created_user.id
@@ -137,11 +137,11 @@ async def test_fetch_user_not_found(test_user_service: UserService):
     ],
 )
 async def test_fetch_users_paginated(
-        test_user_service: UserService,
-        page,
-        page_size,
-        expected_has_next,
-        expected_has_prev,
+    test_user_service: UserService,
+    page,
+    page_size,
+    expected_has_next,
+    expected_has_prev,
 ):
     user1_info = RegisterRequest(
         email="1" + DEFAULT_EMAIL,
@@ -176,9 +176,9 @@ async def test_fetch_users_paginated_no_users(test_user_service: UserService):
 
 
 async def test_delete_user_success(
-        test_user_service: UserService,
-        testdb_session: AsyncSession,
-        created_user: UserModel,
+    test_user_service: UserService,
+    testdb_session: AsyncSession,
+    created_user: UserModel,
 ):
     await test_user_service.delete_user(user=created_user)
     user = await testdb_session.get(UserModel, created_user.id)

@@ -3,24 +3,28 @@ import os
 import sys
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
+
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import all models.
-# Since all models defined in this file, we can import *, or just Base for simplicity
-from src.db.models import Base  # type: ignore # noqa
+from src.core.models import Base  # type: ignore # noqa
+import src.core.models  # type: ignore # noqa
+import src.auth.models  # type: ignore # noqa
+import src.company.models  # type: ignore # noqa
+import src.quiz.models  # type: ignore # noqa
 
-from core.config import settings
+from src.core.config import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-config.set_main_option("sqlalchemy.url", settings.DB.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", str(settings.DB.DATABASE_URL))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

@@ -15,7 +15,12 @@ RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
 @dataclass
 class PaginationParams:
     page: int = Query(default=1, ge=1, description="Page number")
-    page_size: int = Query(default=10, ge=1, le=settings.APP.MAX_PAGE_SIZE, description="Number of items per page")
+    page_size: int = Query(
+        default=10,
+        ge=1,
+        le=settings.APP.MAX_PAGE_SIZE,
+        description="Number of items per page",
+    )
 
 
 PaginationParamDep = Annotated[PaginationParams, Depends()]

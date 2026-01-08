@@ -11,11 +11,21 @@ from core.schemas import Base, BaseUpdateMixin
 class QuizCreateRequestSchema(Base):
     title: str = Field(max_length=128)
     description: str | None = Field(None, max_length=1024)
+    time_limit_minutes: int | None = Field(
+        None,
+        ge=1,
+        description="Time limit in minutes. Defaults to 1440 (24 hours) if not specified.",
+    )
 
 
 class QuizUpdateRequestSchema(Base, BaseUpdateMixin):
     title: str | None = Field(None, max_length=128)
     description: str | None = Field(None, max_length=1024)
+    time_limit_minutes: int | None = Field(
+        None,
+        ge=1,
+        description="Time limit in minutes. Set to None to use default (24 hours).",
+    )
 
 
 class QuizDetailsResponseSchema(Base):
@@ -26,6 +36,7 @@ class QuizDetailsResponseSchema(Base):
     description: str
 
     allowed_attempts: int | None
+    time_limit_minutes: int | None
 
     is_published: bool
     is_visible: bool
@@ -85,7 +96,7 @@ class QuestionUserResponseSchema(Base):
     options: list[AnswerOptionsStudentResponseSchema]
 
 
-class QuestionAdminResponseSchema(Base, QuestionUserResponseSchema):
+class QuestionAdminResponseSchema(QuestionUserResponseSchema):
     options: list[AnswerOptionsStudentResponseSchema]
 
 
@@ -100,9 +111,25 @@ class AnswerOptionsStudentResponseSchema(Base):
     text: str
 
 
-class AnswerOptionsAdminResponseSchema(Base, AnswerOptionsStudentResponseSchema):
+class AnswerOptionsAdminResponseSchema(AnswerOptionsStudentResponseSchema):
     is_correct: bool
 
 
 class SaveAnswerRequestSchema(Base):
     ids: list[UUID]
+
+
+class QuizAttemptStartResponseSchema(Base):
+    attempt_id: UUID
+    questions: list[QuestionUserResponseSchema]
+
+
+class QuizAttemptResponseSchema(Base):
+    id: UUID
+    user_id: UUID
+    quiz_id: UUID
+    score: float
+    status: str
+    started_at: datetime
+    finished_at: datetime | None
+    expires_at: datetime | None

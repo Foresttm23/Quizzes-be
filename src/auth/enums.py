@@ -8,5 +8,6 @@ class AuthProviderEnum(str, Enum):
 
 class JWTTypeEnum(str, Enum):
     """Token type of local JWT"""
+
     ACCESS = "access"
     REFRESH = "refresh"

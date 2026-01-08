@@ -1,25 +1,38 @@
 from __future__ import annotations
 
-from datetime import timedelta
-from typing import TypeVar, Any
-from uuid import uuid4, UUID
+from datetime import datetime, timedelta
+from typing import Any, TypeVar
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel
-from pydantic import EmailStr
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
 from core.config import settings
-from core.exceptions import InvalidJWTException, InvalidJWTRefreshException, InvalidPasswordException, \
-    InstanceNotFoundException, PasswordReuseException, UserIncorrectPasswordOrEmailException
+from core.exceptions import (
+    ExternalAuthProviderException,
+    InstanceNotFoundException,
+    InvalidJWTException,
+    InvalidJWTRefreshException,
+    InvalidPasswordException,
+    PasswordReuseException,
+    UserIncorrectPasswordOrEmailException,
+)
 from core.logger import logger
 from core.schemas import PaginationResponse
 from core.service import BaseService
+
 from .enums import AuthProviderEnum, JWTTypeEnum
 from .models import User as UserModel
 from .repository import UserRepository
-from .schemas import LoginRequest, RegisterRequest, UserInfoUpdateRequest, UserPasswordUpdateRequest, JWTSchema, \
-    JWTRefreshSchema
+from .schemas import (
+    JWTRefreshSchema,
+    JWTSchema,
+    LoginRequest,
+    RegisterRequest,
+    UserInfoUpdateRequest,
+    UserPasswordUpdateRequest,
+)
 from .utils import AuthUtils
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
@@ -42,14 +55,18 @@ class UserService(BaseService[UserRepository]):
         user = await self._get_user_by_field(field=UserModel.id, value=user_id, relationships=relationships)
         return user
 
-    async def _get_user_by_field(self, field: InstrumentedAttribute, value: Any,
-                                 relationships: set[InstrumentedAttribute] | None = None, ) -> UserModel:
+    async def _get_user_by_field(
+        self,
+        field: InstrumentedAttribute,
+        value: Any,
+        relationships: set[InstrumentedAttribute] | None = None,
+    ) -> UserModel:
         user = await self.repo.get_instance_by_field_or_none(field=field, value=value, relationships=relationships)
         if not user:
             raise InstanceNotFoundException(instance_name=self.display_name)
         return user
 
-    async def get_users_paginated(self, page: int, page_size: int) -> PaginationResponse[SchemaType]:
+    async def get_users_paginated(self, page: int, page_size: int) -> PaginationResponse[UserModel]:
         # We can now add filter fields.
         users_data = await self.repo.get_instances_paginated(page=page, page_size=page_size)
         return users_data
@@ -75,9 +92,13 @@ class UserService(BaseService[UserRepository]):
         """Method for creating a user from a jwt token"""
         # Since username is unique, we would need to create a unique username
         # relying only on email will expose it, so a simple uuid is better
-        user = UserModel(id=user_id, email=user_info.email,  # .hex pretty much cleans the uuid from unique characters
-                         username=f"user_{uuid4().hex[:12]}", hashed_password=None,
-                         auth_provider=user_info.auth_provider)
+        user = UserModel(
+            id=user_id,
+            email=user_info.email,  # .hex pretty much cleans the uuid from unique characters
+            username=f"user_{uuid4().hex[:12]}",
+            hashed_password=None,
+            auth_provider=user_info.auth_provider,
+        )
 
         await self.repo.save_and_refresh(user)
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
@@ -102,12 +123,16 @@ class UserService(BaseService[UserRepository]):
 
         return user
 
+
     def _verify_and_update_password(self, user: UserModel, new_password_info: UserPasswordUpdateRequest) -> None:
         current_password = new_password_info.current_password.get_secret_value()
         new_password = new_password_info.new_password.get_secret_value()
 
         if current_password == new_password:
             raise PasswordReuseException()
+
+        if user.hashed_password is None:
+            raise ExternalAuthProviderException(auth_provider=user.auth_provider, message="Incorrect Route")
 
         if not self.utils.verify_password(plain_password=current_password, hashed_password=user.hashed_password):
             raise InvalidPasswordException()
@@ -157,9 +182,11 @@ class AuthService:
         except InstanceNotFoundException:
             raise UserIncorrectPasswordOrEmailException()
 
+        if user.hashed_password is None:
+            raise ExternalAuthProviderException(auth_provider=user.auth_provider, message="Incorrect Route")
+
         plain_password = sign_in_data.password.get_secret_value()
-        if not user or not self.auth_utils.verify_password(plain_password=plain_password,
-                                                           hashed_password=user.hashed_password):
+        if not user or not self.auth_utils.verify_password(plain_password=plain_password, hashed_password=user.hashed_password):
             raise UserIncorrectPasswordOrEmailException()
 
         return user
@@ -174,8 +201,18 @@ class TokenService:
         access_token = self._create_access_token(user=user)
         refresh_token = self._create_refresh_token(user=user)
 
-        logger.debug({"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", })
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", }
+        logger.debug(
+            {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+            }
+        )
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+        }
 
     async def verify_token_and_get_payload(self, jwt_token: str) -> JWTSchema:
         # Since we have 2 variation of registration we check them in order
