@@ -7,4 +7,4 @@ alembic upgrade head
 
 echo "Starting application..."
 
-exec python -m app.main
+exec python -m src.main
