@@ -1,5 +1,5 @@
 import contextlib
-from typing import Any, AsyncGenerator, AsyncIterator
+from typing import Any, AsyncIterator
 
 from exceptions import DBSessionNotInitializedException
 from logger import logger
@@ -41,15 +41,7 @@ class DBSessionManager:
 sessionmanager: DBSessionManager | None = None
 
 
-def init_db(database_url: str, engine_kwargs: dict[str, Any] | None = None):
+def init_db(database_url: str, pool_kwargs: dict[str, Any] | None = None):
     global sessionmanager
-    sessionmanager = DBSessionManager(database_url, engine_kwargs or {})
+    sessionmanager = DBSessionManager(database_url, pool_kwargs or {})
     return sessionmanager
-
-
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    global sessionmanager
-    if sessionmanager is None:
-        raise DBSessionNotInitializedException()
-    async with sessionmanager.session() as session:
-        yield session

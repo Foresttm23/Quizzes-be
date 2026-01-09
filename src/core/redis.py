@@ -1,9 +1,11 @@
-from config import settings
-from redis import ConnectionPool, Redis
+from typing import Any
 
-pool = ConnectionPool.from_url(url=str(settings.REDIS.REDIS_URL), decode_responses=True)
-redis_client = Redis(connection_pool=pool)
+from redis.asyncio import ConnectionPool
+
+redis_pool: ConnectionPool | None = None
 
 
-async def get_redis_client() -> Redis:
-    return redis_client
+def init_redis(redis_url: str, pool_kwargs: dict[str, Any] | None = None):
+    global redis_pool
+    redis_pool = ConnectionPool.from_url(redis_url, **(pool_kwargs or {}))
+    return redis_pool
