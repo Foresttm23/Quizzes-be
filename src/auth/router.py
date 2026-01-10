@@ -18,7 +18,7 @@ from .schemas import (
     LoginRequest,
     RegisterRequest,
     TokenResponse,
-    UserAverageSystemScoreResponseSchema,
+    UserAverageSystemStatsResponseSchema,
     UserDetailsResponse,
     UserInfoUpdateRequest,
     UserPasswordUpdateRequest,
@@ -124,9 +124,9 @@ async def delete_self(user_service: UserServiceDep, user: GetUserJWTDep):
 
 @users_router.get(
     "/me/system-average-score",
-    response_model=UserAverageSystemScoreResponseSchema,
+    response_model=UserAverageSystemStatsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_user_average_score_system_wide(attempt_service: AttemptServiceDep, user: GetUserJWTDep):
-    stats = await attempt_service.get_user_average_score_system_wide(user_id=user.id)
+    stats = await attempt_service.get_user_stats_system_wide(user_id=user.id)
     return stats

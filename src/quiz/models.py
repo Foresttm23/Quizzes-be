@@ -63,8 +63,8 @@ class CompanyQuizQuestion(Base, TimestampMixin):
     __tablename__ = "company_quiz_question"
 
     quiz_id: Mapped[uuid.UUID] = mapped_column(UUID, ForeignKey("company_quiz.id", ondelete="CASCADE"))
-    points: Mapped[float] = mapped_column(Float, default=1)
     text: Mapped[str] = mapped_column(Text)
+    points: Mapped[float] = mapped_column(Float, default=1)
 
     quiz: Mapped["CompanyQuiz"] = relationship("CompanyQuiz", back_populates="questions")
     options: Mapped[list["QuestionAnswerOption"]] = relationship(

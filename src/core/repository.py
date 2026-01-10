@@ -28,16 +28,19 @@ class BaseRepository(Generic[ModelType]):
         self,
         page: int,
         page_size: int,
+        return_schema: Type[SchemaType],
         filters: dict[InstrumentedAttribute, Any] | None = None,
-    ) -> PaginationResponse[ModelType]:
+    ) -> PaginationResponse[SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
         stmt = stmt.order_by(self.model.id.desc())
 
-        result = await self.paginate_query(stmt, page, page_size)
+        result = await self.paginate_query(stmt=stmt, page=page, page_size=page_size, return_chema=return_schema)
         return result
 
-    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[ModelType]:
+    async def paginate_query(
+        self, stmt: Select, page: int, page_size: int, return_chema: Type[SchemaType]
+    ) -> PaginationResponse[SchemaType]:
         count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
 
@@ -56,7 +59,7 @@ class BaseRepository(Generic[ModelType]):
             total_pages=total_pages,
             has_next=page < total_pages,
             has_prev=page > 1,
-            data=items,
+            data=[return_chema.model_validate(item) for item in items],
         )
 
     @staticmethod
@@ -117,7 +120,7 @@ class BaseRepository(Generic[ModelType]):
         options: Sequence[ExecutableOption] | None = None,
     ) -> ModelType | None:
         """
-        Gets instance by many field.
+        Gets instance by many field. Applies .model_dump(exclude_unset=True)
         :param filters: Executes the .where() DB query to the passed args
         :param relationships: Executes selectinload to find 1 layer relationships (Quiz->Questions)
         :param options: Executes selectinload to find 2 layer relationships (Quiz->Questions->Answers)

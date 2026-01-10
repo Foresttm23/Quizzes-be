@@ -1,11 +1,98 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
-from core.schemas import Base, BaseUpdateMixin
+from src.core.schemas import Base, BaseUpdateMixin
+from src.quiz.enums import AttemptStatus
+
+
+class TimestampMixin(BaseModel):
+    created_at: datetime
+    updated_at: datetime
+
+
+class AttemptMixin(BaseModel):
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class QuestionAnswerOptionSchema(Base):
+    id: UUID
+    question_id: UUID
+    text: str
+    is_correct: bool
+
+
+class CompanyQuizQuestionSchema(Base, TimestampMixin):
+    id: UUID
+
+    quiz_id: UUID
+    text: str
+    points: float
+
+    options: list[QuestionAnswerOptionSchema] = []
+
+
+class CompanyQuizListSchema(Base, TimestampMixin):
+    id: UUID
+    company_id: UUID
+    title: str
+    description: str
+
+    allowed_attempts: int | None
+    time_limit_minutes: int | None
+    is_published: bool
+    is_visible: bool
+
+    root_quiz_id: UUID | None
+    version: int
+
+
+class CompanyQuizSchema(CompanyQuizListSchema):
+    """
+    Doesn't include 'attempts' to ensure this object remains cacheable.
+    """
+
+    questions: list[CompanyQuizQuestionSchema] = []
+
+
+class AttemptAnswerSelectionSchema(Base):
+    id: UUID
+    answer_id: UUID
+    option_id: UUID
+
+    option: QuestionAnswerOptionSchema | None = None
+
+
+class QuizAttemptAnswerSchema(Base):
+    id: UUID
+    attempt_id: UUID
+    question_id: UUID
+
+    selected_options: list[AttemptAnswerSelectionSchema] = []
+
+
+class QuizAttemptSchema(Base, AttemptMixin):
+    id: UUID
+    user_id: UUID
+    quiz_id: UUID
+
+    score: float
+    correct_answers_count: int
+    total_questions_count: int
+    status: AttemptStatus
+    expires_at: datetime | None = None
+
+    answers: list[QuizAttemptAnswerSchema] = []
+
+    @property
+    def is_expired(self) -> bool:
+        if self.expires_at is None:
+            return False
+        return datetime.now(timezone.utc) >= self.expires_at
 
 
 class QuizCreateRequestSchema(Base):
@@ -14,7 +101,7 @@ class QuizCreateRequestSchema(Base):
     time_limit_minutes: int | None = Field(
         None,
         ge=1,
-        description="Time limit in minutes. Defaults to 1440 (24 hours) if not specified.",
+        description="None = always",
     )
 
 
@@ -24,34 +111,11 @@ class QuizUpdateRequestSchema(Base, BaseUpdateMixin):
     time_limit_minutes: int | None = Field(
         None,
         ge=1,
-        description="Time limit in minutes. Set to None to use default (24 hours).",
+        description="None=infinite, should be passed directly as None to take effect.",
     )
 
 
-class QuizDetailsResponseSchema(Base):
-    id: UUID
-    company_id: UUID
-
-    title: str
-    description: str
-
-    allowed_attempts: int | None
-    time_limit_minutes: int | None
-
-    is_published: bool
-    is_visible: bool
-
-    root_quiz_id: UUID | None
-    version: int
-
-    updated_at: datetime
-    created_at: datetime
-
-    total_attempts: int
-    questions_count: int
-
-
-class QuestionOptionsMixin:
+class QuestionOptionsMixin(BaseModel):
     @field_validator("options")
     @classmethod
     def validate_option(cls, options: list[AnswerOptionsCreateRequestSchema] | None):
@@ -97,7 +161,7 @@ class QuestionUserResponseSchema(Base):
 
 
 class QuestionAdminResponseSchema(QuestionUserResponseSchema):
-    options: list[AnswerOptionsStudentResponseSchema]
+    options: list[AnswerOptionsAdminResponseSchema]
 
 
 class AnswerOptionsCreateRequestSchema(Base):
@@ -122,14 +186,3 @@ class SaveAnswerRequestSchema(Base):
 class QuizAttemptStartResponseSchema(Base):
     attempt_id: UUID
     questions: list[QuestionUserResponseSchema]
-
-
-class QuizAttemptResponseSchema(Base):
-    id: UUID
-    user_id: UUID
-    quiz_id: UUID
-    score: float
-    status: str
-    started_at: datetime
-    finished_at: datetime | None
-    expires_at: datetime | None

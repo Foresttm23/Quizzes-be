@@ -11,14 +11,15 @@ from src.core.schemas import PaginationResponse
 from .dependencies import AttemptServiceDep, CompanyQuizServiceDep
 from .schemas import (
     AnswerOptionsStudentResponseSchema,
+    CompanyQuizListSchema,
+    CompanyQuizSchema,
     QuestionAdminResponseSchema,
     QuestionCreateRequestSchema,
     QuestionUpdateRequestSchema,
     QuestionUserResponseSchema,
-    QuizAttemptResponseSchema,
+    QuizAttemptSchema,
     QuizAttemptStartResponseSchema,
     QuizCreateRequestSchema,
-    QuizDetailsResponseSchema,
     QuizUpdateRequestSchema,
     SaveAnswerRequestSchema,
 )
@@ -29,7 +30,7 @@ quiz_router = APIRouter(prefix="/companies/{company_id}/quizzes", tags=["Company
 
 @quiz_router.post(
     "/",
-    response_model=QuizDetailsResponseSchema,
+    response_model=CompanyQuizListSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_company_quiz(
@@ -44,7 +45,7 @@ async def create_company_quiz(
 
 @quiz_router.post(
     "/{quiz_id}/publish",
-    response_model=QuizDetailsResponseSchema,
+    response_model=CompanyQuizListSchema,
     status_code=status.HTTP_200_OK,
 )
 async def publish_quiz(
@@ -69,7 +70,7 @@ async def delete_company_quiz(
 
 @quiz_router.get(
     "/{quiz_id}",
-    response_model=QuizDetailsResponseSchema,
+    response_model=CompanyQuizSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_quiz(
@@ -85,7 +86,7 @@ async def get_quiz(
 
 @quiz_router.get(
     "/",
-    response_model=PaginationResponse[QuizDetailsResponseSchema],
+    response_model=PaginationResponse[CompanyQuizListSchema],
     status_code=status.HTTP_200_OK,
 )
 async def get_quizzes(
@@ -106,7 +107,7 @@ async def get_quizzes(
 
 @quiz_router.patch(
     "/{quiz_id}",
-    response_model=QuizDetailsResponseSchema,
+    response_model=CompanyQuizListSchema,
     status_code=status.HTTP_200_OK,
 )
 async def update_quiz(
@@ -211,7 +212,7 @@ async def update_question_full(
 
 @quiz_router.post(
     "/{quiz_id}/versions",
-    response_model=QuizDetailsResponseSchema,
+    response_model=CompanyQuizListSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_new_quiz_version_within_company(
@@ -259,7 +260,7 @@ async def save_quiz_answer(
 
 @attempt_router.post(
     "/{attempt_id}/submit",
-    response_model=QuizAttemptResponseSchema,
+    response_model=QuizAttemptSchema,
     status_code=status.HTTP_200_OK,
 )
 async def submit_quiz_attempt(
@@ -273,7 +274,7 @@ async def submit_quiz_attempt(
 
 @attempt_router.get(
     "/{attempt_id}",
-    response_model=QuizAttemptResponseSchema,
+    response_model=QuizAttemptSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_quiz_attempt(

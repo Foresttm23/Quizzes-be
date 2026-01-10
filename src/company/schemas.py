@@ -76,6 +76,6 @@ class UpdateMemberRoleSchema(Base):
     role: CompanyRole
 
 
-class UserAverageCompanyScoreResponseSchema(ScoreStatsBase):
+class UserAverageCompanyStatsResponseSchema(ScoreStatsBase):
     user_id: UUID
     company_id: UUID

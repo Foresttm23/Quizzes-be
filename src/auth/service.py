@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, TypeVar
 from uuid import UUID, uuid4
 
@@ -122,7 +122,6 @@ class UserService(BaseService[UserRepository]):
         logger.debug(f"{self.display_name}: {user.id} changed password")
 
         return user
-
 
     def _verify_and_update_password(self, user: UserModel, new_password_info: UserPasswordUpdateRequest) -> None:
         current_password = new_password_info.current_password.get_secret_value()

@@ -24,8 +24,8 @@ class BaseService(ABC, Generic[RepoType]):
     def _update_instance(self, instance: ModelType, new_data: BaseSchema, by: UUID) -> ModelType:
         """
         Method for updating instance details by id.
-        Should only be called inside subclasses
-        with the specified Schema in parameters.
+        Should only be called inside subclasses with the specified Schema in parameters.
+        Applies .model_dump(exclude_unset=True)
         """
         changes = self.repo.apply_instance_updates(instance=instance, new_instance_info=new_data)
         # If no changes return instance from db

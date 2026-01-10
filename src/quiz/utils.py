@@ -1,4 +1,4 @@
-from typing import Any, Sequence
+from typing import Any, Sequence, TypeVar
 from uuid import UUID
 
 from sqlalchemy.orm import InstrumentedAttribute
@@ -20,6 +20,8 @@ from .models import (
 from .models import (
     QuizAttempt as QuizAttemptModel,
 )
+
+Q = TypeVar("Q")
 
 
 class QuizUtils:
@@ -91,7 +93,9 @@ class QuizUtils:
         return filters
 
     @staticmethod
-    def assert_valid_question(question: CompanyQuizQuestionModel | None) -> CompanyQuizQuestionModel:
+    def assert_valid_question(
+        question: Q | None,
+    ) -> Q:
         if not question:
             raise InstanceNotFoundException(instance_name="Question")
         return question

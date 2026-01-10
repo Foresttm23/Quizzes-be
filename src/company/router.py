@@ -25,7 +25,7 @@ from .schemas import (
     InvitationDetailsResponse,
     RequestDetailsResponse,
     UpdateMemberRoleSchema,
-    UserAverageCompanyScoreResponseSchema,
+    UserAverageCompanyStatsResponseSchema,
 )
 
 companies_router = APIRouter(prefix="/companies", tags=["Companies"])
@@ -370,7 +370,7 @@ async def update_member_role(
 
 @companies_router.get(
     "/{company_id}/members/{target_user_id}/stats",
-    response_model=UserAverageCompanyScoreResponseSchema,
+    response_model=UserAverageCompanyStatsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_user_average_score_in_company(
@@ -380,4 +380,4 @@ async def get_user_average_score_in_company(
     target_user_id: UUID,
 ):
     stats = await attempt_service.get_user_stats_in_company(company_id=company_id, acting_user_id=user.id, target_user_id=target_user_id)
-    return {**stats, "user_id": target_user_id, "company_id": company_id}
+    return stats

@@ -56,5 +56,5 @@ class UserPasswordUpdateRequest(Base):
     new_password: SecretStr = Field(min_length=8)
 
 
-class UserAverageSystemScoreResponseSchema(ScoreStatsBase):
+class UserAverageSystemStatsResponseSchema(ScoreStatsBase):
     pass

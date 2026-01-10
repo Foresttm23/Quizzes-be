@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from core.repository import BaseRepository
 
@@ -66,12 +66,19 @@ class QuizRepository(BaseRepository[CompanyQuizModel]):
         allowed_attempts = await self.db.scalar(query)
         return allowed_attempts
 
+    async def get_quiz_time_limit_minutes(self, company_id: UUID, quiz_id: UUID) -> int | None:
+        query = select(CompanyQuizModel.time_limit_minutes).where(CompanyQuizModel.company_id == company_id, CompanyQuizModel.id == quiz_id)
+        time_limit_minutes = await self.db.scalar(query)
+        return time_limit_minutes
+
 
 class QuestionRepository(BaseRepository[CompanyQuestionModel]):
     def __init__(self, db: AsyncSession):
         super().__init__(model=CompanyQuestionModel, db=db)
 
-    async def get_question_or_none(self, company_id: UUID, quiz_id: UUID, question_id: UUID) -> CompanyQuestionModel | None:
+    async def get_question_or_none(
+        self, company_id: UUID, quiz_id: UUID, question_id: UUID, relationship: InstrumentedAttribute | None = None
+    ) -> CompanyQuestionModel | None:
         query = (
             select(CompanyQuestionModel)
             .join(CompanyQuizModel, CompanyQuestionModel.quiz_id == CompanyQuizModel.id)
@@ -81,7 +88,8 @@ class QuestionRepository(BaseRepository[CompanyQuestionModel]):
                 CompanyQuizModel.company_id == company_id,
             )
         )
-
+        if relationship:
+            query = query.options(selectinload(relationship))
         question = await self.db.scalar(query)
         return question
 
