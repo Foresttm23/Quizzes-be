@@ -7,19 +7,21 @@ from src.auth.dependencies import GetOptionalUserJWTDep, GetUserJWTDep
 from src.company.dependencies import CompanyMemberServiceDep
 from src.core.dependencies import PaginationParamDep
 from src.core.schemas import PaginationResponse
+from src.quiz.enums import AttemptStatus
 
 from .dependencies import AttemptServiceDep, CompanyQuizServiceDep
 from .schemas import (
-    AnswerOptionsStudentResponseSchema,
-    CompanyQuizListSchema,
+    CompanyQuizAdminSchema,
+    CompanyQuizBaseSchema,
+    CompanyQuizQuestionAdminSchema,
+    CompanyQuizQuestionSchema,
     CompanyQuizSchema,
-    QuestionAdminResponseSchema,
     QuestionCreateRequestSchema,
     QuestionUpdateRequestSchema,
-    QuestionUserResponseSchema,
-    QuizAttemptSchema,
-    QuizAttemptStartResponseSchema,
+    QuizAttemptAnswerSchema,
     QuizCreateRequestSchema,
+    QuizReviewAttemptResponseSchema,
+    QuizStartAttemptResponseSchema,
     QuizUpdateRequestSchema,
     SaveAnswerRequestSchema,
 )
@@ -30,7 +32,7 @@ quiz_router = APIRouter(prefix="/companies/{company_id}/quizzes", tags=["Company
 
 @quiz_router.post(
     "/",
-    response_model=CompanyQuizListSchema,
+    response_model=CompanyQuizAdminSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_company_quiz(
@@ -45,7 +47,7 @@ async def create_company_quiz(
 
 @quiz_router.post(
     "/{quiz_id}/publish",
-    response_model=CompanyQuizListSchema,
+    response_model=CompanyQuizAdminSchema,
     status_code=status.HTTP_200_OK,
 )
 async def publish_quiz(
@@ -70,23 +72,27 @@ async def delete_company_quiz(
 
 @quiz_router.get(
     "/{quiz_id}",
-    response_model=CompanyQuizSchema,
+    response_model=CompanyQuizAdminSchema | CompanyQuizSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_quiz(
+    member_service: CompanyMemberServiceDep,
     quiz_service: CompanyQuizServiceDep,
     user: GetOptionalUserJWTDep,
     company_id: UUID,
     quiz_id: UUID,
 ):
-    user_id = user.id if user else None
-    quiz = await quiz_service.get_quiz(company_id=company_id, user_id=user_id, quiz_id=quiz_id)
-    return quiz
+    is_admin = await member_service.has_admin_permission(company_id=company_id, user_id=user.id)
+    quiz = await quiz_service.get_quiz(company_id=company_id, is_admin=is_admin, quiz_id=quiz_id)
+    if is_admin:
+        return TypeAdapter(CompanyQuizAdminSchema.model_validate(quiz))
+    else:
+        return TypeAdapter(CompanyQuizSchema.model_validate(quiz))
 
 
 @quiz_router.get(
     "/",
-    response_model=PaginationResponse[CompanyQuizListSchema],
+    response_model=PaginationResponse[CompanyQuizBaseSchema],
     status_code=status.HTTP_200_OK,
 )
 async def get_quizzes(
@@ -107,7 +113,7 @@ async def get_quizzes(
 
 @quiz_router.patch(
     "/{quiz_id}",
-    response_model=CompanyQuizListSchema,
+    response_model=CompanyQuizAdminSchema,
     status_code=status.HTTP_200_OK,
 )
 async def update_quiz(
@@ -128,7 +134,7 @@ async def update_quiz(
 
 @quiz_router.post(
     "/{quiz_id}/question",
-    response_model=QuestionUserResponseSchema | QuestionAdminResponseSchema,
+    response_model=CompanyQuizQuestionAdminSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_question(
@@ -168,7 +174,7 @@ async def delete_question(
 
 @quiz_router.get(
     "/{quiz_id}/questions",
-    response_model=list[QuestionAdminResponseSchema] | list[QuestionUserResponseSchema],
+    response_model=list[CompanyQuizQuestionAdminSchema] | list[CompanyQuizQuestionSchema],
     status_code=status.HTTP_200_OK,
 )
 async def get_questions(
@@ -182,14 +188,14 @@ async def get_questions(
 
     is_admin = await member_service.has_admin_permission(company_id=company_id, user_id=user.id)
     if is_admin:
-        return TypeAdapter(list[QuestionAdminResponseSchema]).validate_python(questions)
+        return TypeAdapter(list[CompanyQuizQuestionAdminSchema]).validate_python(questions)
     else:
-        return TypeAdapter(list[QuestionUserResponseSchema]).validate_python(questions)
+        return TypeAdapter(list[CompanyQuizQuestionSchema]).validate_python(questions)
 
 
 @quiz_router.patch(
     "/{quiz_id}/questions/{question_id}",
-    response_model=QuestionAdminResponseSchema,
+    response_model=CompanyQuizQuestionAdminSchema,
     status_code=status.HTTP_200_OK,
 )
 async def update_question_full(
@@ -212,7 +218,7 @@ async def update_question_full(
 
 @quiz_router.post(
     "/{quiz_id}/versions",
-    response_model=CompanyQuizListSchema,
+    response_model=CompanyQuizAdminSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_new_quiz_version_within_company(
@@ -227,7 +233,7 @@ async def create_new_quiz_version_within_company(
 
 @quiz_router.post(
     "/{quiz_id}/attempts",
-    response_model=QuizAttemptStartResponseSchema,
+    response_model=QuizStartAttemptResponseSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def start_quiz_attempt(
@@ -237,12 +243,12 @@ async def start_quiz_attempt(
     quiz_id: UUID,
 ):
     questions, attempt = await attempt_service.start_attempt(company_id=company_id, quiz_id=quiz_id, user_id=user.id)
-    return {"attempt_id": attempt.id, "questions": questions}
+    return {"questions": questions, "attempt": attempt}
 
 
 @attempt_router.post(
     "/{attempt_id}/questions/{question_id}/answer",
-    response_model=AnswerOptionsStudentResponseSchema,
+    response_model=QuizAttemptAnswerSchema,
     status_code=status.HTTP_200_OK,
 )
 async def save_quiz_answer(
@@ -260,27 +266,38 @@ async def save_quiz_answer(
 
 @attempt_router.post(
     "/{attempt_id}/submit",
-    response_model=QuizAttemptSchema,
+    response_model=QuizReviewAttemptResponseSchema,
     status_code=status.HTTP_200_OK,
 )
 async def submit_quiz_attempt(
     attempt_service: AttemptServiceDep,
+    quiz_service: CompanyQuizServiceDep,
     user: GetUserJWTDep,
     attempt_id: UUID,
 ):
     attempt = await attempt_service.end_attempt(user_id=user.id, attempt_id=attempt_id)
-    return attempt
+    questions = await quiz_service.get_questions_and_options(company_id=attempt.quiz.company_id, quiz_id=attempt.quiz_id)
+
+    return {"questions": questions, "attempt": attempt}
 
 
-@attempt_router.get(
+@attempt_router.get(  # TODO? add router for the admin to review member answers
     "/{attempt_id}",
-    response_model=QuizAttemptSchema,
+    response_model=QuizStartAttemptResponseSchema | QuizReviewAttemptResponseSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_quiz_attempt(
     attempt_service: AttemptServiceDep,
+    quiz_service: CompanyQuizServiceDep,
     user: GetUserJWTDep,
     attempt_id: UUID,
 ):
     attempt = await attempt_service.get_attempt(user_id=user.id, attempt_id=attempt_id)
-    return attempt
+    questions = await quiz_service.get_questions_and_options(company_id=attempt.quiz.company_id, quiz_id=attempt.quiz_id)
+
+    result = {"questions": questions, "attempt": attempt}
+
+    if attempt.status == AttemptStatus.IN_PROGRESS:
+        return TypeAdapter(QuizStartAttemptResponseSchema).validate_python(result)
+    else:
+        return TypeAdapter(QuizReviewAttemptResponseSchema).validate_python(result)

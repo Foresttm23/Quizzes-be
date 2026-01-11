@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Generic, Sequence, TypeVar
 
 from pydantic import BaseModel, model_validator
@@ -33,3 +34,13 @@ class ScoreStatsBase(Base):
     score: float
     total_correct_answers: int
     total_questions_answered: int
+
+
+class TimestampMixin(BaseModel):
+    created_at: datetime
+    updated_at: datetime
+
+
+class AttemptMixin(BaseModel):
+    started_at: datetime
+    finished_at: datetime | None
