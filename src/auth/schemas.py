@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import EmailStr, Field, SecretStr
 
-from src.core.schemas import Base, ScoreStatsBase
+from src.core.schemas import Base, ScoreStatsBase, TimestampMixin
 
 from .enums import AuthProviderEnum, JWTTypeEnum
 
@@ -19,20 +19,29 @@ class JWTRefreshSchema(JWTSchema):
     type: JWTTypeEnum
 
 
-class UserDetailsResponse(Base):
+# ----------------------------------------------- RESPONSES -------------------------------------------------
+
+
+class UserDetailsResponse(Base, TimestampMixin):
     id: uuid.UUID
     email: EmailStr
     username: str
     auth_provider: str
     is_banned: bool
-    created_at: datetime
-    updated_at: datetime
+    last_quiz_attempt_at: datetime
 
 
 class TokenResponse(Base):
     access_token: str
     refresh_token: str
     token_type: str
+
+
+class UserAverageSystemStatsResponseSchema(ScoreStatsBase):
+    pass
+
+
+# ----------------------------------------------- REQUESTS -------------------------------------------------
 
 
 class RegisterRequest(Base):
@@ -54,7 +63,3 @@ class UserInfoUpdateRequest(Base):
 class UserPasswordUpdateRequest(Base):
     current_password: SecretStr = Field(min_length=8)
     new_password: SecretStr = Field(min_length=8)
-
-
-class UserAverageSystemStatsResponseSchema(ScoreStatsBase):
-    pass

@@ -11,11 +11,13 @@ from src.core.schemas import Base as BaseSchema
 from .constants import CacheConfig
 
 
-def base_cached_service(config: CacheConfig, schema: Type[BaseSchema] | None):
+def base_cached_service(config: CacheConfig, schema: Type[BaseSchema] | None, cache_condition: Callable[[Any], bool] | None = None):
     """
     Decorator for service methods caching. Prefix for each method should be unique, expire is in seconds. Class method should have self.redis injected.
     Services must be called with **kwargs parameters if possible. Example: quiz_service(user_id=user_id).
     Schema parameter is crucial for correct serialization and desirialization.
+    :cache_condition: is a function from caching rules that return a bool based on a condition.
+    Example: cache_condition = lambda: getattr(obj, "status", None) != "IN_PROGRESS".
     """
 
     def decorator(func: Callable):
@@ -33,9 +35,14 @@ def base_cached_service(config: CacheConfig, schema: Type[BaseSchema] | None):
                 return _deserialize(obj=cached_data, schema=schema)
 
             result = await func(*args, **kwargs)
-            if result is not None:
-                serialized_data = _serialize(result)
-                await redis.set(cache_key, serialized_data, ex=config.expire)
+            if result is None:
+                return result
+
+            if cache_condition and not cache_condition(result):
+                return result
+
+            serialized_data = _serialize(result)
+            await redis.set(cache_key, serialized_data, ex=config.expire)
 
             return result
 

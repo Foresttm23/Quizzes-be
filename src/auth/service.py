@@ -30,6 +30,8 @@ from .schemas import (
     JWTSchema,
     LoginRequest,
     RegisterRequest,
+    TokenResponse,
+    UserDetailsResponse,
     UserInfoUpdateRequest,
     UserPasswordUpdateRequest,
 )
@@ -47,13 +49,17 @@ class UserService(BaseService[UserRepository]):
         super().__init__(repo=UserRepository(db=db))
         self.utils = AuthUtils()
 
-    async def get_by_email(self, email: EmailStr, relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
+    async def _get_by_email_model(self, email: EmailStr, relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
         user = await self._get_user_by_field(field=UserModel.email, value=email, relationships=relationships)
         return user
 
-    async def get_by_id(self, user_id: UUID, relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
+    async def get_by_id_model(self, user_id: UUID, relationships: set[InstrumentedAttribute] | None = None) -> UserModel:
         user = await self._get_user_by_field(field=UserModel.id, value=user_id, relationships=relationships)
         return user
+
+    async def get_by_id(self, user_id: UUID, relationships: set[InstrumentedAttribute] | None = None) -> UserDetailsResponse:
+        user = await self._get_user_by_field(field=UserModel.id, value=user_id, relationships=relationships)
+        return UserDetailsResponse.model_validate(user)
 
     async def _get_user_by_field(
         self,
@@ -66,12 +72,12 @@ class UserService(BaseService[UserRepository]):
             raise InstanceNotFoundException(instance_name=self.display_name)
         return user
 
-    async def get_users_paginated(self, page: int, page_size: int) -> PaginationResponse[UserModel]:
+    async def get_users_paginated(self, page: int, page_size: int) -> PaginationResponse[UserDetailsResponse]:
         # We can now add filter fields.
-        users_data = await self.repo.get_instances_paginated(page=page, page_size=page_size)
+        users_data = await self.repo.get_instances_paginated(page=page, page_size=page_size, return_schema=UserDetailsResponse)
         return users_data
 
-    async def create_user(self, user_info: RegisterRequest) -> UserModel:
+    async def create_user_model(self, user_info: RegisterRequest) -> UserModel:
         """Method for creating a user"""
         # Since SecretStr(password) will transform to "***" with model_dump(),
         # we extract password before the call.
@@ -95,7 +101,7 @@ class UserService(BaseService[UserRepository]):
         user = UserModel(
             id=user_id,
             email=user_info.email,  # .hex pretty much cleans the uuid from unique characters
-            username=f"user_{uuid4().hex[:12]}",
+            username=f"user_{uuid4().hex}",  # full UUID just to be sure
             hashed_password=None,
             auth_provider=user_info.auth_provider,
         )
@@ -153,7 +159,7 @@ class AuthService:
         Wrapper for user_service.create_user.
         Can be expanded in the future.
         """
-        user = await self.user_service.create_user(user_info=sign_up_data)
+        user = await self.user_service.create_user_model(user_info=sign_up_data)
         return user
 
     async def handle_jwt_sign_in(self, jwt_payload: JWTSchema) -> UserModel:  # TODO Return id or instance if asked.
@@ -165,19 +171,19 @@ class AuthService:
             user_id = UUID(jwt_payload.sub)
 
         try:
-            user = await self.user_service.get_by_id(user_id=user_id)
+            user = await self.user_service.get_by_id_model(user_id=user_id)
         except InstanceNotFoundException:
             # Since user cannot possibly have a local JWT without already creating a user instance.
             user = await self.user_service.create_user_from_auth0(user_id=user_id, user_info=jwt_payload)
 
         return user
 
-    async def handle_email_password_sign_in(self, sign_in_data: LoginRequest):
+    async def handle_email_password_sign_in(self, sign_in_data: LoginRequest) -> UserModel:
         """Creates user from password and email if not found. Returns user in either way."""
         # Checks if user exist byt itself, so the call checking user isn't needed
         # but might help in some unexpected situations
         try:
-            user = await self.user_service.get_by_email(email=sign_in_data.email)
+            user = await self.user_service._get_by_email_model(email=sign_in_data.email)
         except InstanceNotFoundException:
             raise UserIncorrectPasswordOrEmailException()
 
@@ -185,7 +191,7 @@ class AuthService:
             raise ExternalAuthProviderException(auth_provider=user.auth_provider, message="Incorrect Route")
 
         plain_password = sign_in_data.password.get_secret_value()
-        if not user or not self.auth_utils.verify_password(plain_password=plain_password, hashed_password=user.hashed_password):
+        if not self.auth_utils.verify_password(plain_password=plain_password, hashed_password=user.hashed_password):
             raise UserIncorrectPasswordOrEmailException()
 
         return user
@@ -195,23 +201,19 @@ class TokenService:
     def __init__(self):
         self.auth_utils = AuthUtils()
 
-    def create_token_pairs(self, user: UserModel) -> dict:
+    def create_token_pairs(self, user: UserModel) -> TokenResponse:
         # user: UserModel = await self.user_service.fetch_user(field_name="id", field_value=user_id)
         access_token = self._create_access_token(user=user)
         refresh_token = self._create_refresh_token(user=user)
 
-        logger.debug(
-            {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "token_type": "bearer",
-            }
-        )
-        return {
+        result = {
             "access_token": access_token,
             "refresh_token": refresh_token,
             "token_type": "bearer",
         }
+
+        logger.debug(result)
+        return TokenResponse.model_validate(result)
 
     async def verify_token_and_get_payload(self, jwt_token: str) -> JWTSchema:
         # Since we have 2 variation of registration we check them in order
@@ -221,11 +223,11 @@ class TokenService:
             # If this raises error, code stops
             payload_dict = await self.auth_utils.verify_auth0_token_and_get_payload(jwt_token)
 
-        return JWTSchema(**payload_dict)
+        return JWTSchema.model_validate(payload_dict)
 
     def verify_refresh_token_and_get_payload(self, token: str) -> JWTRefreshSchema:
         payload_dict = self.auth_utils.verify_refresh_token_and_get_payload(token)
-        payload = JWTRefreshSchema(**payload_dict)
+        payload = JWTRefreshSchema.model_validate(payload_dict)
         if payload.type != JWTTypeEnum.REFRESH:
             raise InvalidJWTRefreshException()
         return payload

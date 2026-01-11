@@ -13,6 +13,7 @@ from src.company.schemas import UserAverageCompanyStatsResponseSchema
 from src.company.service import MemberService
 from src.core.cache import base_cached_service, delete_cache_keys
 from src.core.cache_keys import CacheKeyFactory
+from src.core.caching_rules import cache_attempt_if_finished
 from src.core.constants import CacheConfig
 from src.core.exceptions import InstanceNotFoundException, ResourceConflictException
 from src.core.logger import logger
@@ -547,7 +548,12 @@ class AttemptService(BaseService[AttemptRepository]):
         await self._check_and_expire_attempt(attempt=attempt)
         return attempt
 
-    async def get_attempt(
+    @base_cached_service(
+        config=CacheConfig.ATTEMPT_DETAILS,
+        schema=QuizAttemptAdminAndQuizRelSchema,
+        cache_condition=cache_attempt_if_finished,
+    )
+    async def get_attempt_details(
         self,
         user_id: UUID,
         attempt_id: UUID,

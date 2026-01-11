@@ -292,7 +292,7 @@ async def get_quiz_attempt(
     user: GetUserJWTDep,
     attempt_id: UUID,
 ):
-    attempt = await attempt_service.get_attempt(user_id=user.id, attempt_id=attempt_id)
+    attempt = await attempt_service.get_attempt_details(user_id=user.id, attempt_id=attempt_id)
     questions = await quiz_service.get_questions_and_options(company_id=attempt.quiz.company_id, quiz_id=attempt.quiz_id)
 
     result = {"questions": questions, "attempt": attempt}
