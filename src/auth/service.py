@@ -48,7 +48,7 @@ class UserService(BaseService[UserRepository]):
         super().__init__(repo=UserRepository(db=db))
         self.utils = AuthUtils()
 
-    async def _get_by_email_model(
+    async def get_by_email_model(
             self, email: EmailStr, relationships: set[InstrumentedAttribute] | None = None
     ) -> UserModel:
         user = await self._get_user_by_field(
@@ -224,7 +224,7 @@ class AuthService:
         # Checks if user exist byt itself, so the call checking user isn't needed
         # but might help in some unexpected situations
         try:
-            user = await self.user_service._get_by_email_model(email=sign_in_data.email)
+            user = await self.user_service.get_by_email_model(email=sign_in_data.email)
         except InstanceNotFoundException:
             raise UserIncorrectPasswordOrEmailException()
 
