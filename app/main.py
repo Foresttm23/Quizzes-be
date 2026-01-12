@@ -9,6 +9,9 @@ from app.core.logger import logger
 from app.db.postgres import init_db
 from app.db.redis import redis_client, pool
 from app.routers.auth_router import router as auth_router
+from app.routers.company_invitation_router import router as invitation_router
+from app.routers.company_join_request_router import router as company_join_request_router
+from app.routers.company_member_router import router as company_member_router
 from app.routers.company_router import router as company_router
 from app.routers.health_router import router as health_router
 from app.routers.user_router import router as user_router
@@ -35,6 +38,9 @@ app.include_router(health_router)
 app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(company_router)
+app.include_router(company_member_router)
+app.include_router(invitation_router)
+app.include_router(company_join_request_router)
 
 app.add_middleware(CORSMiddleware, allow_origins=settings.APP.ORIGINS, allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"], )

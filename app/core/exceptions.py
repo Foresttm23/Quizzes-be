@@ -12,10 +12,10 @@ class RecordAlreadyExistsException(HTTPException):
 
 
 class InstanceNotFoundException(HTTPException):
-    def __init__(self):
+    def __init__(self, instance_name: str = "Instance"):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail=f"{instance_name} not found"
         )
 
 
@@ -103,7 +103,40 @@ class CompanyPermissionException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the owner can update the company"
+            detail="Insufficient permissions"
+        )
+
+
+class InvalidRecipientException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Different recipient for invitation/request"
+        )
+
+
+class UserAlreadyInCompanyException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is already a member of this company"
+        )
+
+
+class NotAuthenticatedException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+
+class UserIsNotACompanyMemberException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not a member of a company"
         )
 
 

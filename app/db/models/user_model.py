@@ -5,7 +5,6 @@ from sqlalchemy import UUID, DateTime, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.db.models.relationships import company_admins
 from app.db.postgres import Base
 
 
@@ -17,15 +16,18 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str | None] = mapped_column(String, nullable=True)
     auth_provider: Mapped[str] = mapped_column(String, default="local")
-
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # lazy="selectin", allows for efficient access for all the relationships.
+    # By making a separate query for each of them.
+    # The default "select", creates a different query when a relationship is asked.
+    companies: Mapped[list["CompanyMember"]] = relationship(back_populates="user", lazy="selectin")
+    join_requests: Mapped[list["CompanyJoinRequest"]] = relationship(back_populates="requesting_user", lazy="selectin")
+
+    received_invitations: Mapped[list["CompanyInvitation"]] = relationship(back_populates="invited_user",
+                                                                           lazy="selectin")
+
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    owned_companies: Mapped[list["Company"]] = relationship("Company", back_populates="owner", lazy="selectin")
-
-    admin_companies: Mapped[list["Company"]] = relationship("Company", secondary=company_admins,
-                                                            back_populates="admins", lazy="selectin")
 
     def __repr__(self) -> str:
         """Made for safe logging of a user if needed or made by accident"""
@@ -33,10 +35,5 @@ class User(Base):
 
     def to_dict(self) -> dict:
         """Transform main fields of User Model into dict"""
-        return {
-            "id": str(self.id),
-            "email": self.email,
-            "username": self.username,
-            "auth_provider": self.auth_provider,
-            "is_banned": self.is_banned,
-        }
+        return {"id": str(self.id), "email": self.email, "username": self.username, "auth_provider": self.auth_provider,
+                "is_banned": self.is_banned, }

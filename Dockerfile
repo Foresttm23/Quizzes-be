@@ -1,19 +1,29 @@
 FROM python:3.13-slim
 
-# More clean and better for debug
+COPY --from=ghcr.io/astral-sh/uv:0.9.24 /uv /uvx /bin/
+
+# Optimizations
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /package
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
-# Since I cant execute it on Windows
-COPY start.sh .
-RUN chmod +x start.sh
+# So we won't have to use "uv run" every time.
+ENV PATH="/package/.venv/bin:$PATH"
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --locked
 
 # For development docker-compose will overwrite folder
 COPY ./app /package/app
+
+# Since I cant execute it on Windows
+COPY start.sh .
+RUN chmod +x start.sh
 
 EXPOSE 8000
 
