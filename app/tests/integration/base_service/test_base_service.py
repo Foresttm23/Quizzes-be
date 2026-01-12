@@ -12,8 +12,8 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_fetch_instance_success(test_base_service: _TestService, created_instance: UserModel):
-    fetched_instance = await test_base_service.repo.get_instance_by_field_or_404(field_name="id",
-                                                                                 field_value=created_instance.id)
+    fetched_instance = await test_base_service.repo.get_instance_by_field_or_404(field=UserModel.id,
+                                                                                 value=created_instance.id)
 
     assert fetched_instance.id == created_instance.id
     fetched_user = cast(UserModel, fetched_instance)
@@ -24,7 +24,7 @@ async def test_fetch_instance_success(test_base_service: _TestService, created_i
 async def test_fetch_instance_not_found(test_base_service: _TestService):
     non_existent_id = uuid.uuid4()
     with pytest.raises(InstanceNotFoundException):
-        await test_base_service.repo.get_instance_by_field_or_404(field_name="id", field_value=non_existent_id)
+        await test_base_service.repo.get_instance_by_field_or_404(field=UserModel.id, value=non_existent_id)
 
 
 # Testing both first and other pages
@@ -60,7 +60,7 @@ async def test_fetch_instances_paginated_no_instances(test_base_service: _TestSe
 async def test_update_instance_success(test_base_service: _TestService, created_instance: UserModel):
     new_data = _TestUpdateSchema(username="new_instance_name")
     updated_instance = await test_base_service._update_instance(instance=created_instance, new_data=new_data)
-    await test_base_service.repo.save_changes_and_refresh(updated_instance)
+    await test_base_service.repo.save_and_refresh(updated_instance)
 
     assert updated_instance.username == "new_instance_name"
     assert updated_instance.email == created_instance.email
@@ -72,7 +72,7 @@ async def test_update_instance_no_changes(test_base_service: _TestService, creat
 
     new_data = _TestUpdateSchema(username=created_instance.username, email=created_instance.email)
     updated_instance = await test_base_service._update_instance(instance=created_instance, new_data=new_data)
-    await test_base_service.repo.save_changes_and_refresh(updated_instance)
+    await test_base_service.repo.save_and_refresh(updated_instance)
 
     assert updated_instance.username == original_username
     assert updated_instance.email == created_instance.email
@@ -85,6 +85,7 @@ async def test_delete_instance_success(test_base_service: _TestService, testdb_s
     instance_id = created_instance.id
 
     await test_base_service._delete_instance(instance=created_instance)
+    await test_base_service.repo.commit()
 
     deleted_instance = await testdb_session.get(UserModel, instance_id)
     assert deleted_instance is None

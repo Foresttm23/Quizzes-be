@@ -1,18 +1,17 @@
 import datetime
-import uuid
 
 import sqlalchemy as sa
-from sqlalchemy import UUID, DateTime, String, Text, Boolean
+from sqlalchemy import DateTime, String, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.db.postgres import Base
 
 
+# TODO selecting is bad for pagination thus should be used directly in the db query nad not in the model
 class Company(Base):
     __tablename__ = "companies"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_visible: Mapped[bool] = mapped_column(Boolean, default=True, server_default=sa.text('true'))
