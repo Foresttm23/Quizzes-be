@@ -1,18 +1,19 @@
-from typing import Type, TypeVar, Generic, Any
+from typing import Type, TypeVar, Generic, Any, Sequence
 
-from pydantic import BaseModel
+from pydantic import BaseModel as BaseSchema
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import InstrumentedAttribute
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql import Select, Update, Delete
+from sqlalchemy.sql.base import ExecutableOption
 
-from app.core.exceptions import RecordAlreadyExistsException, InstanceNotFoundException
-from app.db.postgres import Base
-from schemas.base_schemas import PaginationResponse
+from app.core.exceptions import RecordAlreadyExistsException
+from app.db.postgres import Base as BaseModel
+from app.schemas.base_schemas import PaginationResponse
 
-ModelType = TypeVar("ModelType", bound=Base)
-SchemaType = TypeVar("SchemaType", bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=BaseModel)
+SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
 BaseQuery = Select | Update | Delete
 
@@ -22,9 +23,9 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.db = db
 
-    async def get_instances_data_paginated(self, page: int, page_size: int,
-                                           filters: dict[InstrumentedAttribute, Any] | None = None) -> \
-            PaginationResponse[ModelType]:
+    async def get_instances_paginated(self, page: int, page_size: int,
+                                      filters: dict[InstrumentedAttribute, Any] | None = None, ) -> PaginationResponse[
+        SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
         stmt = stmt.order_by(self.model.id.desc())
@@ -32,7 +33,7 @@ class BaseRepository(Generic[ModelType]):
         result = await self.paginate_query(stmt, page, page_size)
         return result
 
-    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[ModelType]:
+    async def paginate_query(self, stmt: Select, page: int, page_size: int) -> PaginationResponse[SchemaType]:
         count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
 
@@ -45,7 +46,7 @@ class BaseRepository(Generic[ModelType]):
         items = result.all()
 
         return PaginationResponse(total=total, page=page, page_size=page_size, total_pages=total_pages,
-                                  has_next=page < total_pages, has_prev=page > 1, data=items)
+                                  has_next=page < total_pages, has_prev=page > 1, data=items, )
 
     @staticmethod
     def _apply_filters(filters: dict[InstrumentedAttribute, Any], base_query: BaseQuery) -> BaseQuery:
@@ -61,7 +62,7 @@ class BaseRepository(Generic[ModelType]):
 
         return query
 
-    async def save_and_refresh(self, *instances: Base) -> None:
+    async def save_and_refresh(self, *instances: BaseModel) -> None:
         """
         Adds instances, commits and refreshes them.
         If there is duplicate of unique field, IntegrityError is called and session is rolled back.
@@ -78,36 +79,48 @@ class BaseRepository(Generic[ModelType]):
         """
         try:
             await self.db.commit()
-        except IntegrityError as e:
+        except IntegrityError:
             raise RecordAlreadyExistsException()
 
-    async def get_instance_by_field_or_404(self, field: InstrumentedAttribute, value: Any) -> ModelType:
+    async def get_instance_by_field_or_none(self, field: InstrumentedAttribute, value: Any,
+                                            relationships: set[InstrumentedAttribute] | None = None,
+                                            options: ExecutableOption | None = None, ) -> ModelType | None:
         """
         Gets instance by single field.
         :param field:
         :param value:
-        :return: instance
-        :raises InstanceNotFoundException: If not found
+        :param relationships:
+        :param options:
+        :return: instance | None
         """
-        instance = await self.get_instance_by_filters_or_404(filters={field: value})
+
+        instance = await self.get_instance_by_filters_or_none(filters={field: value}, relationships=relationships,
+                                                              options=options)
         return instance
 
-    async def get_instance_by_filters_or_404(self, filters: dict[InstrumentedAttribute, Any]) -> ModelType:
+    async def get_instance_by_filters_or_none(self, filters: dict[InstrumentedAttribute, Any],
+                                              relationships: set[InstrumentedAttribute] | None = None,
+                                              options: Sequence[ExecutableOption] | None = None, ) -> ModelType | None:
         """
         Gets instance by many field.
-        :param filters:
-        :return: instance
-        :raises InstanceNotFoundException: If not found
+        :param filters: Executes the .where() DB query to the passed args
+        :param relationships: Executes selectinload to find 1 layer relationships (Quiz->Questions)
+        :param options: Executes selectinload to find 2 layer relationships (Quiz->Questions->Answers)
+        :return: instance | None
         """
         query = select(self.model)
 
         for attr, value in filters.items():
             query = query.where(attr == value)
 
-        instance = await self.db.scalar(query)
-        if instance is None:
-            raise InstanceNotFoundException()
+        if relationships:
+            for rel in relationships:
+                query = query.options(selectinload(rel))
 
+        if options:
+            query = query.options(selectinload(*options))
+
+        instance = await self.db.scalar(query)
         return instance
 
     @staticmethod
@@ -127,7 +140,7 @@ class BaseRepository(Generic[ModelType]):
 
         return changes
 
-    async def delete_instance(self, instance: ModelType) -> None:
+    async def delete_instance(self, instance: BaseModel) -> None:
         """
         Function to delete instance and commit changes.
         """
