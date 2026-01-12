@@ -5,8 +5,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
-from core.repository import BaseRepository
-
+from src.core.repository import BaseRepository
 from .enums import AttemptStatus
 from .models import (
     CompanyQuiz as CompanyQuizModel,

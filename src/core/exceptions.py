@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 
-from logger import logger
+from .logger import logger
 
 
 class RecordAlreadyExistsException(HTTPException):

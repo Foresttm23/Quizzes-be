@@ -17,7 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.models import AttemptMixin, Base, TimestampMixin
+from src.core.models import AttemptMixin, Base, TimestampMixin
 from .enums import AttemptStatus
 
 if TYPE_CHECKING:

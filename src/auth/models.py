@@ -5,8 +5,7 @@ from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.models import Base, TimestampMixin
-
+from src.core.models import Base, TimestampMixin
 from .enums import AuthProviderEnum
 
 if TYPE_CHECKING:

@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from core.exceptions import (
+from src.core.exceptions import (
     CompanyPermissionException,
     InstanceNotFoundException,
     InvalidRecipientException,
@@ -16,10 +16,9 @@ from core.exceptions import (
     UserAlreadyInCompanyException,
     UserIsNotACompanyMemberException,
 )
-from core.logger import logger
-from core.schemas import PaginationResponse
-from core.service import BaseService
-
+from src.core.logger import logger
+from src.core.schemas import PaginationResponse
+from src.core.service import BaseService
 from .enums import CompanyRole, MessageStatus
 from .models import (
     Company as CompanyModel,

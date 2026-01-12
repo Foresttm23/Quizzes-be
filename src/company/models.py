@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from core.models import Base, TimestampMixin
+from src.core.models import Base, TimestampMixin
 from .enums import CompanyRole, MessageStatus
 
 if TYPE_CHECKING:

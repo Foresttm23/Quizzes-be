@@ -1,13 +1,14 @@
 import contextlib
 from typing import Any, AsyncIterator
 
-from exceptions import DBSessionNotInitializedException
-from logger import logger
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+
+from .exceptions import DBSessionNotInitializedException
+from .logger import logger
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308

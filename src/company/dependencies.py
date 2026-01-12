@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from core.dependencies import DBSessionDep
+from src.core.dependencies import DBSessionDep
 from .service import (
     CompanyService,
     InvitationService,
