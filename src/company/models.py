@@ -4,6 +4,9 @@ from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import (
+    Enum as SQLEnum,
+)
+from sqlalchemy import (
     UUID,
     Boolean,
     DateTime,
@@ -11,19 +14,14 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy import (
-    Enum as SQLEnum,
-)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from core.models import Base, TimestampMixin
-
 from .enums import CompanyRole, MessageStatus
 
 if TYPE_CHECKING:
     from src.auth.models import User
-    from src.company.models import Invitation, JoinRequest
     from src.quiz.models import CompanyQuiz
 
 
