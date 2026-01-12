@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+
 from logger import logger
 
 
@@ -9,7 +10,8 @@ class RecordAlreadyExistsException(HTTPException):
 
 class InstanceNotFoundException(HTTPException):
     def __init__(self, instance_name: str, message: str | None = None):
-        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=f"{instance_name} not found")
+        message = f"message: {message}" if message else None
+        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=f"{instance_name} not found; " + message)
 
 
 class UserIncorrectPasswordOrEmailException(HTTPException):

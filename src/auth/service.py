@@ -21,7 +21,6 @@ from core.exceptions import (
 from core.logger import logger
 from core.schemas import PaginationResponse
 from core.service import BaseService
-
 from .enums import AuthProviderEnum, JWTTypeEnum
 from .models import User as UserModel
 from .repository import UserRepository

@@ -6,7 +6,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from src.core.dependencies import DBSessionDep
 from src.core.exceptions import NotAuthenticatedException
-
 from .models import User as UserModel
 from .service import AuthService, TokenService, UserService
 
@@ -38,7 +37,7 @@ def get_token_service() -> TokenService:
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 
 
-async def get_auth_service(user_service: UserServiceDep, token_service: TokenServiceDep) -> AuthService:
+async def get_auth_service(user_service: UserServiceDep) -> AuthService:
     return AuthService(user_service=user_service)
 
 
@@ -70,7 +69,6 @@ GetUserJWTDep = Annotated[UserModel, Depends(get_user_from_jwt)]
 async def get_user_from_refresh_jwt(
     jwt: JWTCredentialsDep,
     token_service: TokenServiceDep,
-    auth_service: AuthServiceDep,
     user_service: UserServiceDep,
 ) -> UserModel:
     jwt_refresh_payload = token_service.verify_refresh_token_and_get_payload(token=jwt)
