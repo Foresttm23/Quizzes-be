@@ -1,7 +1,6 @@
 from uuid import UUID
 
-from .cache import build_cache_key
-from .constants import CacheConfig
+from .config import CacheConfig
 
 
 class CacheKeyFactory:
@@ -26,3 +25,16 @@ class CacheKeyFactory:
     @staticmethod
     def user_stats_system_wide(user_id) -> str:
         return build_cache_key(CacheConfig.USER_STATS_SYSTEM_WIDE.prefix, user_id=user_id)
+
+
+def build_cache_key(prefix: str, *args, **kwargs) -> str:
+    """Services must be called with **kwargs parameters if possible. Example: quiz_service(user_id=user_id)"""
+    args_part = [str(arg) for arg in args]
+    kwargs_part = [f"{k}:{v}" for k, v in sorted(kwargs.items())]
+
+    key_parts = args_part + kwargs_part
+    if not key_parts:
+        key_parts = ["default"]
+
+    cache_key = f"{prefix}:{':'.join(key_parts)}"
+    return cache_key
