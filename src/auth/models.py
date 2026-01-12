@@ -25,7 +25,9 @@ class User(Base, TimestampMixin):
         server_default=AuthProviderEnum.LOCAL.value,
     )
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_quiz_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_quiz_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     companies: Mapped[list["Member"]] = relationship(
         "Member",

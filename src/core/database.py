@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from .exceptions import DBSessionNotInitializedException
+from .exceptions import SessionNotInitializedException
 from .logger import logger
 
 
@@ -15,7 +15,9 @@ from .logger import logger
 class DBSessionManager:
     def __init__(self, database_url: str, engine_kwargs: dict[str, Any] | None = None):
         self._engine = create_async_engine(database_url, **(engine_kwargs or {}))
-        self._sessionmaker = async_sessionmaker(autocommit=False, bind=self._engine, expire_on_commit=False)
+        self._sessionmaker = async_sessionmaker(
+            autocommit=False, bind=self._engine, expire_on_commit=False
+        )
 
     async def close(self) -> None:
         if self._engine:
@@ -26,7 +28,7 @@ class DBSessionManager:
     @contextlib.asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
         if self._sessionmaker is None:
-            raise DBSessionNotInitializedException()
+            raise SessionNotInitializedException(session_name="POSTGRES_DB")
 
         session = self._sessionmaker()
         try:

@@ -19,7 +19,10 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Startup")
     sessionmanager = init_db(str(settings.DB.DATABASE_URL), {"pool_size": 20})
-    redis_pool = init_redis(str(settings.REDIS.REDIS_URL), {"encoding": "utf8", "decode_responses": True, "max_connections": 20})
+    redis_pool = init_redis(
+        str(settings.REDIS.REDIS_URL),
+        {"encoding": "utf8", "decode_responses": True, "max_connections": 20},
+    )
 
     yield
     # Shutdown

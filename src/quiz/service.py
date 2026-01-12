@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Sequence
+from typing import Sequence
 from uuid import UUID, uuid4
 
 from redis.asyncio import Redis
@@ -32,8 +32,10 @@ from .schemas import (AnswerOptionsCreateRequestSchema, CompanyQuizAdminSchema, 
                       CompanyQuizQuestionAdminSchema, CompanyQuizSchema, QuestionAnswerOptionAdminSchema,
                       QuestionCreateRequestSchema, QuestionUpdateRequestSchema, QuizAttemptAdminAndQuizRelSchema,
                       QuizAttemptAdminSchema, QuizAttemptAnswerAdminSchema, QuizCreateRequestSchema,
-                      QuizUpdateRequestSchema, SaveAnswerRequestSchema, )
-from .utils import QuizUtils
+                      QuizUpdateRequestSchema, SaveAnswerRequestSchema, CompanyQuizQuestionSchema,
+                      QuizAttemptAndQuizRelSchema, QuizStartAttemptResponseSchema, QuizReviewAttemptResponseSchema,
+                      QuizAttemptBaseSchema, )
+from .utils import QuizUtils, AttemptUtils
 
 
 class QuizService(BaseService[QuizRepository]):
@@ -95,10 +97,20 @@ class QuizService(BaseService[QuizRepository]):
         return time_limit_minutes
 
     @base_cached_service(config=CacheConfig.QUIZ_QUESTIONS_AND_OPTIONS, schema=CompanyQuizQuestionAdminSchema)
-    async def get_questions_and_options(self, company_id: UUID, quiz_id: UUID) -> Sequence[
+    async def _get_questions_and_options_cached(self, company_id: UUID, quiz_id: UUID) -> Sequence[
         CompanyQuizQuestionAdminSchema]:
-        questions = await self.question_repo.get_questions_for_quiz(company_id=company_id, quiz_id=quiz_id)
+        questions = await self.question_repo.get_questions_with_options(company_id=company_id, quiz_id=quiz_id)
         return [CompanyQuizQuestionAdminSchema.model_validate(question) for question in questions]
+
+    async def get_questions_and_options(self, company_id: UUID, quiz_id: UUID, is_admin: bool) -> Sequence[
+                                                                                                      CompanyQuizQuestionAdminSchema] | \
+                                                                                                  Sequence[
+                                                                                                      CompanyQuizQuestionSchema]:
+        questions = await self._get_questions_and_options_cached(company_id=company_id, quiz_id=quiz_id)
+        if is_admin:
+            return questions
+        else:
+            return [CompanyQuizQuestionSchema.model_validate(question) for question in questions]
 
     async def get_quizzes_paginated(self, company_id: UUID, user_id: UUID | None, page: int, page_size: int) -> \
             PaginationResponse[CompanyQuizBaseSchema]:
@@ -113,26 +125,15 @@ class QuizService(BaseService[QuizRepository]):
 
     async def _get_visible_quizzes_paginated(self, company_id, page: int, page_size: int) -> PaginationResponse[
         CompanyQuizBaseSchema]:
-        filters = self._get_visible_quizzes_filters(company_id=company_id)
+        filters = self.quiz_utils.get_visible_quizzes_filters(company_id=company_id)
         return await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters,
                                                        return_schema=CompanyQuizBaseSchema)
 
     async def _get_all_quizzes_paginated(self, company_id, page: int, page_size: int) -> PaginationResponse[
         CompanyQuizBaseSchema]:
-        filters = self._get_all_quizzes_filters(company_id=company_id)
+        filters = self.quiz_utils.get_all_quizzes_filters(company_id=company_id)
         return await self.repo.get_instances_paginated(page=page, page_size=page_size, filters=filters,
                                                        return_schema=CompanyQuizBaseSchema)
-
-    @classmethod
-    def _get_visible_quizzes_filters(cls, company_id: UUID) -> dict[InstrumentedAttribute, Any]:
-        filters = {CompanyQuizModel.company_id: company_id, CompanyQuizModel.is_visible: True,
-                   CompanyQuizModel.is_published: True, }
-        return filters
-
-    @classmethod
-    def _get_all_quizzes_filters(cls, company_id: UUID) -> dict[InstrumentedAttribute, Any]:
-        filters = {CompanyQuizModel.company_id: company_id}
-        return filters
 
     async def create_quiz(self, company_id: UUID, acting_user_id: UUID,
                           quiz_info: QuizCreateRequestSchema, ) -> CompanyQuizAdminSchema:
@@ -146,7 +147,7 @@ class QuizService(BaseService[QuizRepository]):
         await self.member_service.assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
         quiz_data = quiz_info.model_dump()
-        new_quiz = CompanyQuizModel(id=uuid4(), **quiz_data)
+        new_quiz = CompanyQuizModel(id=uuid4(), **quiz_data, company_id=company_id)
 
         await self.repo.save_and_refresh(new_quiz)
         logger.info(f"Created new quiz: {new_quiz.id} company {company_id} by {acting_user_id}")
@@ -164,6 +165,8 @@ class QuizService(BaseService[QuizRepository]):
         await self.repo.save_and_refresh(question)
         logger.info(f"Created new question: {question.id} quiz {quiz_id} by {acting_user_id}")
 
+        await delete_cache_keys(self.redis,
+                                CacheKeyFactory.quiz_questions_and_options(company_id=company_id, quiz_id=quiz_id))
         return CompanyQuizQuestionAdminSchema.model_validate(question)
 
     async def create_answer_options(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID, question_id: UUID,
@@ -181,6 +184,8 @@ class QuizService(BaseService[QuizRepository]):
         logger.info(
             f"Created new options for question: {question_id} quiz {quiz_id} company {company_id} by {acting_user_id}")
 
+        await delete_cache_keys(self.redis,
+                                CacheKeyFactory.quiz_questions_and_options(company_id=company_id, quiz_id=quiz_id))
         return QuestionAnswerOptionAdminSchema.model_validate(options)
 
     async def _assert_quiz_not_published(self, company_id: UUID, quiz_id: UUID) -> None:
@@ -189,17 +194,16 @@ class QuizService(BaseService[QuizRepository]):
             raise ResourceConflictException(
                 message="Quiz already published. Can't modify. Copy quiz or create a new one.")
 
-    async def delete_quiz(self, company_id: UUID, quiz_id: UUID, acting_user_id: UUID) -> None:  # TODO Cache invalidate
-        # Only owner can delete quizzes
-        is_owner = await self.member_service.has_owner_permission(company_id=company_id, user_id=acting_user_id)
-        quiz = await self._get_quiz_model(company_id=company_id, is_admin=is_owner, quiz_id=quiz_id)
+    async def delete_quiz(self, company_id: UUID, quiz_id: UUID, acting_user_id: UUID) -> None:
+        # Checks if the acting user is the owner, and gets the corresponding model
+        await self.member_service.assert_owner_permissions(company_id=company_id, user_id=acting_user_id)
+        quiz = await self._get_quiz_model(company_id=company_id, is_admin=True, quiz_id=quiz_id)
         await self.repo.delete_instance(quiz)
         logger.info(f"Deleted quiz: {quiz_id} company {company_id} by {acting_user_id}")
 
         await self.repo.commit()
 
-    async def delete_question(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID,
-                              question_id: UUID, ) -> None:  # TODO Cache invalidate
+    async def delete_question(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID, question_id: UUID, ) -> None:
         await self.member_service.assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
         await self._assert_quiz_not_published(company_id=company_id, quiz_id=quiz_id)
 
@@ -207,6 +211,8 @@ class QuizService(BaseService[QuizRepository]):
         await self.repo.delete_instance(question)
         logger.info(f"Deleted question: {question_id} quiz_id {quiz_id} company {company_id} by {acting_user_id}")
 
+        await delete_cache_keys(self.redis,
+                                CacheKeyFactory.quiz_questions_and_options(company_id=company_id, quiz_id=quiz_id))
         await self.repo.commit()
 
     async def create_new_version_within_company(self, company_id: UUID, acting_user_id: UUID,
@@ -218,11 +224,11 @@ class QuizService(BaseService[QuizRepository]):
         :param curr_quiz_id:
         :return: Quiz
         """
-        is_admin = await self.member_service.has_admin_permission(company_id=company_id, user_id=acting_user_id)
+        await self.member_service.assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
         options = [selectinload(CompanyQuizModel.questions).selectinload(CompanyQuizQuestionModel.options)]
-        curr_quiz = await self._get_quiz_model(company_id=company_id, is_admin=is_admin, quiz_id=curr_quiz_id,
-                                               options=options, )
+        curr_quiz = await self._get_quiz_model(company_id=company_id, is_admin=True, quiz_id=curr_quiz_id,
+                                               options=options)
 
         root_id = curr_quiz.root_quiz_id if curr_quiz.root_quiz_id else curr_quiz_id
         last_ver = await self.repo.get_last_version_number(company_id=company_id, root_id=root_id)
@@ -239,8 +245,7 @@ class QuizService(BaseService[QuizRepository]):
 
         return CompanyQuizAdminSchema.model_validate(new_quiz)
 
-    async def publish_quiz(self, company_id: UUID, acting_user_id: UUID,
-                           quiz_id: UUID) -> CompanyQuizAdminSchema:  # TODO Cache invalidate
+    async def publish_quiz(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID) -> CompanyQuizAdminSchema:
         """
         Publish new versions and allows to republish(hide other versions and showcase only the specific one).
         :param company_id:
@@ -248,10 +253,10 @@ class QuizService(BaseService[QuizRepository]):
         :param quiz_id:
         :return:
         """
-        is_admin = await self.member_service.has_admin_permission(company_id=company_id, user_id=acting_user_id)
+        await self.member_service.assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
         options = [selectinload(CompanyQuizModel.questions).selectinload(CompanyQuizQuestionModel.options)]
-        quiz = await self._get_quiz_model(company_id=company_id, is_admin=is_admin, quiz_id=quiz_id, options=options, )
+        quiz = await self._get_quiz_model(company_id=company_id, is_admin=True, quiz_id=quiz_id, options=options, )
         self.quiz_utils.validate_quiz(quiz=quiz)
 
         if quiz.root_quiz_id:
@@ -264,13 +269,19 @@ class QuizService(BaseService[QuizRepository]):
         await self.repo.save_and_refresh(quiz)
         logger.info(f"Published quiz: {quiz.id} version {quiz.version} by {acting_user_id}")
 
+        quiz_questions_and_options_key = CacheKeyFactory.quiz_questions_and_options(company_id=company_id,
+                                                                                    quiz_id=quiz_id)
+        get_quiz_time_limit_minutes_key = CacheKeyFactory.quiz_time_limit_minutes(company_id=company_id,
+                                                                                  quiz_id=quiz_id)
+        await delete_cache_keys(self.redis, quiz_questions_and_options_key, get_quiz_time_limit_minutes_key)
+
         return CompanyQuizAdminSchema.model_validate(quiz)
 
     async def update_quiz(self, company_id: UUID, acting_user_id: UUID, quiz_id: UUID,
                           quiz_info: QuizUpdateRequestSchema, ) -> CompanyQuizAdminSchema:
-        is_admin = await self.member_service.has_admin_permission(company_id=company_id, user_id=acting_user_id)
+        await self.member_service.assert_admin_permissions(company_id=company_id, user_id=acting_user_id)
 
-        quiz = await self._get_quiz_model(company_id=company_id, is_admin=is_admin, quiz_id=quiz_id)
+        quiz = await self._get_quiz_model(company_id=company_id, is_admin=True, quiz_id=quiz_id)
         quiz = self._update_instance(instance=quiz, new_data=quiz_info, by=acting_user_id)
 
         await self.repo.save_and_refresh(quiz)
@@ -289,27 +300,13 @@ class QuizService(BaseService[QuizRepository]):
         if question_info.text is not None:
             question.text = question_info.text
 
-        question = self._update_question_options(question=question, full_question_info=question_info)
+        question = self.quiz_utils.update_question_options(question=question, full_question_info=question_info)
         await self.repo.save_and_refresh(question)
         logger.info(f"Updated {self.display_name}: {quiz_id} question {question_id} by {acting_user_id}")
 
         await delete_cache_keys(self.redis,
                                 CacheKeyFactory.quiz_questions_and_options(company_id=company_id, quiz_id=quiz_id))
         return CompanyQuizQuestionAdminSchema.model_validate(question)
-
-    @staticmethod
-    def _update_question_options(question: CompanyQuizQuestionModel,
-                                 full_question_info: QuestionUpdateRequestSchema, ) -> CompanyQuizQuestionModel:
-        if full_question_info.options is None:
-            return question
-
-        question.options.clear()
-        for opt in full_question_info.options:
-            new_opt = QuestionAnswerOptionModel(id=uuid4(), text=opt.text, is_correct=opt.is_correct,
-                                                question_id=question.id, )
-            question.options.append(new_opt)
-
-        return question
 
     async def _get_question_model(self, company_id: UUID, quiz_id: UUID, question_id: UUID,
                                   relationship: InstrumentedAttribute | None = None) -> CompanyQuizQuestionModel:
@@ -344,15 +341,17 @@ class AttemptService(BaseService[AttemptRepository]):
         self.question_repo = QuestionRepository(db=db)
         self.quiz_utils = QuizUtils()
         self.redis = redis
+        self.attempt_utils = AttemptUtils()
 
     async def start_attempt(  # TODO? maybe fetch quiz directly and just verify its fields.
             self, company_id: UUID, quiz_id: UUID, user_id: UUID) -> tuple[
         Sequence[CompanyQuizQuestionAdminSchema], QuizAttemptAdminSchema]:
         await self.member_service.get_and_lock_member_row(company_id=company_id, user_id=user_id)
 
-        existing_attempt_schema = await self._get_active_attempt(user_id=user_id, quiz_id=quiz_id)
+        existing_attempt_schema = await self._get_active_attempt_or_none(user_id=user_id, quiz_id=quiz_id)
         if existing_attempt_schema:
-            questions_schema = await self.quiz_service.get_questions_and_options(company_id=company_id, quiz_id=quiz_id)
+            questions_schema = await self.quiz_service.get_questions_and_options(company_id=company_id, quiz_id=quiz_id,
+                                                                                 is_admin=False)
             return questions_schema, existing_attempt_schema
 
         await self._assert_user_have_attempts(company_id=company_id, quiz_id=quiz_id, user_id=user_id)
@@ -363,45 +362,38 @@ class AttemptService(BaseService[AttemptRepository]):
         attempt = QuizAttemptModel(user_id=user_id, quiz_id=quiz_id, expires_at=expires_at)
         await self.repo.save_and_refresh(attempt)
 
-        questions_schema = await self.quiz_service.get_questions_and_options(company_id=company_id, quiz_id=quiz_id)
+        questions_schema = await self.quiz_service.get_questions_and_options(company_id=company_id, quiz_id=quiz_id,
+                                                                             is_admin=False)
         attempt_schema = QuizAttemptAdminSchema.model_validate(attempt)
 
         return questions_schema, attempt_schema
 
-    async def end_attempt(self, user_id: UUID, attempt_id: UUID,
-                          status: AttemptStatus = AttemptStatus.COMPLETED, ) -> QuizAttemptAdminAndQuizRelSchema:
-        load_options = [
-            selectinload(QuizAttemptModel.answers).options(selectinload(QuizAttemptAnswerModel.selected_options),
-                                                           selectinload(QuizAttemptAnswerModel.question).selectinload(
-                                                               CompanyQuizQuestionModel.options), ),
-            selectinload(QuizAttemptModel.quiz), ]
-        attempt = await self._get_attempt_model(user_id=user_id, attempt_id=attempt_id, options=load_options)
-        self._assert_attempt_in_progress(status=attempt.status)
+    async def submit_attempt(self, user_id: UUID, attempt_id: UUID) -> QuizAttemptBaseSchema:
+        options = self.attempt_utils.get_finalize_attempt_options()
+        attempt = await self._get_attempt_model(user_id=user_id, attempt_id=attempt_id,
+                                                options=options)
 
-        attempt = await self._finalize_attempt(attempt=attempt, status=status)
-        return QuizAttemptAdminAndQuizRelSchema.model_validate(attempt)
+        if attempt.status != AttemptStatus.IN_PROGRESS:  # Basic return if finished
+            return QuizAttemptBaseSchema.model_validate(attempt)
+
+        if attempt.is_expired():  # Expire
+            attempt = await self._finalize_attempt(attempt=attempt, status=AttemptStatus.EXPIRED)
+        else:
+            attempt = await self._finalize_attempt(attempt=attempt, status=AttemptStatus.COMPLETED)  # Finish
+
+        return QuizAttemptBaseSchema.model_validate(attempt)
 
     async def _finalize_attempt(self, attempt: QuizAttemptModel, status: AttemptStatus) -> QuizAttemptModel:
         """
         Update attempt fields to finnish the attempt. Grade existing answers, change status and set finished time.
         Expects loaded attempt.quiz, attempt.answers and attempt.options.
-        Returns QuizAttemptModel, so external methods should validate themself.
+        Returns QuizAttemptModel, so external methods should validate themselves.
         """
-        correct_count = self.quiz_utils.calc_correct_answers_count(attempt)
-        total_questions = await self.question_repo.get_questions_count_for_quiz(quiz_id=attempt.quiz_id)
-        score = self.quiz_utils.calc_score(correct_answers_count=correct_count, total_questions_count=total_questions)
-
         finished_time = datetime.now(timezone.utc)
-        attempt.finished_at = finished_time
-        attempt.score = score
-        attempt.correct_answers_count = correct_count
-        attempt.total_questions_count = total_questions
-        attempt.status = status
-
-        await self.user_repo.update_last_quiz_attempt_time(user_id=attempt.user_id, new_time=finished_time)
+        attempt = await self._finish_attempt_update_fields(attempt=attempt, finished_time=finished_time, status=status)
 
         await self.repo.save_and_refresh(attempt)
-        # TODO LOG
+        logger.info(f"Finalized attempt: {attempt.id} status {attempt.status}")
 
         system_key = CacheKeyFactory.user_stats_system_wide(user_id=attempt.user_id)
         company_key = CacheKeyFactory.user_stats_in_company(company_id=attempt.quiz.company_id,
@@ -411,10 +403,26 @@ class AttemptService(BaseService[AttemptRepository]):
 
         return attempt
 
+    async def _finish_attempt_update_fields(self, attempt: QuizAttemptModel, finished_time: datetime,
+                                            status: AttemptStatus) -> QuizAttemptModel:
+        correct_count = self.quiz_utils.calc_correct_answers_count(attempt)
+        total_questions = await self.question_repo.get_questions_count_for_quiz(quiz_id=attempt.quiz_id)
+        score = self.quiz_utils.calc_score(correct_answers_count=correct_count, total_questions_count=total_questions)
+
+        attempt.finished_at = finished_time
+        attempt.score = score
+        attempt.correct_answers_count = correct_count
+        attempt.total_questions_count = total_questions
+        attempt.status = status
+
+        attempt.user.last_quiz_attempt_at = finished_time
+
+        return attempt
+
     async def save_answer(self, user_id: UUID, question_id: UUID, attempt_id: UUID,
                           selected_option_info: SaveAnswerRequestSchema) -> QuizAttemptAnswerAdminSchema:
-        attempt = await self._get_attempt_model(user_id=user_id, attempt_id=attempt_id)  # TODO get attempt status
-        self._assert_attempt_in_progress(status=attempt.status)
+        attempt = await self._get_attempt_model(user_id=user_id, attempt_id=attempt_id)
+        self.attempt_utils.assert_attempt_in_progress(status=attempt.status, is_expired=attempt.is_expired())
 
         answer = await self._get_answer_model_or_none(question_id=question_id, attempt_id=attempt_id)
         if answer:
@@ -429,10 +437,13 @@ class AttemptService(BaseService[AttemptRepository]):
         await self.repo.save_and_refresh(answer)
         return QuizAttemptAnswerAdminSchema.model_validate(answer)
 
-    @staticmethod
-    def _assert_attempt_in_progress(status: AttemptStatus) -> None:
-        if status != AttemptStatus.IN_PROGRESS:
-            raise ResourceConflictException(message=f"Cannot save answer. Attempt is {status.value}")
+    async def _get_attempt_model(self, user_id: UUID, attempt_id: UUID,
+                                 options: Sequence[ExecutableOption] | None = None, ) -> QuizAttemptModel:
+        filters = self.attempt_utils.get_attempt_filters(user_id=user_id, attempt_id=attempt_id)
+        attempt = await self.repo.get_instance_by_filters_or_none(filters=filters, options=options)
+        if attempt is None:
+            raise InstanceNotFoundException(instance_name=self.display_name)
+        return attempt
 
     async def _assert_user_have_attempts(self, company_id: UUID, quiz_id: UUID, user_id: UUID) -> None:
         allowed_attempts = await self.quiz_service.get_quiz_allowed_attempts(company_id=company_id, quiz_id=quiz_id)
@@ -443,55 +454,57 @@ class AttemptService(BaseService[AttemptRepository]):
         if taken_attempts >= allowed_attempts:
             raise ResourceConflictException("You have no attempts left for this quiz.")
 
-    async def _assert_attempt_is_correct(self, user_id: UUID, quiz_id: UUID) -> None:
-        attempt_id = await self.repo.get_attempt_id(user_id=user_id, quiz_id=quiz_id)
-        if attempt_id is None:
-            raise InstanceNotFoundException(instance_name=self.display_name)
-
-    async def _get_attempt_model(self, user_id: UUID, attempt_id: UUID,
-                                 options: Sequence[ExecutableOption] | None = None, ) -> QuizAttemptModel:
-        attempt = await self._fetch_attempt(user_id=user_id, attempt_id=attempt_id, options=options)
-        await self._check_and_expire_attempt(attempt=attempt)
-        return attempt
-
     @base_cached_service(config=CacheConfig.ATTEMPT_DETAILS, schema=QuizAttemptAdminAndQuizRelSchema,
-                         cache_condition=cache_attempt_if_finished, )
-    async def get_attempt_details(self, user_id: UUID, attempt_id: UUID, ) -> QuizAttemptAdminAndQuizRelSchema:
-        options = [selectinload(QuizAttemptModel.answers), selectinload(QuizAttemptModel.quiz)]
-        attempt = await self._get_attempt_model(user_id=user_id, attempt_id=attempt_id, options=options)
+                         cache_condition=cache_attempt_if_finished)
+    async def _get_attempt_details_cached(self, user_id: UUID, attempt_id: UUID) -> QuizAttemptAdminAndQuizRelSchema:
+        options = self.attempt_utils.get_attempt_details_options()
+        attempt = await self._get_attempt_model(user_id=user_id, attempt_id=attempt_id,
+                                                options=options)
         return QuizAttemptAdminAndQuizRelSchema.model_validate(attempt)
 
-    async def _fetch_attempt(self, user_id: UUID, attempt_id: UUID,
-                             options: Sequence[ExecutableOption] | None = None, ) -> QuizAttemptModel:
-        filters = {QuizAttemptModel.user_id: user_id, QuizAttemptModel.id: attempt_id}
-        attempt = await self.repo.get_instance_by_filters_or_none(filters=filters, options=options)
-        if attempt is None:
-            raise InstanceNotFoundException(instance_name=self.display_name)
+    async def get_attempt_details(self, user_id: UUID, attempt_id: UUID,
+                                  is_admin: bool) -> QuizAttemptAdminAndQuizRelSchema | QuizAttemptAndQuizRelSchema:
+        """Returns attempt with loaded answers and quiz relationships"""
+        attempt_details = await self._get_attempt_details_cached(user_id=user_id, attempt_id=attempt_id)
+        if is_admin:
+            return attempt_details  # Already an admin schema
+        else:
+            return QuizAttemptAndQuizRelSchema.model_validate(attempt_details)
 
-        return attempt
+    async def get_attempt_results(self, user_id: UUID, attempt_id: UUID,
+                                  is_admin: bool) -> QuizStartAttemptResponseSchema | QuizReviewAttemptResponseSchema:
+        """Returns Admin schema if passed admin == True or the attempt ended. Else Basic with no correct option."""
+        attempt = await self.get_attempt_details(user_id=user_id, attempt_id=attempt_id, is_admin=True)
 
-    async def _get_active_attempt(self, user_id: UUID, quiz_id: UUID) -> QuizAttemptAdminSchema | None:
-        filters = {QuizAttemptModel.user_id: user_id, QuizAttemptModel.quiz_id: quiz_id,
-                   QuizAttemptModel.status: AttemptStatus.IN_PROGRESS}
+        if attempt.status != AttemptStatus.IN_PROGRESS or attempt.is_expired or is_admin:
+            questions = await self.quiz_service.get_questions_and_options(company_id=attempt.company_id,
+                                                                          quiz_id=attempt.quiz_id, is_admin=True)
+            return QuizReviewAttemptResponseSchema.model_validate({"attempt": attempt, "questions": questions})
+        else:
+            questions = await self.quiz_service.get_questions_and_options(company_id=attempt.company_id,
+                                                                          quiz_id=attempt.quiz_id, is_admin=is_admin)
+            return QuizStartAttemptResponseSchema.model_validate({"attempt": attempt, "questions": questions})
+
+    async def _get_active_attempt_or_none(self, user_id: UUID, quiz_id: UUID) -> QuizAttemptAdminSchema | None:
+        filters = self.attempt_utils.get_active_attempt_filters(user_id=user_id, quiz_id=quiz_id)
         attempt = await self.repo.get_instance_by_filters_or_none(filters=filters)
         if attempt is None:
             return None
         return QuizAttemptAdminSchema.model_validate(attempt)
 
     async def _check_and_expire_attempt(self, attempt: QuizAttemptModel) -> None:
-        """Checks if expired, if so marks it and calls self._finalize_attempt(). Refetches the attempt to ensure the correct fields for _finalize_attempt() are present."""
+        """
+        Checks if expired, if so marks it and calls self._finalize_attempt().
+        Refetches the attempt to ensure the correct fields for _finalize_attempt() are present.
+        For worker only, other methods should check expiration manually.
+        """
         if attempt.status == AttemptStatus.IN_PROGRESS and attempt.is_expired():
-            load_options = [
-                selectinload(QuizAttemptModel.answers).options(selectinload(QuizAttemptAnswerModel.selected_options),
-                                                               selectinload(
-                                                                   QuizAttemptAnswerModel.question).selectinload(
-                                                                   CompanyQuizQuestionModel.options), ),
-                selectinload(QuizAttemptModel.quiz), ]
-            attempt = await self._fetch_attempt(user_id=attempt.user_id, attempt_id=attempt.id, options=load_options)
+            options = self.attempt_utils.get_finalize_attempt_options()
+            attempt = await self._get_attempt_model(user_id=attempt.user_id, attempt_id=attempt.id, options=options)
             await self._finalize_attempt(attempt=attempt, status=AttemptStatus.EXPIRED)
 
     async def _get_answer_model_or_none(self, question_id: UUID, attempt_id: UUID) -> QuizAttemptAnswerModel | None:
-        filters = {QuizAttemptAnswerModel.attempt_id: attempt_id, QuizAttemptAnswerModel.question_id: question_id}
+        filters = self.attempt_utils.get_answer_filters(question_id=question_id, attempt_id=attempt_id)
         relationships = {QuizAttemptAnswerModel.selected_options}
         answer = await self.answer_repo.get_instance_by_filters_or_none(filters=filters, relationships=relationships)
         return answer

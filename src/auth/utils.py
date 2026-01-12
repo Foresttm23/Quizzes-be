@@ -33,11 +33,15 @@ class AuthUtils:
             }
         )
 
-        encoded_jwt = self._handle_local_token_encode(data=data, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET)
+        encoded_jwt = self._handle_local_token_encode(
+            data=data, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET
+        )
         return encoded_jwt
 
     def verify_local_token_and_get_payload(self, token: str) -> dict:
-        payload = self._handle_local_token_decode(token=token, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET)
+        payload = self._handle_local_token_decode(
+            token=token, secret_key=settings.LOCAL_JWT.LOCAL_JWT_SECRET
+        )
         return payload
 
     async def verify_auth0_token_and_get_payload(self, token: str) -> dict:
@@ -47,17 +51,23 @@ class AuthUtils:
     def create_refresh_token(self, data: dict, expires_delta: timedelta) -> str:
         expire = datetime.now(timezone.utc) + expires_delta
         data.update({"exp": expire, "type": JWTTypeEnum.REFRESH})
-        encoded_jwt = self._handle_local_token_encode(data=data, secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET)
+        encoded_jwt = self._handle_local_token_encode(
+            data=data, secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET
+        )
 
         return encoded_jwt
 
     def verify_refresh_token_and_get_payload(self, token: str) -> dict:
-        payload = self._handle_local_token_decode(token=token, secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET)
+        payload = self._handle_local_token_decode(
+            token=token, secret_key=settings.LOCAL_JWT.LOCAL_REFRESH_TOKEN_SECRET
+        )
         return payload
 
     @staticmethod
     def _handle_local_token_encode(data: dict, secret_key: str) -> str:
-        encoded_jwt = jwt.encode(data, key=secret_key, algorithm=settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM)
+        encoded_jwt = jwt.encode(
+            data, key=secret_key, algorithm=settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM
+        )
         return encoded_jwt
 
     @staticmethod
@@ -86,7 +96,9 @@ class AuthUtils:
                 audience=settings.AUTH0_JWT.AUTH0_JWT_AUDIENCE,
                 algorithms=settings.AUTH0_JWT.AUTH0_JWT_ALGORITHM,
             )
-            payload["auth_provider"] = AuthProviderEnum.AUTH0  # Update by hand for easy checks
+            payload["auth_provider"] = (
+                AuthProviderEnum.AUTH0
+            )  # Update by hand for easy checks
         except (JWTError, JWSError, KeyError):
             raise InvalidJWTException()
 

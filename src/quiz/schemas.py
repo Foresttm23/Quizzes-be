@@ -111,10 +111,14 @@ class QuizAttemptAdminSchema(QuizAttemptBaseSchema):
     answers: list[QuizAttemptAnswerAdminSchema]
 
 
-# ----------------------------------------------- RELAION SPECIFIC -------------------------------------------------
+# ----------------------------------------------- RELATION SPECIFIC -------------------------------------------------
 
 
-class QuizAttemptAdminAndQuizRelSchema(QuizAttemptAdminSchema):  # TODO A full mirror schema, with optional items
+class QuizAttemptAndQuizRelSchema(QuizAttemptSchema):
+    quiz: CompanyQuizBaseSchema
+
+
+class QuizAttemptAdminAndQuizRelSchema(QuizAttemptAdminSchema):
     quiz: CompanyQuizBaseSchema
 
 
@@ -149,14 +153,18 @@ class QuestionOptionsMixin(BaseModel):
         return options
 
     @classmethod
-    def validate_correct_option_exist(cls, options: list[AnswerOptionsCreateRequestSchema]):
+    def validate_correct_option_exist(
+            cls, options: list[AnswerOptionsCreateRequestSchema]
+    ):
         has_correct_answer = any(opt.is_correct for opt in options)
 
         if not has_correct_answer:
             raise ValueError("At least one option must be marked as correct.")
 
     @classmethod
-    def validate_incorrect_option_exist(cls, options: list[AnswerOptionsCreateRequestSchema]):
+    def validate_incorrect_option_exist(
+            cls, options: list[AnswerOptionsCreateRequestSchema]
+    ):
         has_incorrect_answer = any(not opt.is_correct for opt in options)
 
         if not has_incorrect_answer:
@@ -172,7 +180,7 @@ class QuizCreateRequestSchema(Base):
     time_limit_minutes: int | None = Field(
         None,
         ge=1,
-        description="None = always",
+        description="None=infinite, should be passed directly as None to take effect.",
     )
 
 
@@ -188,7 +196,9 @@ class QuizUpdateRequestSchema(Base, BaseUpdateMixin):
 
 class QuestionUpdateRequestSchema(Base, QuestionOptionsMixin, BaseUpdateMixin):
     text: str | None = Field(None, min_length=8, max_length=512)
-    options: list[AnswerOptionsCreateRequestSchema] | None = Field(None, min_length=2, max_length=8)
+    options: list[AnswerOptionsCreateRequestSchema] | None = Field(
+        None, min_length=2, max_length=8
+    )
 
 
 class QuestionCreateRequestSchema(Base, QuestionOptionsMixin):

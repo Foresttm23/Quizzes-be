@@ -5,18 +5,25 @@ from .logger import logger
 
 class RecordAlreadyExistsException(HTTPException):
     def __init__(self):
-        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail="Record already exists")
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Record already exists"
+        )
 
 
 class InstanceNotFoundException(HTTPException):
     def __init__(self, instance_name: str, message: str | None = None):
         message = f"message: {message}" if message else None
-        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail=f"{instance_name} not found; " + message)
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{instance_name} not found; " + message,
+        )
 
 
 class UserIncorrectPasswordOrEmailException(HTTPException):
     def __init__(self):
-        super().__init__(status_code=status.HTTP_404_NOT_FOUND, detail="Incorrect password or email")
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Incorrect password or email"
+        )
 
 
 class NotProvidedPasswordOrEmailException(HTTPException):
@@ -85,7 +92,9 @@ class ExternalAuthProviderException(HTTPException):
 
 class CompanyPermissionException(HTTPException):
     def __init__(self):
-        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
+        )
 
 
 class InvalidRecipientException(HTTPException):
@@ -98,12 +107,16 @@ class InvalidRecipientException(HTTPException):
 
 class PermissionDeniedException(HTTPException):
     def __init__(self, message: str):
-        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=f"Permissions: {message}")
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN, detail=f"Permissions: {message}"
+        )
 
 
 class ResourceConflictException(HTTPException):
     def __init__(self, message: str):
-        super().__init__(status_code=status.HTTP_409_CONFLICT, detail=f"Conflict: {message}")
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT, detail=f"Conflict: {message}"
+        )
 
 
 class UserAlreadyInCompanyException(HTTPException):
@@ -131,8 +144,8 @@ class UserIsNotACompanyMemberException(HTTPException):
         )
 
 
-class DBSessionNotInitializedException(Exception):
-    def __init__(self):
-        detail = "DBSessionManager is not initialized!"
+class SessionNotInitializedException(Exception):
+    def __init__(self, session_name: str):
+        detail = f"{session_name} is not initialized!"
         logger.error(detail)
         super().__init__(detail)

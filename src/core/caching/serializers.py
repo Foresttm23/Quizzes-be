@@ -15,14 +15,17 @@ def serialize(obj: Any) -> str:
         return obj.model_dump_json()
 
     if isinstance(obj, list):
-        data_list = [item.model_dump(mode="json") if isinstance(item, BaseSchema) else item for item in obj]
+        data_list = [
+            item.model_dump(mode="json") if isinstance(item, BaseSchema) else item
+            for item in obj
+        ]
         return json.dumps(data_list, default=str)
 
     return json.dumps(obj, default=str)
 
 
 def deserialize(obj: Any, schema: Type[BaseSchema] | None) -> Any:
-    """Deserialize obg into a passed schema."""
+    """Deserialize obj into a passed schema."""
     json_data = json.loads(obj)  # Only schemas here, no plain dict or list
     if schema is None:
         return json_data

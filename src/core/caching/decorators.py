@@ -6,16 +6,20 @@ from typing import Any, Callable, Type
 from src.core.schemas import Base as BaseSchema
 from .config import CacheConfig
 from .keys import build_cache_key
-from .seriallizers import serialize, deserialize
+from .serializers import serialize, deserialize
 
 
-def base_cached_service(config: CacheConfig, schema: Type[BaseSchema] | None, cache_condition: Callable[[Any], bool] | None = None):
+def base_cached_service(
+        config: CacheConfig,
+        schema: Type[BaseSchema] | None,
+        cache_condition: Callable[[Any], bool] | None = None,
+):
     """
     Decorator for service methods caching. Prefix for each method should be unique, expire is in seconds. Class method should have self.redis injected.
     Services must be called with **kwargs parameters if possible. Example: quiz_service(user_id=user_id).
     Schema parameter is crucial for correct serialization and deserialization.
     :cache_condition: is a function from caching rules that return a bool based on a condition.
-    Example: cache_condition = lambda: getattr(obj, "status", None) != "IN_PROGRESS".
+    Example: cache_condition = lambda obj: getattr(obj, "status", None) != "IN_PROGRESS".
     """
 
     def decorator(func: Callable):
@@ -47,8 +51,3 @@ def base_cached_service(config: CacheConfig, schema: Type[BaseSchema] | None, ca
         return wrapper
 
     return decorator
-
-
-
-
-
