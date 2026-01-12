@@ -399,7 +399,7 @@ class MemberService(BaseService[MemberRepository]):
             company_id=company_id, user_id=user_id, required_role=CompanyRole.ADMIN
         )
 
-    async def has_owner_permission(self, company_id: UUID, user_id: UUID) -> bool:
+    async def has_owner_permission(self, company_id: UUID, user_id: UUID | None) -> bool:
         """
         :param company_id:
         :param user_id:
