@@ -1,15 +1,14 @@
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Annotated, AsyncGenerator
 
-from fastapi import Query, Depends
-from redis import Redis
+from fastapi import Depends, Query
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import database as postgres_module, redis as redis_module
+from . import database as postgres_module
+from . import redis as redis_module
 from .config import settings
-
-DBSessionDep = Annotated[AsyncSession, Depends(postgres_module.get_db_session)]
-RedisDep = Annotated[Redis, Depends(redis_module.get_redis_client)]
+from .exceptions import SessionNotInitializedException
 
 
 @dataclass
@@ -24,3 +23,25 @@ class PaginationParams:
 
 
 PaginationParamDep = Annotated[PaginationParams, Depends()]
+
+
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Exception is handled inside the postgres_module.sessionmanager.session()"""
+    async with postgres_module.sessionmanager.session() as session:
+        yield session
+
+
+DBSessionDep = Annotated[AsyncSession, Depends(get_db_session)]
+
+
+async def get_redis_session() -> AsyncGenerator[Redis, None]:
+    if redis_module.redis_pool is None:
+        raise SessionNotInitializedException(session_name="REDIS")
+    redis_client = Redis(connection_pool=redis_module.redis_pool)
+    try:
+        yield redis_client
+    finally:
+        await redis_client.close()
+
+
+RedisDep = Annotated[Redis, Depends(get_redis_session)]

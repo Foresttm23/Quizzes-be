@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from core.exceptions import CompanyPermissionException, UserIsNotACompanyMemberException
-
+from src.core.exceptions import (
+    CompanyPermissionException,
+    UserIsNotACompanyMemberException,
+)
 from .enums import CompanyRole
 
 

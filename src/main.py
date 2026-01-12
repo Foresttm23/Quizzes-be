@@ -9,7 +9,7 @@ from src.company.router import companies_router, invitations_router, requests_ro
 from src.core.config import settings
 from src.core.database import init_db
 from src.core.logger import logger
-from src.core.redis import pool, redis_client
+from src.core.redis import init_redis
 from src.quiz.router import attempt_router, quiz_router
 
 
@@ -18,14 +18,19 @@ from src.quiz.router import attempt_router, quiz_router
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Startup")
-    sessionmanager = init_db(settings.DB.DATABASE_URL)
+    sessionmanager = init_db(str(settings.DB.DATABASE_URL), {"pool_size": 20})
+    redis_pool = init_redis(
+        str(settings.REDIS.REDIS_URL),
+        {"encoding": "utf8", "decode_responses": True, "max_connections": 20},
+    )
 
     yield
     # Shutdown
     logger.info("Shutdown")
-    await redis_client.aclose()
-    await pool.disconnect()
-    await sessionmanager.close()
+    if redis_pool:
+        await redis_pool.disconnect()
+    if sessionmanager:
+        await sessionmanager.close()
 
 
 app = FastAPI(lifespan=lifespan)

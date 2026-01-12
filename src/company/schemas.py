@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import Field
 
 from src.auth.schemas import UserDetailsResponse
-from src.core.schemas import Base, BaseUpdateMixin, ScoreStatsBase
+from src.core.schemas import Base, BaseUpdateMixin, ScoreStatsBase, TimestampMixin
 
 from .enums import CompanyRole, MessageStatus
 
@@ -23,22 +23,18 @@ class CompanyUpdateInfoRequestSchema(Base, BaseUpdateMixin):
     is_visible: bool | None
 
 
-class CompanyDetailsResponseSchema(Base):
+class CompanyDetailsResponseSchema(Base, TimestampMixin):
     id: UUID
     name: str
     description: str | None
     is_visible: bool
-    created_at: datetime
-    updated_at: datetime
 
 
-class RequestDetailsResponse(Base):
+class RequestDetailsResponse(Base, TimestampMixin):
     id: UUID
     company_id: UUID
     requesting_user_id: UUID
     status: MessageStatus
-    created_at: datetime
-    updated_at: datetime
 
 
 class AcceptRequestResponse(Base):
@@ -46,13 +42,11 @@ class AcceptRequestResponse(Base):
     new_member: CompanyMemberDetailsResponse
 
 
-class InvitationDetailsResponse(Base):
+class InvitationDetailsResponse(Base, TimestampMixin):
     id: UUID
     company_id: UUID
     invited_user_id: UUID
     status: MessageStatus
-    created_at: datetime
-    updated_at: datetime
 
 
 class AcceptInvitationResponse(Base):
@@ -76,6 +70,6 @@ class UpdateMemberRoleSchema(Base):
     role: CompanyRole
 
 
-class UserAverageCompanyScoreResponseSchema(ScoreStatsBase):
+class UserAverageCompanyStatsResponseSchema(ScoreStatsBase):
     user_id: UUID
     company_id: UUID

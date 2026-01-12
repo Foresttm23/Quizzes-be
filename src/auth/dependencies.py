@@ -72,7 +72,7 @@ async def get_user_from_refresh_jwt(
     user_service: UserServiceDep,
 ) -> UserModel:
     jwt_refresh_payload = token_service.verify_refresh_token_and_get_payload(token=jwt)
-    user = await user_service.get_by_id(user_id=UUID(jwt_refresh_payload.sub))
+    user = await user_service.get_by_id_model(user_id=UUID(jwt_refresh_payload.sub))
     return user
 
 

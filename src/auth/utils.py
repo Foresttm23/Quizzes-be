@@ -1,11 +1,11 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid5
 
 import httpx
-from jose import JWTError, jws, JWSError, jwt
+from jose import JWSError, JWTError, jws, jwt
 from pwdlib import PasswordHash
 
-from src.auth.enums import JWTTypeEnum, AuthProviderEnum
+from src.auth.enums import AuthProviderEnum, JWTTypeEnum
 from src.core.config import settings
 from src.core.exceptions import InvalidJWTException
 
@@ -78,7 +78,7 @@ class AuthUtils:
                 key=secret_key,
                 algorithms=[settings.LOCAL_JWT.LOCAL_JWT_ALGORITHM],
             )
-        except JWTError:
+        except (JWTError, JWSError, KeyError):
             raise InvalidJWTException()
 
         return payload
@@ -96,7 +96,9 @@ class AuthUtils:
                 audience=settings.AUTH0_JWT.AUTH0_JWT_AUDIENCE,
                 algorithms=settings.AUTH0_JWT.AUTH0_JWT_ALGORITHM,
             )
-            payload["auth_provider"] = AuthProviderEnum.AUTH0
+            payload["auth_provider"] = (
+                AuthProviderEnum.AUTH0
+            )  # Update by hand for easy checks
         except (JWTError, JWSError, KeyError):
             raise InvalidJWTException()
 

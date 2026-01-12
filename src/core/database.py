@@ -1,20 +1,23 @@
 import contextlib
-from typing import Any, AsyncGenerator, AsyncIterator
+from typing import Any, AsyncIterator
 
-from exceptions import DBSessionNotInitializedException
-from logger import logger
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 
+from .exceptions import SessionNotInitializedException
+from .logger import logger
+
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
 class DBSessionManager:
     def __init__(self, database_url: str, engine_kwargs: dict[str, Any] | None = None):
         self._engine = create_async_engine(database_url, **(engine_kwargs or {}))
-        self._sessionmaker = async_sessionmaker(autocommit=False, bind=self._engine, expire_on_commit=False)
+        self._sessionmaker = async_sessionmaker(
+            autocommit=False, bind=self._engine, expire_on_commit=False
+        )
 
     async def close(self) -> None:
         if self._engine:
@@ -25,7 +28,7 @@ class DBSessionManager:
     @contextlib.asynccontextmanager
     async def session(self) -> AsyncIterator[AsyncSession]:
         if self._sessionmaker is None:
-            raise DBSessionNotInitializedException()
+            raise SessionNotInitializedException(session_name="POSTGRES_DB")
 
         session = self._sessionmaker()
         try:
@@ -41,15 +44,7 @@ class DBSessionManager:
 sessionmanager: DBSessionManager | None = None
 
 
-def init_db(database_url: str, engine_kwargs: dict[str, Any] | None = None):
+def init_db(database_url: str, pool_kwargs: dict[str, Any] | None = None):
     global sessionmanager
-    sessionmanager = DBSessionManager(database_url, engine_kwargs or {})
+    sessionmanager = DBSessionManager(database_url, pool_kwargs or {})
     return sessionmanager
-
-
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    global sessionmanager
-    if sessionmanager is None:
-        raise DBSessionNotInitializedException()
-    async with sessionmanager.session() as session:
-        yield session

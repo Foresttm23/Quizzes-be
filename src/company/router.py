@@ -6,7 +6,6 @@ from src.auth.dependencies import GetOptionalUserJWTDep, GetUserJWTDep
 from src.core.dependencies import PaginationParamDep
 from src.core.schemas import PaginationResponse
 from src.quiz.dependencies import AttemptServiceDep
-
 from .dependencies import (
     CompanyInvitationServiceDep,
     CompanyJoinRequestServiceDep,
@@ -25,12 +24,16 @@ from .schemas import (
     InvitationDetailsResponse,
     RequestDetailsResponse,
     UpdateMemberRoleSchema,
-    UserAverageCompanyScoreResponseSchema,
+    UserAverageCompanyStatsResponseSchema,
 )
 
 companies_router = APIRouter(prefix="/companies", tags=["Companies"])
-requests_router = APIRouter(prefix="/company-join-requests", tags=["Company Join Requests"])
-invitations_router = APIRouter(prefix="/company-invitations", tags=["Company Invitations"])
+requests_router = APIRouter(
+    prefix="/company-join-requests", tags=["Company Join Requests"]
+)
+invitations_router = APIRouter(
+    prefix="/company-invitations", tags=["Company Invitations"]
+)
 
 
 @companies_router.post(
@@ -47,7 +50,9 @@ async def create_company(
     Creates a company for authenticated user.
     This user is owner of the created company.
     """
-    company = await company_service.create_company(acting_user_id=user.id, company_info=company_info)
+    company = await company_service.create_company(
+        acting_user_id=user.id, company_info=company_info
+    )
     return company
 
 
@@ -67,7 +72,9 @@ async def get_companies(
     Crud operations in company_repository supports it.
     """
     user_id = user.id if user else None
-    companies_data = await company_service.get_companies_paginated(page=pagination.page, page_size=pagination.page_size, user_id=user_id)
+    companies_data = await company_service.get_companies_paginated(
+        page=pagination.page, page_size=pagination.page_size, user_id=user_id
+    )
     return companies_data
 
 
@@ -76,7 +83,9 @@ async def get_companies(
     response_model=CompanyDetailsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
-async def get_company(company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID):
+async def get_company(
+        company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID
+):
     """Returns a company by its id"""
     user_id = user.id if user else None
     company = await company_service.get_by_id(company_id=company_id, user_id=user_id)
@@ -98,12 +107,16 @@ async def update_company(
     Updates a company by its id,
     if company.owner_id is equal to the currently authenticated user id.
     """
-    updated_company = await company_service.update_company(company_id=company_id, acting_user_id=user.id, company_info=new_company_info)
+    updated_company = await company_service.update_company(
+        company_id=company_id, acting_user_id=user.id, company_info=new_company_info
+    )
     return updated_company
 
 
 @companies_router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_company(company_service: CompanyServiceDep, user: GetUserJWTDep, company_id: UUID):
+async def delete_company(
+        company_service: CompanyServiceDep, user: GetUserJWTDep, company_id: UUID
+):
     """
     Deletes a company by its id,
     if company.owner_id is equal to the currently authenticated user id.
@@ -160,7 +173,9 @@ async def decline_invitation(
     invited_user: GetUserJWTDep,
     invitation_id: UUID,
 ):
-    invitation = await company_invitation_service.decline_from_company(invitation_id=invitation_id, invited_user_id=invited_user.id)
+    invitation = await company_invitation_service.decline_from_company(
+        invitation_id=invitation_id, invited_user_id=invited_user.id
+    )
     return invitation
 
 
@@ -174,7 +189,9 @@ async def cancel_invitation(
     acting_user: GetUserJWTDep,
     invitation_id: UUID,
 ):
-    invitation = await company_invitation_service.cancel_by_company(invitation_id=invitation_id, acting_user_id=acting_user.id)
+    invitation = await company_invitation_service.cancel_by_company(
+        invitation_id=invitation_id, acting_user_id=acting_user.id
+    )
     return invitation
 
 
@@ -208,7 +225,9 @@ async def get_my_pending_invitations(
     user: GetUserJWTDep,
     pagination: PaginationParamDep,
 ):
-    requests = await company_invitation_service.get_pending_for_user(user_id=user.id, page=pagination.page, page_size=pagination.page_size)
+    requests = await company_invitation_service.get_pending_for_user(
+        user_id=user.id, page=pagination.page, page_size=pagination.page_size
+    )
     return requests
 
 
@@ -225,7 +244,9 @@ async def create_join_request(
     user: GetUserJWTDep,
     company_id: UUID,
 ):
-    request = await company_join_request_service.create_join_request(company_id=company_id, requesting_user_id=user.id)
+    request = await company_join_request_service.create_join_request(
+        company_id=company_id, requesting_user_id=user.id
+    )
     return request
 
 
@@ -239,7 +260,9 @@ async def accept_request(
     acting_user: GetUserJWTDep,
     request_id: UUID,
 ):
-    request, new_member = await company_join_request_service.accept_request(request_id=request_id, acting_user_id=acting_user.id)
+    request, new_member = await company_join_request_service.accept_request(
+        request_id=request_id, acting_user_id=acting_user.id
+    )
     return {"request": request, "new_member": new_member}
 
 
@@ -253,7 +276,9 @@ async def decline_request(
     acting_user: GetUserJWTDep,
     request_id: UUID,
 ):
-    request = await company_join_request_service.decline_request(request_id=request_id, acting_user_id=acting_user.id)
+    request = await company_join_request_service.decline_request(
+        request_id=request_id, acting_user_id=acting_user.id
+    )
     return request
 
 
@@ -267,7 +292,9 @@ async def cancel_request(
     requesting_user: GetUserJWTDep,
     request_id: UUID,
 ):
-    request = await company_join_request_service.cancel_request(request_id=request_id, requesting_user_id=requesting_user.id)
+    request = await company_join_request_service.cancel_request(
+        request_id=request_id, requesting_user_id=requesting_user.id
+    )
     return request
 
 
@@ -330,7 +357,9 @@ async def get_company_members(
     return company_members
 
 
-@companies_router.delete("/{company_id}/members/{target_user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@companies_router.delete(
+    "/{company_id}/members/{target_user_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def remove_member(
     member_service: CompanyMemberServiceDep,
     acting_user: GetUserJWTDep,
@@ -338,7 +367,9 @@ async def remove_member(
     target_user_id: UUID,
 ):
     if acting_user.id == target_user_id:
-        await member_service.leave_company(company_id=company_id, user_id=acting_user.id)
+        await member_service.leave_company(
+            company_id=company_id, user_id=acting_user.id
+        )
     else:
         await member_service.remove_member(
             company_id=company_id,
@@ -370,7 +401,7 @@ async def update_member_role(
 
 @companies_router.get(
     "/{company_id}/members/{target_user_id}/stats",
-    response_model=UserAverageCompanyScoreResponseSchema,
+    response_model=UserAverageCompanyStatsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
 async def get_user_average_score_in_company(
@@ -379,5 +410,7 @@ async def get_user_average_score_in_company(
     company_id: UUID,
     target_user_id: UUID,
 ):
-    stats = await attempt_service.get_user_stats_in_company(company_id=company_id, acting_user_id=user.id, target_user_id=target_user_id)
-    return {**stats, "user_id": target_user_id, "company_id": company_id}
+    stats = await attempt_service.get_user_stats_in_company(
+        company_id=company_id, acting_user_id=user.id, target_user_id=target_user_id
+    )
+    return stats
