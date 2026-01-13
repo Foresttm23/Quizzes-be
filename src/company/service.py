@@ -46,7 +46,7 @@ from .schemas import (
     InvitationDetailsResponse,
     RequestDetailsResponse,
 )
-from .utils import CompanyUtils
+from .utils import assert_user_role
 
 
 class JoinRequestService(BaseService[JoinRequestRepository]):
@@ -55,9 +55,8 @@ class JoinRequestService(BaseService[JoinRequestRepository]):
         return "JoinRequest"
 
     def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=JoinRequestRepository(db=db))
+        super().__init__(repo=JoinRequestRepository(db=db), cache_manager=None)
         self.member_service = member_service
-        self.company_utils = CompanyUtils()
 
     async def create_join_request(
             self, company_id: UUID, requesting_user_id: UUID
@@ -170,16 +169,16 @@ class JoinRequestService(BaseService[JoinRequestRepository]):
         return request
 
     async def get_pending_for_company(
-        self,
-        company_id: UUID,
-        acting_user_id: UUID,
-        page: int = 1,
-        page_size: int = 100,
+            self,
+            company_id: UUID,
+            acting_user_id: UUID,
+            page: int = 1,
+            page_size: int = 100,
     ) -> PaginationResponse[RequestDetailsResponse]:
         acting_user_role = await self.member_service.repo.get_company_role(
             company_id=company_id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role, required_role=CompanyRole.ADMIN
         )
 
@@ -223,13 +222,13 @@ class JoinRequestService(BaseService[JoinRequestRepository]):
         acting_user_role = await self.member_service.repo.get_company_role(
             company_id=request.company_id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role, required_role=CompanyRole.ADMIN
         )
         return request
 
     async def _get_request_model(
-        self, request_id: UUID, relationships: set[InstrumentedAttribute] | None = None
+            self, request_id: UUID, relationships: set[InstrumentedAttribute] | None = None
     ) -> CompanyJoinRequestModel:
         request = await self.repo.get_instance_by_field_or_none(
             CompanyJoinRequestModel.id, value=request_id, relationships=relationships
@@ -245,15 +244,14 @@ class MemberService(BaseService[MemberRepository]):
         return "CompanyMember"
 
     def __init__(self, db: AsyncSession):
-        super().__init__(repo=MemberRepository(db=db))
-        self.company_utils = CompanyUtils()
+        super().__init__(repo=MemberRepository(db=db), cache_manager=None)
 
     async def get_members_paginated(
-        self,
-        page: int,
-        page_size: int,
-        company_id: UUID,
-        role: CompanyRole | None = None,
+            self,
+            page: int,
+            page_size: int,
+            company_id: UUID,
+            role: CompanyRole | None = None,
     ) -> PaginationResponse[CompanyMemberDetailsResponse]:
         filters: dict[InstrumentedAttribute, Any] = {
             CompanyMemberModel.company_id: company_id
@@ -285,7 +283,7 @@ class MemberService(BaseService[MemberRepository]):
         acting_user_role = await self.repo.get_company_role(
             company_id=company_id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role,
             required_role=target_member.role,
             strictly_higher=True,
@@ -322,10 +320,10 @@ class MemberService(BaseService[MemberRepository]):
             raise UserIsNotACompanyMemberException()
 
     async def _get_member_model(
-        self,
-        company_id: UUID,
-        user_id: UUID,
-        relationships: set[InstrumentedAttribute] | None = None,
+            self,
+            company_id: UUID,
+            user_id: UUID,
+            relationships: set[InstrumentedAttribute] | None = None,
     ) -> CompanyMemberModel:
         """
         :return: Company Member
@@ -339,10 +337,10 @@ class MemberService(BaseService[MemberRepository]):
         return member
 
     async def get_member(
-        self,
-        company_id: UUID,
-        user_id: UUID,
-        relationships: set[InstrumentedAttribute] | None = None,
+            self,
+            company_id: UUID,
+            user_id: UUID,
+            relationships: set[InstrumentedAttribute] | None = None,
     ) -> CompanyMemberModel:
         """
         :return: Company Member
@@ -412,10 +410,10 @@ class MemberService(BaseService[MemberRepository]):
         )
 
     async def _get_member_model_or_none(
-        self,
-        company_id: UUID,
-        user_id: UUID,
-        relationships: set[InstrumentedAttribute] | None = None,
+            self,
+            company_id: UUID,
+            user_id: UUID,
+            relationships: set[InstrumentedAttribute] | None = None,
     ) -> CompanyMemberModel | None:
         """
         :param company_id:
@@ -432,16 +430,16 @@ class MemberService(BaseService[MemberRepository]):
         )
 
     async def _assert_user_permissions(
-        self,
-        company_id: UUID,
-        user_id: UUID,
-        required_role: CompanyRole,
-        strictly_higher: bool = False,
+            self,
+            company_id: UUID,
+            user_id: UUID,
+            required_role: CompanyRole,
+            strictly_higher: bool = False,
     ) -> None:
         user_role = await self.repo.get_company_role(
             company_id=company_id, user_id=user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=user_role,
             required_role=required_role,
             strictly_higher=strictly_higher,
@@ -455,11 +453,11 @@ class MemberService(BaseService[MemberRepository]):
             raise UserAlreadyInCompanyException()
 
     async def _has_user_permissions(
-        self,
-        company_id: UUID,
-        user_id: UUID,
-        required_role: CompanyRole,
-        strictly_higher: bool = False,
+            self,
+            company_id: UUID,
+            user_id: UUID,
+            required_role: CompanyRole,
+            strictly_higher: bool = False,
     ) -> bool:
         """
         :param company_id:
@@ -477,11 +475,11 @@ class MemberService(BaseService[MemberRepository]):
             return False
 
     async def update_role(
-        self,
-        company_id: UUID,
-        target_user_id: UUID,
-        acting_user_id: UUID,
-        new_role: CompanyRole,
+            self,
+            company_id: UUID,
+            target_user_id: UUID,
+            acting_user_id: UUID,
+            new_role: CompanyRole,
     ) -> CompanyMemberModel:
         target_member = await self._get_member_model(
             company_id=company_id, user_id=target_user_id
@@ -491,7 +489,7 @@ class MemberService(BaseService[MemberRepository]):
         acting_member_role = await self.repo.get_company_role(
             company_id=company_id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_member_role, required_role=CompanyRole.OWNER
         )
 
@@ -522,9 +520,8 @@ class InvitationService(BaseService[InvitationRepository]):
         return "Invitation"
 
     def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=InvitationRepository(db=db))
+        super().__init__(repo=InvitationRepository(db=db), cache_manager=None)
         self.member_service = member_service
-        self.company_utils = CompanyUtils()
 
     async def create_invitation(
             self, company_id: UUID, invited_user_id: UUID, acting_user_id: UUID
@@ -539,7 +536,7 @@ class InvitationService(BaseService[InvitationRepository]):
         acting_user_role = await self.member_service.repo.get_company_role(
             company_id=company_id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role, required_role=CompanyRole.ADMIN
         )
 
@@ -638,7 +635,7 @@ class InvitationService(BaseService[InvitationRepository]):
         acting_user_role = await self.member_service.repo.get_company_role(
             company_id=invitation.company_id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role, required_role=CompanyRole.ADMIN
         )
 
@@ -667,12 +664,12 @@ class InvitationService(BaseService[InvitationRepository]):
         return invitations
 
     async def get_pending_for_company(
-        self, company_id: UUID, acting_user_id: UUID, page: int, page_size: int
+            self, company_id: UUID, acting_user_id: UUID, page: int, page_size: int
     ) -> PaginationResponse[InvitationDetailsResponse]:
         acting_user_role = await self.member_service.repo.get_company_role(
             company_id=company_id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role, required_role=CompanyRole.ADMIN
         )
 
@@ -718,12 +715,11 @@ class CompanyService(BaseService[CompanyRepository]):
         return "Company"
 
     def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=CompanyRepository(db=db))
+        super().__init__(repo=CompanyRepository(db=db), cache_manager=None)
         self.member_service = member_service
-        self.company_utils = CompanyUtils()
 
     async def get_companies_paginated(
-        self, user_id: UUID | None, page: int, page_size: int
+            self, user_id: UUID | None, page: int, page_size: int
     ) -> PaginationResponse[CompanyDetailsResponseSchema]:
         if not user_id:
             return await self._get_visible_companies_paginated(
@@ -755,7 +751,7 @@ class CompanyService(BaseService[CompanyRepository]):
         )
 
     async def _get_visible_and_user_companies_paginated(
-        self, page: int, page_size: int, user_company_ids: Sequence[UUID]
+            self, page: int, page_size: int, user_company_ids: Sequence[UUID]
     ) -> PaginationResponse[CompanyDetailsResponseSchema]:
         condition = or_(
             CompanyModel.is_visible.is_(True), CompanyModel.id.in_(user_company_ids)
@@ -800,16 +796,16 @@ class CompanyService(BaseService[CompanyRepository]):
         return company
 
     async def update_company(
-        self,
-        company_id: UUID,
-        acting_user_id: UUID,
-        company_info: CompanyUpdateInfoRequestSchema,
+            self,
+            company_id: UUID,
+            acting_user_id: UUID,
+            company_info: CompanyUpdateInfoRequestSchema,
     ) -> CompanyModel:
         company = await self._get_company_model(company_id=company_id)
         acting_user_role = await self.member_service.repo.get_company_role(
             company_id=company.id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role, required_role=CompanyRole.ADMIN
         )
 
@@ -826,7 +822,7 @@ class CompanyService(BaseService[CompanyRepository]):
         acting_user_role = await self.member_service.repo.get_company_role(
             company_id=company.id, user_id=acting_user_id
         )
-        self.company_utils.validate_user_role(
+        assert_user_role(
             user_role=acting_user_role, required_role=CompanyRole.OWNER
         )
 

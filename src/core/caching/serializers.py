@@ -1,35 +1,27 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Type
+from typing import Any, Type, TypeVar
+
+from pydantic import TypeAdapter
+from pydantic_core import to_jsonable_python
 
 from src.core.schemas import Base as BaseSchema
 
+SchemaType = TypeVar("SchemaType", bound=BaseSchema)
+
 
 def serialize(obj: Any) -> str:
-    """
-    Serializes Pydantic models, Lists of models, or raw dicts.
-    Handles UUIDs and Datetime automatically.
-    """
-    if isinstance(obj, BaseSchema):
-        return obj.model_dump_json()
-
-    if isinstance(obj, list):
-        data_list = [
-            item.model_dump(mode="json") if isinstance(item, BaseSchema) else item
-            for item in obj
-        ]
-        return json.dumps(data_list, default=str)
-
-    return json.dumps(obj, default=str)
+    return json.dumps(to_jsonable_python(obj))
 
 
-def deserialize(obj: Any, schema: Type[BaseSchema] | None) -> Any:
-    """Deserialize obj into a passed schema."""
-    json_data = json.loads(obj)  # Only schemas here, no plain dict or list
+def deserialize(obj: str, schema: Type[SchemaType] | None) -> Any:
+    if not obj:
+        return None
+
+    data = json.loads(obj)
     if schema is None:
-        return json_data
+        return data
 
-    if isinstance(json_data, list):
-        return [schema.model_validate(item) for item in json_data]
-    return schema.model_validate(json_data)
+    # Use TypeAdapter to handle both single models and lists of models automatically
+    return TypeAdapter(schema | list[SchemaType]).validate_python(data)
