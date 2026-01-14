@@ -2,8 +2,12 @@ from contextlib import asynccontextmanager
 
 import httpx
 import uvicorn
+from core.caching.utils import custom_key_builder
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis.asyncio import Redis as AsyncRedis
 
 from .auth.router import auth_router, users_router
 from .company.router import companies_router, invitations_router, requests_router
@@ -27,6 +31,9 @@ async def lifespan(app: FastAPI):
     redis_manager = RedisManager()
     redis_manager.start(str(settings.REDIS.REDIS_URL),
                         encoding="utf8", decode_responses=True, max_connections=20)
+
+    redis_client = AsyncRedis(connection_pool=redis_manager.pool, encoding="utf8", decode_responses=True)
+    FastAPICache.init(RedisBackend(redis_client), prefix="api-cache", key_builder=custom_key_builder)
 
     http_client_manager = HTTPClientManager()
     http_client_manager.start(timeout=httpx.Timeout(10.0),

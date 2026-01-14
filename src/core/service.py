@@ -4,7 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel as BaseSchema
 
-from .caching.manager import CacheManager
 from .logger import logger
 from .models import Base as BaseModel
 from .repository import BaseRepository
@@ -19,10 +18,8 @@ class BaseService(ABC, Generic[RepoType]):
     def display_name(self) -> str:
         pass
 
-    def __init__(self, repo: RepoType, cache_manager: CacheManager | None):
+    def __init__(self, repo: RepoType):
         self.repo = repo
-        # Name is static and corresponds to the caching manager name=cache_manager
-        self.cache_manager = cache_manager
 
     def _update_instance(
             self, instance: ModelType, new_data: BaseSchema, by: UUID

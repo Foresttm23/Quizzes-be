@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .caching.manager import CacheManager
+from .caching.utils import CacheManager
 from .config import settings
 from .database import db_session_manager
 from .http_client import http_client_manager

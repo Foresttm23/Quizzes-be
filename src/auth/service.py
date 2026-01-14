@@ -78,7 +78,7 @@ class UserService(BaseService[UserRepository]):
         user_data.pop("password")
 
         user = UserModel(id=uuid4(), **user_data, hashed_password=hashed_password)
-        await self.repo.save_and_refresh(user)
+        await self.repo.save(user)
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
 
         return user
@@ -92,7 +92,7 @@ class UserService(BaseService[UserRepository]):
                          username=f"user_{uuid4().hex}",  # full UUID just to be sure
                          hashed_password=None, auth_provider=user_info.auth_provider, )
 
-        await self.repo.save_and_refresh(user)
+        await self.repo.save(user)
         logger.info(f"Created new User: {user.id} auth_provider: {user.auth_provider} by system")
 
         return user
@@ -100,7 +100,7 @@ class UserService(BaseService[UserRepository]):
     async def update_user_info(self, user: UserModel, new_user_info: UserInfoUpdateRequest) -> UserModel:
         """Method for updating user details by id"""
         user = self._update_instance(instance=user, new_data=new_user_info, by=user.id)
-        await self.repo.save_and_refresh(user)
+        await self.repo.save(user)
         logger.info(f"Updated {self.display_name}: {user.id} by system")
 
         return user
@@ -111,7 +111,7 @@ class UserService(BaseService[UserRepository]):
         new_password = new_password_info.new_password.get_secret_value()
         user.update_password(current_plain=current_password, new_plain=new_password)
 
-        await self.repo.save_and_refresh(user)
+        await self.repo.save(user)
         logger.info(f"{self.display_name}: {user.id} updated")
         logger.debug(f"{self.display_name}: {user.id} changed password")
 

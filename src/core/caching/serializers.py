@@ -15,13 +15,13 @@ def serialize(obj: Any) -> str:
     return json.dumps(to_jsonable_python(obj))
 
 
-def deserialize(obj: str, schema: Type[SchemaType] | None) -> Any:
+def deserialize(obj: str, response_schema: Type[SchemaType] | None) -> SchemaType | Any:
     if not obj:
         return None
 
     data = json.loads(obj)
-    if schema is None:
+    if response_schema is None:
         return data
 
     # Use TypeAdapter to handle both single models and lists of models automatically
-    return TypeAdapter(schema | list[SchemaType]).validate_python(data)
+    return TypeAdapter(SchemaType | list[SchemaType]).validate_python(data)

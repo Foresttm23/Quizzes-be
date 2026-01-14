@@ -87,7 +87,7 @@ async def test_update_instance_success(
     updated_instance = test_base_service._update_instance(
         instance=created_instance, new_data=new_data
     )
-    await test_base_service.repo.save_and_refresh(updated_instance)
+    await test_base_service.repo.save(updated_instance)
 
     assert updated_instance.username == "new_instance_name"
     assert updated_instance.email == created_instance.email
@@ -105,7 +105,7 @@ async def test_update_instance_no_changes(
     updated_instance = test_base_service._update_instance(
         instance=created_instance, new_data=new_data
     )
-    await test_base_service.repo.save_and_refresh(updated_instance)
+    await test_base_service.repo.save(updated_instance)
 
     assert updated_instance.username == original_username
     assert updated_instance.email == created_instance.email

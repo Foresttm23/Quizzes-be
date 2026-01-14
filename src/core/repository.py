@@ -15,7 +15,6 @@ from src.core.schemas import PaginationResponse
 ModelType = TypeVar("ModelType", bound=BaseModel)
 SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
-
 QueryType = TypeVar("QueryType", bound=Select[Any] | Update | Delete)
 
 
@@ -25,11 +24,11 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get_instances_paginated(
-        self,
-        page: int,
-        page_size: int,
-        return_schema: Type[SchemaType],
-        filters: dict[InstrumentedAttribute, Any] | None = None,
+            self,
+            page: int,
+            page_size: int,
+            return_schema: Type[SchemaType],
+            filters: dict[InstrumentedAttribute, Any] | None = None,
     ) -> PaginationResponse[SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
@@ -80,35 +79,22 @@ class BaseRepository(Generic[ModelType]):
 
         return query
 
-    async def save_and_refresh(self, *instances: BaseModel) -> None:
-        """
-        Adds instances, commits and refreshes them.
-        If there is duplicate of unique field, IntegrityError is called and session is rolled back.
-        """
+    async def save(self, *instances: BaseModel) -> None:
         self.db.add_all(instances)
         await self.commit()
 
-        for instance in instances:
-            await self.db.refresh(instance)
-
-    async def flush(self, *instances: BaseModel):
-        self.db.add_all(instances)
-        await self.db.flush(instances)
-
     async def commit(self) -> None:
-        """
-        Commits the current transaction.
-        """
         try:
+            await self.db.flush()
             await self.db.commit()
         except IntegrityError:
             raise RecordAlreadyExistsException()
 
     async def get_instance_by_field_or_none(
-        self,
-        field: InstrumentedAttribute,
-        value: Any,
-        relationships: set[InstrumentedAttribute] | None = None,
+            self,
+            field: InstrumentedAttribute,
+            value: Any,
+            relationships: set[InstrumentedAttribute] | None = None,
     ) -> ModelType | None:
         """
         Gets instance by single field.
@@ -124,10 +110,10 @@ class BaseRepository(Generic[ModelType]):
         return instance
 
     async def get_instance_by_filters_or_none(
-        self,
-        filters: dict[InstrumentedAttribute, Any],
-        relationships: set[InstrumentedAttribute] | None = None,
-        options: Sequence[ExecutableOption] | None = None,
+            self,
+            filters: dict[InstrumentedAttribute, Any],
+            relationships: set[InstrumentedAttribute] | None = None,
+            options: Sequence[ExecutableOption] | None = None,
     ) -> ModelType | None:
         """
         Gets instance by many field. Applies .model_dump(exclude_unset=True)
