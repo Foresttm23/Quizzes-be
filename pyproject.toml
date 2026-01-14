@@ -25,4 +25,5 @@ dependencies = [
     "sqlalchemy==2.0.44",
     "uvicorn==0.38.0",
     "ruff>=0.14.10",
+    "fastapi-cache2>=0.2.2",
 ]

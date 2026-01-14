@@ -1,36 +1,34 @@
 import contextlib
-from typing import Any, AsyncIterator
+from typing import Any, AsyncGenerator
 
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine, )
 
 from .exceptions import SessionNotInitializedException
 from .logger import logger
 
 
-# From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
 class DBSessionManager:
-    def __init__(self, database_url: str, engine_kwargs: dict[str, Any] | None = None):
-        self._engine = create_async_engine(database_url, **(engine_kwargs or {}))
-        self._sessionmaker = async_sessionmaker(
-            autocommit=False, bind=self._engine, expire_on_commit=False
-        )
+    def __init__(self):
+        self.engine: AsyncEngine | None = None
+        self.sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
-    async def close(self) -> None:
-        if self._engine:
-            await self._engine.dispose()
-            self._engine = None
-            self._sessionmaker = None
+    def start(self, database_url: str, **pool_kwargs: Any) -> None:
+        if self.engine is None:
+            self.engine = create_async_engine(database_url, **pool_kwargs)
+            self.sessionmaker = async_sessionmaker(autocommit=False, bind=self.engine, expire_on_commit=False)
+
+    async def stop(self) -> None:
+        if self.engine:
+            await self.engine.dispose()
+            self.engine = None
+            self.sessionmaker = None
 
     @contextlib.asynccontextmanager
-    async def session(self) -> AsyncIterator[AsyncSession]:
-        if self._sessionmaker is None:
+    async def session(self) -> AsyncGenerator[AsyncSession, None]:
+        if self.sessionmaker is None:
             raise SessionNotInitializedException(session_name="POSTGRES_DB")
 
-        session = self._sessionmaker()
+        session = self.sessionmaker()
         try:
             yield session
         except Exception:
@@ -38,13 +36,7 @@ class DBSessionManager:
             await session.rollback()
             raise
         finally:
-            await session.close()
+            await session.close()  # Always close to return to pool
 
 
-sessionmanager: DBSessionManager | None = None
-
-
-def init_db(database_url: str, pool_kwargs: dict[str, Any] | None = None):
-    global sessionmanager
-    sessionmanager = DBSessionManager(database_url, pool_kwargs or {})
-    return sessionmanager
+db_session_manager = DBSessionManager()

@@ -4,9 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel as BaseSchema
 
-from logger import logger
-from repository import BaseRepository
-from src.core.models import Base as BaseModel
+from .logger import logger
+from .models import Base as BaseModel
+from .repository import BaseRepository
 
 RepoType = TypeVar("RepoType", bound=BaseRepository)
 ModelType = TypeVar("ModelType", bound=BaseModel)

@@ -79,7 +79,8 @@ async def get_quiz(
         company_id: UUID,
         quiz_id: UUID,
 ):
-    is_admin = await member_service.has_admin_permission(company_id=company_id, user_id=user.id)
+    user_id = user.id if user else None
+    is_admin = await member_service.has_admin_permission(company_id=company_id, user_id=user_id)
     quiz = await quiz_service.get_quiz(company_id=company_id, is_admin=is_admin, quiz_id=quiz_id)
     # Service layer already handles schema transformation
     return quiz

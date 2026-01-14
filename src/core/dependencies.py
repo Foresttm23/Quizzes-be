@@ -2,13 +2,15 @@ from dataclasses import dataclass
 from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends, Query
+from httpx import AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import database as postgres_module
-from . import redis as redis_module
+from .caching.utils import CacheManager
 from .config import settings
-from .exceptions import SessionNotInitializedException
+from .database import db_session_manager
+from .http_client import http_client_manager
+from .redis import redis_manager
 
 
 @dataclass
@@ -27,21 +29,30 @@ PaginationParamDep = Annotated[PaginationParams, Depends()]
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """Exception is handled inside the postgres_module.sessionmanager.session()"""
-    async with postgres_module.sessionmanager.session() as session:
+    async with db_session_manager.session() as session:
         yield session
 
 
 DBSessionDep = Annotated[AsyncSession, Depends(get_db_session)]
 
 
-async def get_redis_session() -> AsyncGenerator[Redis, None]:
-    if redis_module.redis_pool is None:
-        raise SessionNotInitializedException(session_name="REDIS")
-    redis_client = Redis(connection_pool=redis_module.redis_pool)
-    try:
-        yield redis_client
-    finally:
-        await redis_client.close()
+async def get_redis_client() -> AsyncGenerator[Redis, None]:
+    async with redis_manager.session() as session:
+        yield session
 
 
-RedisDep = Annotated[Redis, Depends(get_redis_session)]
+RedisDep = Annotated[Redis, Depends(get_redis_client)]
+
+
+async def get_cache_manager(redis: RedisDep) -> CacheManager:
+    return CacheManager(redis=redis)
+
+
+CacheManagerDep = Annotated[CacheManager, Depends(get_cache_manager)]
+
+
+async def get_http_client() -> AsyncGenerator[AsyncClient, None]:
+    return http_client_manager.client()
+
+
+HTTPClientDep = Annotated[AsyncClient, Depends(get_cache_manager)]

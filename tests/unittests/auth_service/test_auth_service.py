@@ -83,7 +83,7 @@ def test_create_access_token_calls_repo_correctly(
     mock_settings = mocker.patch("src.services.auth_service.settings")
     mock_settings.LOCAL_JWT.LOCAL_ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-    mock_auth_utils.create_access_token.return_value = "signed_jwt_token"
+    mock_auth_utils.encode_access_token.return_value = "signed_jwt_token"
 
     expected_data = mock_auth_utils.fill_jwt_fields_from_dict(data=mock_user.to_dict())
     expected_expires_delta = timedelta(minutes=60)
@@ -91,7 +91,7 @@ def test_create_access_token_calls_repo_correctly(
     token = auth_service._create_access_token(mock_user)
 
     assert token == "signed_jwt_token"
-    mock_auth_utils.create_access_token.assert_called_once_with(
+    mock_auth_utils.encode_access_token.assert_called_once_with(
         data=expected_data, expires_delta=expected_expires_delta
     )
 
