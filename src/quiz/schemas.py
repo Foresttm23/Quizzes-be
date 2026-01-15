@@ -141,7 +141,7 @@ class QuizReviewAttemptResponseSchema(Base):
 
 
 class QuestionOptionsMixin(BaseModel):
-    @field_validator("options")
+    @field_validator("options", check_fields=False)
     @classmethod
     def validate_option(cls, options: list[AnswerOptionsCreateRequestSchema] | None):
         if options is None:

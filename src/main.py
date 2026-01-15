@@ -2,21 +2,20 @@ from contextlib import asynccontextmanager
 
 import httpx
 import uvicorn
-from core.caching.utils import custom_key_builder
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from redis.asyncio import Redis as AsyncRedis
 
-from .auth.router import auth_router, users_router
-from .company.router import companies_router, invitations_router, requests_router
-from .core.config import settings
-from .core.database import DBSessionManager
-from .core.http_client import HTTPClientManager
-from .core.logger import logger
-from .core.redis import RedisManager
-from .quiz.router import attempt_router, quiz_router
+from src.auth.router import auth_router, users_router
+from src.company.router import companies_router, invitations_router, requests_router
+from src.core.config import settings
+from src.core.database import DBSessionManager
+from src.core.http_client import HTTPClientManager
+from src.core.logger import logger
+from src.core.redis import RedisManager
+from src.quiz.router import attempt_router, quiz_router
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
@@ -33,7 +32,7 @@ async def lifespan(app: FastAPI):
                         encoding="utf8", decode_responses=True, max_connections=20)
 
     redis_client = AsyncRedis(connection_pool=redis_manager.pool, encoding="utf8", decode_responses=True)
-    FastAPICache.init(RedisBackend(redis_client), prefix="api-cache", key_builder=custom_key_builder)
+    FastAPICache.init(RedisBackend(redis_client), prefix="api-cache")
 
     http_client_manager = HTTPClientManager()
     http_client_manager.start(timeout=httpx.Timeout(10.0),
@@ -68,7 +67,7 @@ app.add_middleware(
 
 if __name__ == "__main__":
     uvicorn.run(
-        ".main:app",
+        "src.main:app",
         host=settings.APP.HOST,
         port=settings.APP.PORT,
         reload=settings.APP.RELOAD,

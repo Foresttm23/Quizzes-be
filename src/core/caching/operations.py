@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi_cache import FastAPICache
 from pydantic import BaseModel as BaseSchema
 
-from core.caching.serializers import deserialize
+from .serializers import deserialize
 
 SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 

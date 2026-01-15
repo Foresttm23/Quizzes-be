@@ -2,7 +2,7 @@ from typing import Any, AsyncGenerator
 
 from redis.asyncio import ConnectionPool, Redis
 
-from core.exceptions import SessionNotInitializedException
+from .exceptions import SessionNotInitializedException
 
 
 class RedisManager:

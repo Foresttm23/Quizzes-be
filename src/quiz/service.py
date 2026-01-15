@@ -6,18 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql.base import ExecutableOption
 
-from core.caching.rules import cache_attempt_if_finished
-from core.utils import sanitize
 from src.auth.repository import UserRepository
 from src.auth.schemas import UserAverageSystemStatsResponseSchema
 from src.company.schemas import UserAverageCompanyStatsResponseSchema
 from src.company.service import MemberService
 from src.core.caching.config import CacheConfig
 from src.core.caching.decorators import cache_with_mapping
+from src.core.caching.rules import cache_attempt_if_finished
 from src.core.exceptions import InstanceNotFoundException, ResourceConflictException
 from src.core.logger import logger
 from src.core.schemas import PaginationResponse
 from src.core.service import BaseService
+from src.core.utils import sanitize
 from .enums import AttemptStatus
 from .models import AttemptAnswerSelection as AttemptAnswerSelectionModel
 from .models import CompanyQuiz as CompanyQuizModel

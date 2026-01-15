@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.repository import BaseRepository
+from src.core.repository import BaseRepository
 from .enums import CompanyRole
 from .models import (
     Company as CompanyModel,
