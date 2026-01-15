@@ -2,17 +2,16 @@
 
 # About this project
 
-## Technologies - FastAPI, PostgreSQL, SQLAlchemy, asyncio, Docker, JWT, Auth0, Redis, uv, pytest, alembic
-### A backend service for managing quizzes, built with FastAPI and following RESTful principles. The service separates repository and service layers and follows Domain Driven architecture to maintain clean code and scalability.
+### Technologies - FastAPI, PostgreSQL, SQLAlchemy, asyncio, Docker, JWT, Auth0, Redis, uv, pytest, alembic
+#### A backend service for managing quizzes, built with FastAPI and following RESTful principles. The service separates repository and service layers and follows Domain Driven architecture to maintain clean code and scalability.
 
-### The platform supports both local sign-up using email and password, issuing a local JWT, as well as login via Auth0 with their JWT, both token types are supported. Each user can send companies join requests or create a company themselves by becoming its owner. Owners can send other user's invitations, manage join requests and assign roles such as admins withing the company. Users can view visible companies as well as their own companies, even if those companies are marked as invisible.
+#### The platform supports both local sign-up using email and password, issuing a local JWT, as well as login via Auth0 with their JWT, both token types are supported. Each user can send companies join requests or create a company themselves by becoming its owner. Owners can send other user's invitations, manage join requests and assign roles such as admins withing the company. Users can view visible companies as well as their own companies, even if those companies are marked as invisible.
 
-### Company admins can create quizzes, add questions and answers, and publish quizzes for company members. Once published, questions cannot be chanaged. To update them, admin or owner should create a new version from an existing one: all questions are preserved, the new version starts unpublished, and after publishing, the previous version becomes invisible while retaining its published status. Quick change of visible quiz is also available.
+#### Company admins can create quizzes, add questions and answers, and publish quizzes for company members. Once published, questions cannot be chanaged. To update them, admin or owner should create a new version from an existing one: all questions are preserved, the new version starts unpublished, and after publishing, the previous version becomes invisible while retaining its published status. Quick change of visible quiz is also available.
 
-### Frequently used service calls, such as retrieving quiz attempts, are cached using Redis, the fastapi-cache2 library, and a custom decorator. Cache invalidation happens automatically on model updates using SQLAlchemy event listeners.
+#### Frequently used service calls, such as retrieving quiz attempts, are cached using Redis, the fastapi-cache2 library, and a custom decorator. Cache invalidation happens automatically on model updates using SQLAlchemy event listeners.
 
-#### Most endpoints are protected with required JWT authentication, other with optional.
-#### For example, while anyone can access a list of companies, invisible companies are only visible to their members.
+#### Most endpoints are protected with required JWT authentication, other with optional. (Anyone can access a list of companies, invisible companies are only visible to their members)
 
 ___
 
