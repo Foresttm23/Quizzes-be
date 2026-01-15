@@ -44,7 +44,7 @@ RedisDep = Annotated[Redis, Depends(get_redis_client)]
 
 
 async def get_http_client() -> AsyncGenerator[AsyncClient, None]:
-    return http_client_manager.client()
+    return await http_client_manager.client()
 
 
 HTTPClientDep = Annotated[AsyncClient, Depends(get_http_client)]
