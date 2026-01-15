@@ -1,10 +1,16 @@
+import os
 from uuid import UUID, uuid4
 
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class AppSettings(BaseSettings):
+class SharedConfig(BaseSettings):
+    ENV_FILE = os.getenv("ENV_FILE", ".env")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
+
+
+class AppSettings(SharedConfig):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     RELOAD: bool = True
@@ -16,35 +22,39 @@ class AppSettings(BaseSettings):
     MAX_PAGE_SIZE: int = 100
 
 
-class DBSettings(BaseSettings):
+class DBSettings(SharedConfig):
     # PostgresSQL
-    POSTGRES_USER: str = "postgres"
+    POSTGRES_USER: str = "user"
     POSTGRES_PASSWORD: str = "passw"
     POSTGRES_DB: str = "my_db"
+    POSTGRES_HOST: str = "postgres"
+    POSTGRES_PORT: int = 5432
 
     @computed_field
+    @property
     def DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@postgres:5432/{self.POSTGRES_DB}"
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
 
-class TestDBSettings(BaseSettings):
+class TestDBSettings(SharedConfig):
     # Test PostgresSQL
-    TEST_POSTGRES_USER: str = "test_postgres"
+    TEST_POSTGRES_USER: str = "test_user"
     TEST_POSTGRES_PASSWORD: str = "passw"
     TEST_POSTGRES_DB: str = "db_test"
 
     @computed_field
+    @property
     def TEST_DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.TEST_POSTGRES_USER}:{self.TEST_POSTGRES_PASSWORD}@test_postgres:5432/{self.TEST_POSTGRES_DB}"
+        return f"postgresql+asyncpg://{self.TEST_POSTGRES_USER}:{self.TEST_POSTGRES_PASSWORD}@postgres:5432/{self.TEST_POSTGRES_DB}"
 
 
-class Auth0JWTSettings(BaseSettings):
+class Auth0JWTSettings(SharedConfig):
     AUTH0_JWKS_ENDPOINT: str = "https://url/.well-known/jwks.json"
     AUTH0_JWT_ALGORITHM: str = "RS256"
     AUTH0_JWT_AUDIENCE: str = "https://myapp.com/api"
 
 
-class LocalJWTSettings(BaseSettings):
+class LocalJWTSettings(SharedConfig):
     LOCAL_JWT_SECRET: str = "mysecretkey"
     LOCAL_JWT_ALGORITHM: str = "HS256"
     LOCAL_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
@@ -53,14 +63,17 @@ class LocalJWTSettings(BaseSettings):
     LOCAL_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
 
-class RedisSettings(BaseSettings):
+class RedisSettings(SharedConfig):
     # Redis
     REDIS_PASSWORD: str = "mysecretpassword"
     REDIS_DB: int = 0
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
 
     @computed_field
+    @property
     def REDIS_URL(self) -> str:
-        return f"redis://:{self.REDIS_PASSWORD}@redis:6379/{self.REDIS_DB}"
+        return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
 
 class Settings(BaseSettings):
@@ -70,8 +83,6 @@ class Settings(BaseSettings):
     LOCAL_JWT: LocalJWTSettings = LocalJWTSettings()
     AUTH0_JWT: Auth0JWTSettings = Auth0JWTSettings()
     REDIS: RedisSettings = RedisSettings()
-
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 settings = Settings()
