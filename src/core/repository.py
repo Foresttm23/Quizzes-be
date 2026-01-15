@@ -8,9 +8,9 @@ from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql import Delete, Select, Update
 from sqlalchemy.sql.base import ExecutableOption
 
-from exceptions import RecordAlreadyExistsException
-from src.core.models import Base as BaseModel
-from src.core.schemas import PaginationResponse
+from .exceptions import RecordAlreadyExistsException
+from .models import Base as BaseModel
+from .schemas import PaginationResponse
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
 SchemaType = TypeVar("SchemaType", bound=BaseSchema)

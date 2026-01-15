@@ -10,8 +10,8 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from core.config import AppSettings
 from src.auth.enums import AuthProviderEnum, JWTTypeEnum
+from src.core.config import AppSettings
 from src.core.config import LocalJWTSettings, Auth0JWTSettings
 from src.core.exceptions import (ExternalAuthProviderException, InstanceNotFoundException, InvalidJWTRefreshException,
                                  UserIncorrectPasswordOrEmailException, )
