@@ -6,14 +6,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class SharedConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    ENV_FILE = os.getenv("ENV_FILE", ".env")
+    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
 
 class AppSettings(SharedConfig):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     RELOAD: bool = True
-    DOCKER_MODE: bool = False
 
     ORIGINS: list[str] = ["http://other.com", "https://other.com"]
     UUID_TRANSFORM_SECRET: UUID = uuid4()
@@ -27,18 +27,13 @@ class DBSettings(SharedConfig):
     POSTGRES_USER: str = "user"
     POSTGRES_PASSWORD: str = "passw"
     POSTGRES_DB: str = "my_db"
+    POSTGRES_HOST: str = "postgres"
+    POSTGRES_PORT: int = 5432
 
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
-        # TODO pydantic settings
-        if settings.APP.DOCKER_MODE:
-            host = "postgres"
-            port = 5432
-        else:
-            host = "localhost"
-            port = 5433
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{host}:{port}/{self.POSTGRES_DB}"
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
 
 class TestDBSettings(SharedConfig):
@@ -72,13 +67,13 @@ class RedisSettings(SharedConfig):
     # Redis
     REDIS_PASSWORD: str = "mysecretpassword"
     REDIS_DB: int = 0
+    REDIS_HOST: str = "redis"
+    REDIS_PORT: int = 6379
 
     @computed_field
     @property
     def REDIS_URL(self) -> str:
-        is_docker = os.getenv("DOCKER_MODE", "false").lower() == "true"
-        host = "redis" if is_docker else "localhost"
-        return f"redis://:{self.REDIS_PASSWORD}@{host}:6379/{self.REDIS_DB}"
+        return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
 
 class Settings(BaseSettings):
