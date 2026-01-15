@@ -36,7 +36,7 @@ class UserService(BaseService[UserRepository]):
         return "User"
 
     def __init__(self, db: AsyncSession):
-        super().__init__(repo=UserRepository(db=db), cache_manager=None)
+        super().__init__(repo=UserRepository(db=db))
 
     async def get_by_email_model(self, email: EmailStr,
                                  relationships: set[InstrumentedAttribute] | None = None) -> UserModel:

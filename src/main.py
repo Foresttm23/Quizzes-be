@@ -11,10 +11,10 @@ from redis.asyncio import Redis as AsyncRedis
 from src.auth.router import auth_router, users_router
 from src.company.router import companies_router, invitations_router, requests_router
 from src.core.config import settings
-from src.core.database import DBSessionManager
-from src.core.http_client import HTTPClientManager
+from src.core.database import db_session_manager
+from src.core.http_client import http_client_manager
 from src.core.logger import logger
-from src.core.redis import RedisManager
+from src.core.redis import redis_manager
 from src.quiz.router import attempt_router, quiz_router
 
 
@@ -24,17 +24,13 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Startup")
 
-    db_session_manager = DBSessionManager()
     db_session_manager.start(str(settings.DB.DATABASE_URL), pool_size=20, max_overflow=10)
-
-    redis_manager = RedisManager()
     redis_manager.start(str(settings.REDIS.REDIS_URL),
                         encoding="utf8", decode_responses=True, max_connections=20)
 
     redis_client = AsyncRedis(connection_pool=redis_manager.pool, encoding="utf8", decode_responses=True)
     FastAPICache.init(RedisBackend(redis_client), prefix="api-cache")
 
-    http_client_manager = HTTPClientManager()
     http_client_manager.start(timeout=httpx.Timeout(10.0),
                               limits=httpx.Limits(max_connections=100, max_keepalive_connections=20))
 

@@ -1,6 +1,6 @@
 .venv
 .idea
-.env
+deploy/envs/.env
 
 __pycache__/
 *.pyc
