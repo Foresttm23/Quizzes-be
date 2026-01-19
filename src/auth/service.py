@@ -72,7 +72,7 @@ class UserService(BaseService[UserRepository]):
         # Since SecretStr(password) will transform to "***" with model_dump(),
         # we extract password before the call.
         plain_password = user_info.password.get_secret_value()
-        hashed_password = hash_password(password=plain_password)
+        hashed_password = await hash_password(password=plain_password)
 
         user_data = user_info.model_dump()
         user_data.pop("password")
@@ -109,7 +109,7 @@ class UserService(BaseService[UserRepository]):
         """Method for updating user password by id"""
         current_password = new_password_info.current_password.get_secret_value()
         new_password = new_password_info.new_password.get_secret_value()
-        user.update_password(current_plain=current_password, new_plain=new_password)
+        await user.update_password(current_plain=current_password, new_plain=new_password)
 
         await self.repo.save(user)
         logger.info(f"{self.display_name}: {user.id} updated")
@@ -165,7 +165,7 @@ class AuthService:
             raise ExternalAuthProviderException(auth_provider=user.auth_provider, message="Incorrect Route")
 
         plain_password = sign_in_data.password.get_secret_value()
-        if not verify_password(plain_password=plain_password, hashed_password=user.hashed_password):
+        if not await verify_password(plain_password=plain_password, hashed_password=user.hashed_password):
             raise UserIncorrectPasswordOrEmailException()
 
         return user

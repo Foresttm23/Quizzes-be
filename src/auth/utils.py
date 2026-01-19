@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid5
 
 import httpx
-from jose import JWSError, JWTError, jws, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 
 from src.auth.enums import AuthProviderEnum, JWTTypeEnum
 from src.core.config import Auth0JWTSettings, LocalJWTSettings
@@ -60,14 +61,14 @@ def _handle_local_token_encode(data: dict, secret: str, algorithm: str) -> str:
 def _handle_local_token_decode(token: str, secret: str, algorithm: str) -> dict:
     try:
         return jwt.decode(token, key=secret, algorithms=[algorithm])
-    except (JWTError, JWSError, KeyError):
+    except PyJWTError:
         raise InvalidJWTException()
 
 
 async def _handle_auth0_token_decode(token: str, jwks_endpoint: str, audience: str, algorithm: str,
                                      http_client: httpx.AsyncClient) -> dict:
     try:
-        unverified_header = jws.get_unverified_header(token)
+        unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header.get("kid")
         if not kid:
             raise InvalidJWTException()
@@ -79,7 +80,7 @@ async def _handle_auth0_token_decode(token: str, jwks_endpoint: str, audience: s
         payload = jwt.decode(token=token, key=public_key, audience=audience, algorithms=[algorithm], )
         payload["auth_provider"] = AuthProviderEnum.AUTH0
         return payload
-    except (JWTError, JWSError, KeyError):
+    except PyJWTError:
         raise InvalidJWTException()
 
 

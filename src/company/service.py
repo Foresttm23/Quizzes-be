@@ -160,7 +160,7 @@ class MemberService(BaseService[MemberRepository]):
         return "CompanyMember"
 
     def __init__(self, db: AsyncSession):
-        super().__init__(repo=MemberRepository(db=db), cache_manager=None)
+        super().__init__(repo=MemberRepository(db=db))
 
     async def get_members_paginated(self, page: int, page_size: int, company_id: UUID,
                                     role: CompanyRole | None = None, ) -> PaginationResponse[
@@ -337,7 +337,7 @@ class InvitationService(BaseService[InvitationRepository]):
         return "Invitation"
 
     def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=InvitationRepository(db=db), cache_manager=None)
+        super().__init__(repo=InvitationRepository(db=db))
         self.member_service = member_service
 
     async def create_invitation(self, company_id: UUID, invited_user_id: UUID,
@@ -475,7 +475,7 @@ class CompanyService(BaseService[CompanyRepository]):
         return "Company"
 
     def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=CompanyRepository(db=db), cache_manager=None)
+        super().__init__(repo=CompanyRepository(db=db))
         self.member_service = member_service
 
     async def get_companies_paginated(self, user_id: UUID | None, page: int, page_size: int) -> PaginationResponse[

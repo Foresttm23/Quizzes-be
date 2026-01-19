@@ -60,14 +60,14 @@ class User(Base, TimestampMixin):
         """Made for safe logging of a user if needed or made by accident"""
         return f"<{self.id!r}>"
 
-    def update_password(self, current_plain: str, new_plain: str):
+    async def update_password(self, current_plain: str, new_plain: str):
         if current_plain == new_plain:
             raise PasswordReuseException()
 
         if self.hashed_password is None:
             raise ExternalAuthProviderException(auth_provider=self.auth_provider, message="Incorrect Route")
 
-        if not verify_password(plain_password=current_plain, hashed_password=self.hashed_password):
+        if not await verify_password(plain_password=current_plain, hashed_password=self.hashed_password):
             raise InvalidPasswordException()
 
-        self.hashed_password = hash_password(password=new_plain)
+        self.hashed_password = await hash_password(password=new_plain)
