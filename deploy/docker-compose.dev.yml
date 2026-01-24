@@ -20,7 +20,7 @@ services:
   # Test PostgresSQL
   test_postgres:
     image: postgres:16-alpine
-    container_name: test_postgres_dba
+    container_name: test_postgres_db
     ports:
       - "5432:5432" # integration tests run in docker anyway
     environment:
