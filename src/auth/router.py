@@ -6,11 +6,14 @@ from src.core.dependencies import PaginationParamDep
 from src.core.exceptions import ExternalAuthProviderException
 from src.core.schemas import PaginationResponse
 from src.quiz.dependencies import AttemptServiceDep
+
 from .dependencies import (
+    AuthLimitDep,
     AuthServiceDep,
     GetUserJWTDep,
     GetUserRefreshJWTDep,
     TokenServiceDep,
+    UserLimitDep,
     UserServiceDep,
 )
 from .schemas import (
@@ -23,8 +26,8 @@ from .schemas import (
     UserPasswordUpdateRequest,
 )
 
-auth_router = APIRouter(prefix="/auth", tags=["Auth"])
-users_router = APIRouter(prefix="/users", tags=["Users"])
+auth_router = APIRouter(prefix="/auth", tags=["Auth"], dependencies=[AuthLimitDep])
+users_router = APIRouter(prefix="/users", tags=["Users"], dependencies=[UserLimitDep])
 
 
 @auth_router.post(
@@ -149,7 +152,7 @@ async def delete_self(user_service: UserServiceDep, user: GetUserJWTDep):
     status_code=status.HTTP_200_OK,
 )
 async def get_user_average_score_system_wide(
-        attempt_service: AttemptServiceDep, user: GetUserJWTDep
+    attempt_service: AttemptServiceDep, user: GetUserJWTDep
 ):
     stats = await attempt_service.get_user_stats_system_wide(user_id=user.id)
     return stats

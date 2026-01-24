@@ -26,4 +26,6 @@ dependencies = [
     "ruff>=0.14.10",
     "fastapi-cache2>=0.2.2",
     "pyjwt>=2.10.1",
+    "fastapi-limiter>=0.1.6",
+    "black>=26.1.0",
 ]
