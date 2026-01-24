@@ -27,6 +27,9 @@ from .schemas import (
 )
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"], dependencies=[AuthLimitDep])
+# TODO update the limits for more realistic value.
+# Since the limits are at the router itself, it means all of the requests on this router will share the same limit
+# TODO Add per endpoint limit, so the limit won't be shared. Or just increase the limit attempts.
 users_router = APIRouter(prefix="/users", tags=["Users"], dependencies=[UserLimitDep])
 
 
