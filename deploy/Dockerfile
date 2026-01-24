@@ -20,6 +20,8 @@ RUN uv sync --locked
 
 # For development docker-compose will overwrite folder
 COPY src /package/src
+COPY alembic.ini ./
+COPY alembic /package/alembic
 
 # Since I cant execute it on Windows
 COPY start.sh .
