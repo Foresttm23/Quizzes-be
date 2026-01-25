@@ -1,7 +1,9 @@
 services:
   # FastApi
   api:
-    build: ..
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     container_name: myapp
     depends_on:
       postgres:
@@ -9,8 +11,6 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - app-network
 
   # PostgresSQL
   postgres:
@@ -28,8 +28,6 @@ services:
       timeout: 5s
       retries: 5
     restart: always
-    networks:
-      - app-network
 
   # Redis
   redis:
@@ -44,15 +42,7 @@ services:
       timeout: 5s
       retries: 5
     restart: always
-    networks:
-      - app-network
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
-
-networks:
-  app-network:
-    driver: bridge

@@ -3,11 +3,12 @@
 # About this project
 
 ### Technologies - FastAPI, PostgreSQL, SQLAlchemy, asyncio, Docker, JWT, Auth0, Redis, uv, pytest, alembic
+
 #### A backend service for managing quizzes, built with FastAPI and following RESTful principles. The service separates repository and service layers and follows Domain Driven architecture to maintain clean code and scalability.
 
 #### The platform supports both local sign-up using email and password, issuing a local JWT, as well as login via Auth0 with their JWT, both token types are supported. Each user can send companies join requests or create a company themselves by becoming its owner. Owners can send other user's invitations, manage join requests and assign roles such as admins withing the company. Users can view visible companies as well as their own companies, even if those companies are marked as invisible.
 
-#### Company admins can create quizzes, add questions and answers, and publish quizzes for company members. Once published, questions cannot be chanaged. To update them, admin or owner should create a new version from an existing one: all questions are preserved, the new version starts unpublished, and after publishing, the previous version becomes invisible while retaining its published status. Quick change of visible quiz is also available.
+#### Company admins can create quizzes, add questions and answers, and publish quizzes for company members. Once published, questions cannot be changed. To update them, admin or owner should create a new version from an existing one: all questions are preserved, the new version starts unpublished, and after publishing, the previous version becomes invisible while retaining its published status. Quick change of visible quiz is also available.
 
 #### Frequently used service calls, such as retrieving quiz attempts, are cached using Redis, the fastapi-cache2 library, and a custom decorator. Cache invalidation happens automatically on model updates using SQLAlchemy event listeners.
 
@@ -52,53 +53,55 @@ uv sync
 cp .env.sample .env
 ```
 
-### Fill real or leave as is for a local development.
+#### `.env` files should be placed in deploy/envs folder, where the `.env.sample` is located.
+
+#### For development name it `.env.dev` for production `.env.prod`.
+
+#### Fill real values in the `.env` or leave as is for a local development.
 
 # Run the App
 
-### This command will start FastApi, Postgresql and Redis in separate containers and run it in the background.
+### If you are on Windows you need to install the `make` extension to run the `Makefile` scripts.
 
-```bash 
-docker compose up -d --build
+```bash
+winget install GnuWin32.Make
 ```
 
-### You can then access APi at http://localhost:8000 .
+### This command will start FastApi, Postgresql and Redis in separate containers and run it in the background.
+
+#### For development use `dev` to build and `dev-down` to remove container.
+
+```bash 
+make dev
+```
+
+#### To access the container for development you need to run `make dev`, which will launch api, db and redis containers.
+
+#### Then you can either go to the http://localhost:8080 which are the container api endpoint or to the http://localhost:8000 if you had launched api locally.
+
+### To run api locally:
+
+```bash
+python -m src.main
+```
 
 # How to Run Tests
 
-### Tests must be run inside the running container since they need connection to the database and Redis.
+### Tests can be run from both container and local api.
 
 ```bash 
-docker exec myapp uv run pytes
+uv run pytest
 ```
 
-# How to Stop the Application\Containers
+# How to Teardown the Containers
 
-### To stop the containers but keep DB data
+### To teardown the containers. `Doesn't remove the volumes`
 
 ```bash 
-docker compose down
+make dev-down
 ```
 
-### For full teardown\reset
-
-```bash 
-docker compose down -v
-```
-
-# For FastApi Deployment
-
-### Create a container:
-
-```bash 
-docker build -t myapp .
-```
-
-### Run a container:
-
-```bash 
-docker run --env-file .env -p 8000:8000 myapp
-```
+#### To teardown the dev containers `dev-down` for prod `prod-down`.
 
 # Creating and Applying migrations
 

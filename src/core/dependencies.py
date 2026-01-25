@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Annotated, AsyncGenerator
 
-from fastapi import Depends, Query
+from fastapi import Depends
+from fastapi import Query
 from httpx import AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession

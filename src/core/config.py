@@ -1,13 +1,20 @@
 import os
+from pathlib import Path
 from uuid import UUID, uuid4
 
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# For local development. In container won't find it and will default to the container env values instead.
+ENV_PATH = Path(os.getenv("ENV_FILE", "deploy/envs/.env.dev"))
+
 
 class SharedConfig(BaseSettings):
-    ENV_FILE = os.getenv("ENV_FILE", ".env")
-    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=ENV_PATH if ENV_PATH.exists() else None,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 class AppSettings(SharedConfig):

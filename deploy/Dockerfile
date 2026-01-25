@@ -15,16 +15,16 @@ WORKDIR /package
 ENV PATH="/package/.venv/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
-
-RUN uv sync --locked
+RUN uv sync --frozen --no-dev --no-install-project
 
 # For development docker-compose will overwrite folder
 COPY src /package/src
-
-# Since I cant execute it on Windows
+COPY alembic.ini ./
+COPY alembic /package/alembic
 COPY start.sh .
+
+RUN uv sync --frozen --no-dev
+
 RUN chmod +x start.sh
-
 EXPOSE 8000
-
 ENTRYPOINT ["/package/start.sh"]
