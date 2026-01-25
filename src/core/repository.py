@@ -24,11 +24,11 @@ class BaseRepository(Generic[ModelType]):
         self.db = db
 
     async def get_instances_paginated(
-            self,
-            page: int,
-            page_size: int,
-            return_schema: Type[SchemaType],
-            filters: dict[InstrumentedAttribute, Any] | None = None,
+        self,
+        page: int,
+        page_size: int,
+        return_schema: Type[SchemaType],
+        filters: dict[InstrumentedAttribute, Any] | None = None,
     ) -> PaginationResponse[SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
@@ -40,7 +40,7 @@ class BaseRepository(Generic[ModelType]):
         return result
 
     async def paginate_query(
-            self, stmt: Select, page: int, page_size: int, return_schema: Type[SchemaType]
+        self, stmt: Select, page: int, page_size: int, return_schema: Type[SchemaType]
     ) -> PaginationResponse[SchemaType]:
         count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
@@ -65,7 +65,7 @@ class BaseRepository(Generic[ModelType]):
 
     @staticmethod
     def _apply_filters(
-            filters: dict[InstrumentedAttribute, Any] | None, base_query: QueryType
+        filters: dict[InstrumentedAttribute, Any] | None, base_query: QueryType
     ) -> QueryType:
         """
         Returns conditions and query of stacked queries.
@@ -91,10 +91,10 @@ class BaseRepository(Generic[ModelType]):
             raise RecordAlreadyExistsException()
 
     async def get_instance_by_field_or_none(
-            self,
-            field: InstrumentedAttribute,
-            value: Any,
-            relationships: set[InstrumentedAttribute] | None = None,
+        self,
+        field: InstrumentedAttribute,
+        value: Any,
+        relationships: set[InstrumentedAttribute] | None = None,
     ) -> ModelType | None:
         """
         Gets instance by single field.
@@ -110,10 +110,10 @@ class BaseRepository(Generic[ModelType]):
         return instance
 
     async def get_instance_by_filters_or_none(
-            self,
-            filters: dict[InstrumentedAttribute, Any],
-            relationships: set[InstrumentedAttribute] | None = None,
-            options: Sequence[ExecutableOption] | None = None,
+        self,
+        filters: dict[InstrumentedAttribute, Any],
+        relationships: set[InstrumentedAttribute] | None = None,
+        options: Sequence[ExecutableOption] | None = None,
     ) -> ModelType | None:
         """
         Gets instance by many field. Applies .model_dump(exclude_unset=True)
@@ -139,7 +139,7 @@ class BaseRepository(Generic[ModelType]):
 
     @staticmethod
     def apply_instance_updates(
-            instance: ModelType, new_instance_info: BaseSchema
+        instance: ModelType, new_instance_info: BaseSchema
     ) -> dict:
         """
         Helper function for updating instance details and keeping track of changes.
