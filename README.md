@@ -53,6 +53,8 @@ uv sync
 cp .env.sample .env
 ```
 
+#### `.env` files should be placed in deploy/envs folder, where the `.env.sample` is located.
+
 #### For development name it `.env.dev` for production `.env.prod`.
 
 #### Fill real values in the `.env` or leave as is for a local development.
