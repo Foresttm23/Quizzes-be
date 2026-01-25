@@ -28,7 +28,7 @@ class UserDetailsResponse(Base, TimestampMixin):
     username: str
     auth_provider: str
     is_banned: bool
-    last_quiz_attempt_at: datetime
+    last_quiz_attempt_at: datetime | None
 
 
 class TokenResponse(Base):

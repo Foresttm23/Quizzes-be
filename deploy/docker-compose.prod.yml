@@ -2,9 +2,7 @@ services:
   # FastApi
   api:
     environment:
-      - ENV_FILE=envs/.env.prod
-    env_file:
-      - envs/.env.prod
+      - ENV_FILE=deploy/envs/.env.prod
     ports:
       - "8000:8000"
 
