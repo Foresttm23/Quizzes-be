@@ -6,11 +6,15 @@ from src.auth.dependencies import GetOptionalUserJWTDep, GetUserJWTDep
 from src.core.dependencies import PaginationParamDep
 from src.core.schemas import PaginationResponse
 from src.quiz.dependencies import AttemptServiceDep
+
 from .dependencies import (
     CompanyInvitationServiceDep,
     CompanyJoinRequestServiceDep,
+    CompanyLimitDep,
     CompanyMemberServiceDep,
     CompanyServiceDep,
+    InvLimitDep,
+    ReqLimitDep,
 )
 from .enums import CompanyRole
 from .schemas import (
@@ -27,12 +31,18 @@ from .schemas import (
     UserAverageCompanyStatsResponseSchema,
 )
 
-companies_router = APIRouter(prefix="/companies", tags=["Companies"])
+companies_router = APIRouter(
+    prefix="/companies", tags=["Companies"], dependencies=[CompanyLimitDep]
+)
 requests_router = APIRouter(
-    prefix="/company-join-requests", tags=["Company Join Requests"]
+    prefix="/company-join-requests",
+    tags=["Company Join Requests"],
+    dependencies=[ReqLimitDep],
 )
 invitations_router = APIRouter(
-    prefix="/company-invitations", tags=["Company Invitations"]
+    prefix="/company-invitations",
+    tags=["Company Invitations"],
+    dependencies=[InvLimitDep],
 )
 
 
@@ -84,7 +94,7 @@ async def get_companies(
     status_code=status.HTTP_200_OK,
 )
 async def get_company(
-        company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID
+    company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID
 ):
     """Returns a company by its id"""
     user_id = user.id if user else None
@@ -115,7 +125,7 @@ async def update_company(
 
 @companies_router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_company(
-        company_service: CompanyServiceDep, user: GetUserJWTDep, company_id: UUID
+    company_service: CompanyServiceDep, user: GetUserJWTDep, company_id: UUID
 ):
     """
     Deletes a company by its id,

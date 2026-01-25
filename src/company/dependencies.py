@@ -1,14 +1,20 @@
 from typing import Annotated
 
 from fastapi import Depends
+from fastapi_limiter.depends import RateLimiter
 
 from src.core.dependencies import DBSessionDep
+
 from .service import (
     CompanyService,
     InvitationService,
     JoinRequestService,
     MemberService,
 )
+
+CompanyLimitDep = Depends(RateLimiter(times=5, seconds=60))
+InvLimitDep = Depends(RateLimiter(times=5, seconds=60))
+ReqLimitDep = Depends(RateLimiter(times=5, seconds=60))
 
 
 async def get_company_member_service(db: DBSessionDep) -> MemberService:

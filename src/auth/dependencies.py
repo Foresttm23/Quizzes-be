@@ -3,12 +3,17 @@ from uuid import UUID
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi_limiter.depends import RateLimiter
 
 from src.core.config import settings
 from src.core.dependencies import DBSessionDep, HTTPClientDep
 from src.core.exceptions import NotAuthenticatedException
+
 from .models import User as UserModel
 from .service import AuthService, TokenService, UserService
+
+AuthLimitDep = Depends(RateLimiter(times=5, seconds=60))
+UserLimitDep = Depends(RateLimiter(times=5, seconds=60))
 
 security = HTTPBearer(auto_error=False)
 SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
@@ -32,7 +37,11 @@ UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 
 def get_token_service(http_client: HTTPClientDep) -> TokenService:
-    return TokenService(http_client=http_client, local_settings=settings.LOCAL_JWT, auth0_settings=settings.AUTH0_JWT)
+    return TokenService(
+        http_client=http_client,
+        local_settings=settings.LOCAL_JWT,
+        auth0_settings=settings.AUTH0_JWT,
+    )
 
 
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
@@ -46,7 +55,7 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 async def get_optional_user_from_jwt(
-        jwt: JWTCredentialsDep, token_service: TokenServiceDep, auth_service: AuthServiceDep
+    jwt: JWTCredentialsDep, token_service: TokenServiceDep, auth_service: AuthServiceDep
 ) -> UserModel | None:
     if not jwt:
         return None
@@ -68,9 +77,9 @@ GetUserJWTDep = Annotated[UserModel, Depends(get_user_from_jwt)]
 
 
 async def get_user_from_refresh_jwt(
-        jwt: JWTCredentialsDep,
-        token_service: TokenServiceDep,
-        user_service: UserServiceDep,
+    jwt: JWTCredentialsDep,
+    token_service: TokenServiceDep,
+    user_service: UserServiceDep,
 ) -> UserModel:
     jwt_refresh_payload = token_service.verify_refresh_token_and_get_payload(token=jwt)
     user = await user_service.get_by_id_model(user_id=UUID(jwt_refresh_payload.sub))
