@@ -6,8 +6,12 @@ UserSchema = TypeVar("UserSchema", bound=BaseSchema)
 AdminSchema = TypeVar("AdminSchema", bound=BaseSchema)
 
 
-def sanitize(data: Any, schema: Type[UserSchema], admin_schema: Type[AdminSchema] | None,
-             is_admin: bool) -> UserSchema | AdminSchema | Sequence[UserSchema] | Sequence[AdminSchema]:
+def sanitize(
+    data: Any,
+    schema: Type[UserSchema],
+    admin_schema: Type[AdminSchema] | None,
+    is_admin: bool,
+) -> UserSchema | AdminSchema | Sequence[UserSchema] | Sequence[AdminSchema]:
     """
     Every caching method saves the admin model, so it won't be sanitized.
     So only the smaller/user schema should be passed.

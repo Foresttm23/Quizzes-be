@@ -12,7 +12,7 @@ class RecordAlreadyExistsException(HTTPException):
 
 class InstanceNotFoundException(HTTPException):
     def __init__(self, instance_name: str, message: str | None = None):
-        message = f"message: {message}" if message else None
+        message = f"message: {message}" if message else ""
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"{instance_name} not found; " + message,
@@ -23,6 +23,14 @@ class UserIncorrectPasswordOrEmailException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND, detail="Incorrect password or email"
+        )
+
+
+class CacheKeyNotExistException(HTTPException):
+    def __init__(self, mapping: str):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Mapping key {mapping} do not exist.",
         )
 
 
@@ -59,10 +67,11 @@ class InvalidSQLModelFieldNameException(HTTPException):
 
 
 class InvalidJWTException(HTTPException):
-    def __init__(self):
+    def __init__(self, message: str | None = None):
+        detail = message if message else "Invalid or expired JWT token"
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired JWT token",
+            detail=detail,
         )
 
 

@@ -22,7 +22,7 @@ class BaseService(ABC, Generic[RepoType]):
         self.repo = repo
 
     def _update_instance(
-            self, instance: ModelType, new_data: BaseSchema, by: UUID
+        self, instance: ModelType, new_data: BaseSchema, by: UUID
     ) -> ModelType:
         """
         Method for updating instance details by id.

@@ -16,34 +16,54 @@ from ..models import QuizAttemptAnswer as QuizAttemptAnswerModel
 
 def assert_attempt_in_progress(status: AttemptStatus, is_expired: bool) -> None:
     if status != AttemptStatus.IN_PROGRESS:
-        raise ResourceConflictException(message=f"Cannot save answer. Attempt is {status.value}")
+        raise ResourceConflictException(
+            message=f"Cannot save answer. Attempt is {status.value}"
+        )
     if is_expired:
         raise ResourceConflictException("Attempt has expired.")
 
 
 def get_finalize_attempt_options() -> list[ExecutableOption]:
-    return [selectinload(QuizAttemptModel.quiz), selectinload(QuizAttemptModel.user),
-            selectinload(QuizAttemptModel.answers).selectinload(QuizAttemptAnswerModel.selected_options),
-            selectinload(QuizAttemptModel.answers).selectinload(QuizAttemptAnswerModel.question).selectinload(
-                CompanyQuizQuestionModel.options)]
+    return [
+        selectinload(QuizAttemptModel.quiz),
+        selectinload(QuizAttemptModel.user),
+        selectinload(QuizAttemptModel.answers).selectinload(
+            QuizAttemptAnswerModel.selected_options
+        ),
+        selectinload(QuizAttemptModel.answers)
+        .selectinload(QuizAttemptAnswerModel.question)
+        .selectinload(CompanyQuizQuestionModel.options),
+    ]
 
 
 def get_attempt_details_options() -> list[ExecutableOption]:
     return [selectinload(QuizAttemptModel.answers), selectinload(QuizAttemptModel.quiz)]
 
 
-def get_attempt_filters(user_id: UUID, attempt_id: UUID) -> dict[InstrumentedAttribute, Any]:
+def get_attempt_filters(
+    user_id: UUID, attempt_id: UUID
+) -> dict[InstrumentedAttribute, Any]:
     return {QuizAttemptModel.user_id: user_id, QuizAttemptModel.id: attempt_id}
 
 
-def get_active_attempt_filters(user_id: UUID, quiz_id: UUID) -> dict[InstrumentedAttribute, Any]:
-    active_attempt_filters = {QuizAttemptModel.user_id: user_id, QuizAttemptModel.quiz_id: quiz_id,
-                              QuizAttemptModel.status: AttemptStatus.IN_PROGRESS}
+def get_active_attempt_filters(
+    user_id: UUID, quiz_id: UUID
+) -> dict[InstrumentedAttribute, Any]:
+    active_attempt_filters = {
+        QuizAttemptModel.user_id: user_id,
+        QuizAttemptModel.quiz_id: quiz_id,
+        QuizAttemptModel.status: AttemptStatus.IN_PROGRESS,
+    }
     return active_attempt_filters
 
 
-def get_answer_filters(question_id: UUID, attempt_id: UUID) -> dict[InstrumentedAttribute, Any]:
-    return {QuizAttemptAnswerModel.attempt_id: attempt_id, QuizAttemptAnswerModel.question_id: question_id}
+def get_answer_filters(
+    question_id: UUID, attempt_id: UUID
+) -> dict[InstrumentedAttribute, Any]:
+    return {
+        QuizAttemptAnswerModel.attempt_id: attempt_id,
+        QuizAttemptAnswerModel.question_id: question_id,
+    }
 
 
 def calc_correct_answers_count(attempt: QuizAttemptModel) -> int:
@@ -68,5 +88,9 @@ def calc_correct_answers_count(attempt: QuizAttemptModel) -> int:
 
 
 def calc_score(correct_answers_count: int, total_questions_count: int) -> float:
-    score = ((correct_answers_count / total_questions_count * 100.0) if total_questions_count > 0 else 0.0)
+    score = (
+        (correct_answers_count / total_questions_count * 100.0)
+        if total_questions_count > 0
+        else 0.0
+    )
     return score
