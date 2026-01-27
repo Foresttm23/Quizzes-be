@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_limiter.depends import RateLimiter
 
@@ -12,18 +12,26 @@ from src.core.exceptions import NotAuthenticatedException
 from .models import User as UserModel
 from .service import AuthService, TokenService, UserService
 
-AuthLimitDep = Depends(RateLimiter(times=5, seconds=60))
-UserLimitDep = Depends(RateLimiter(times=5, seconds=60))
+AuthLimitDep = Depends(RateLimiter(times=20, seconds=60))
+UserLimitDep = Depends(RateLimiter(times=20, seconds=60))
 
 security = HTTPBearer(auto_error=False)
 SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
 
 
-def get_jwt_from_header(header: SecurityDep) -> str | None:
+def get_jwt_from_header(request: Request, header: SecurityDep) -> str | None:
     if header:
         return header.credentials
-    else:
-        return None
+
+    token = request.headers.get("access_token")
+    if token:
+        return token
+
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+
+    return token if token else None
 
 
 JWTCredentialsDep = Annotated[str, Depends(get_jwt_from_header)]
