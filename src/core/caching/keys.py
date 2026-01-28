@@ -37,10 +37,14 @@ def endpoint_key_builder(
     Builds a specific key for caching Endpoints.
     Can extract user and pagination params for caching the endpoint.
     """
+    prefix = FastAPICache.get_prefix()
+
     user = kwargs.get("user") or kwargs.get("acting_user")
     user_info = f"{str(user.id)}" if isinstance(user, UserModel) else "no-user"
 
     pagination: PaginationParams = kwargs.get("pagination")
+
+    pagination_fields = PaginationParams.get_fields_repr()
     pagination_info = (
         f"{pagination.page_size}:{pagination.page}"
         if isinstance(pagination, PaginationParams)
@@ -48,8 +52,8 @@ def endpoint_key_builder(
     )
 
     query_params = sorted(request.query_params.items())  # A must
-    query_params_str = ":".join(f"{k}={v}" for k, v in query_params)
-
-    return (
-        f"{namespace}:{user_info}:{request.url.path}:{pagination_info}:{query_params_str}"
+    query_params_str = ":".join(
+        f"{k}={v}" for k, v in query_params if k not in pagination_fields
     )
+
+    return f"{prefix}:{namespace}:{user_info}:{request.url.path}:{pagination_info}:{query_params_str}"

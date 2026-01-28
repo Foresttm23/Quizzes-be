@@ -320,7 +320,7 @@ async def get_quiz_attempt(
     user: GetUserJWTDep,
     attempt_id: UUID,
 ):
-    # False fot now, since user cant see his attempts unless an attempt ended.
+    # False for now, since user cant see his attempts unless an attempt ended.
     return await attempt_service.get_attempt_results(
         user_id=user.id, attempt_id=attempt_id, is_admin=False
     )
