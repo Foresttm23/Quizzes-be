@@ -5,7 +5,11 @@ from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.core.exceptions import PasswordReuseException, InvalidPasswordException, ExternalAuthProviderException
+from src.core.exceptions import (
+    PasswordReuseException,
+    InvalidPasswordException,
+    ExternalAuthProviderException,
+)
 from src.core.models import Base, TimestampMixin
 from .enums import AuthProviderEnum
 from .security import verify_password, hash_password
@@ -65,9 +69,13 @@ class User(Base, TimestampMixin):
             raise PasswordReuseException()
 
         if self.hashed_password is None:
-            raise ExternalAuthProviderException(auth_provider=self.auth_provider, message="Incorrect Route")
+            raise ExternalAuthProviderException(
+                auth_provider=self.auth_provider, message="Incorrect Route"
+            )
 
-        if not await verify_password(plain_password=current_plain, hashed_password=self.hashed_password):
+        if not await verify_password(
+            plain_password=current_plain, hashed_password=self.hashed_password
+        ):
             raise InvalidPasswordException()
 
         self.hashed_password = await hash_password(password=new_plain)

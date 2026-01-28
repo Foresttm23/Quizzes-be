@@ -8,8 +8,8 @@ from src.core.dependencies import DBSessionDep
 
 from .service import AttemptService, QuizService
 
-QuizLimitDep = Depends(RateLimiter(times=5, seconds=60))
-AttemptLimitDep = Depends(RateLimiter(times=5, seconds=60))
+QuizLimitDep = Depends(RateLimiter(times=20, seconds=60))
+AttemptLimitDep = Depends(RateLimiter(times=20, seconds=60))
 
 
 async def get_company_quiz_service(

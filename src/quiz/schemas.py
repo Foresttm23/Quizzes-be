@@ -154,7 +154,7 @@ class QuestionOptionsMixin(BaseModel):
 
     @classmethod
     def validate_correct_option_exist(
-            cls, options: list[AnswerOptionsCreateRequestSchema]
+        cls, options: list[AnswerOptionsCreateRequestSchema]
     ):
         has_correct_answer = any(opt.is_correct for opt in options)
 
@@ -163,7 +163,7 @@ class QuestionOptionsMixin(BaseModel):
 
     @classmethod
     def validate_incorrect_option_exist(
-            cls, options: list[AnswerOptionsCreateRequestSchema]
+        cls, options: list[AnswerOptionsCreateRequestSchema]
     ):
         has_incorrect_answer = any(not opt.is_correct for opt in options)
 

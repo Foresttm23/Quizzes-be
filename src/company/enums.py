@@ -7,7 +7,9 @@ class CompanyRole(IntEnum):
     MEMBER = 100
     GUEST = 0
 
-    def is_authorized(self, required_role: "CompanyRole", strictly_higher: bool = False) -> bool:
+    def is_authorized(
+        self, required_role: "CompanyRole", strictly_higher: bool = False
+    ) -> bool:
         if strictly_higher:
             return self.value > required_role.value
         return self.value >= required_role.value

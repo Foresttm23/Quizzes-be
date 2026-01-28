@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Annotated, AsyncGenerator
 
-from fastapi import Depends
-from fastapi import Query
+from fastapi import Depends, Query
 from httpx import AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +21,10 @@ class PaginationParams:
         le=settings.APP.MAX_PAGE_SIZE,
         description="Number of items per page",
     )
+
+    @classmethod
+    def get_fields_repr(cls) -> set[str]:
+        return {f.name for f in fields(cls)}
 
 
 PaginationParamDep = Annotated[PaginationParams, Depends()]
