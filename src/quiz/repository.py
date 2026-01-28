@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Sequence
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from src.core.repository import BaseRepository
+
 from .enums import AttemptStatus
 from .models import (
     CompanyQuiz as CompanyQuizModel,
@@ -159,10 +161,13 @@ class AttemptRepository(BaseRepository[QuizAttemptModel]):
         attempts_taken = await self.db.scalar(query)
         return attempts_taken or 0
 
-    async def get_attempt_id(self, user_id: UUID, quiz_id: UUID) -> UUID | None:
+    async def get_active_attempt_id(self, user_id: UUID, quiz_id: UUID) -> UUID | None:
+        now = datetime.now(timezone.utc)
         query = select(QuizAttemptModel.id).where(
             QuizAttemptModel.user_id == user_id,
             QuizAttemptModel.quiz_id == quiz_id,
+            QuizAttemptModel.status == AttemptStatus.IN_PROGRESS,
+            or_(QuizAttemptModel.expires_at > now, QuizAttemptModel.expires_at is None),
         )
         attempt_id = await self.db.scalar(query)
         return attempt_id

@@ -310,17 +310,50 @@ async def submit_quiz_attempt(
 
 
 @attempt_router.get(  # TODO? add router for the admin to review member answers
-    "/{attempt_id}",
-    response_model=QuizStartAttemptResponseSchema | QuizReviewAttemptResponseSchema,
+    "/{attempt_id}/active",
+    response_model=QuizStartAttemptResponseSchema,
     status_code=status.HTTP_200_OK,
 )
-@cache(expire=600, key_builder=endpoint_key_builder)
-async def get_quiz_attempt(
+# Must be 'fresh', since returns user answers and active attempt that update in real time
+async def get_active_attempt(
     attempt_service: AttemptServiceDep,
     user: GetUserJWTDep,
     attempt_id: UUID,
 ):
-    # False for now, since user cant see his attempts unless an attempt ended.
+    # is_admin = False for now, since user cant see his attempts unless an attempt ended.
+    return await attempt_service.continue_attempt(
+        user_id=user.id, attempt_id=attempt_id
+    )
+
+
+@attempt_router.get(
+    "/{attempt_id}/results",
+    response_model=QuizReviewAttemptResponseSchema,
+    status_code=status.HTTP_200_OK,
+)
+@cache(expire=600, key_builder=endpoint_key_builder)
+async def get_quiz_attempt_results(
+    attempt_service: AttemptServiceDep,
+    user: GetUserJWTDep,
+    attempt_id: UUID,
+):
+    # is_admin = False for now, since user cant see his attempts unless an attempt ended.
     return await attempt_service.get_attempt_results(
         user_id=user.id, attempt_id=attempt_id, is_admin=False
+    )
+
+
+@cache(expire=60, key_builder=endpoint_key_builder)  # Critical endpoint
+@attempt_router.get(
+    "/",
+    response_model=PaginationResponse[QuizAttemptBaseSchema],
+    status_code=status.HTTP_200_OK,
+)
+async def get_attempts(
+    attempt_service: AttemptServiceDep,
+    user: GetUserJWTDep,
+    pagination: PaginationParamDep,
+):
+    return await attempt_service.get_user_attempts(
+        user_id=user.id, page=pagination.page, page_size=pagination.page_size
     )

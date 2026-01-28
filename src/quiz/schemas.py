@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from src.core.schemas import AttemptMixin, Base, BaseUpdateMixin, TimestampMixin
 from src.quiz.enums import AttemptStatus
@@ -96,6 +96,7 @@ class QuizAttemptBaseSchema(Base, AttemptMixin):
     status: AttemptStatus
     expires_at: datetime | None = None
 
+    @computed_field
     @property
     def is_expired(self) -> bool:
         if self.expires_at is None:
@@ -109,17 +110,6 @@ class QuizAttemptSchema(QuizAttemptBaseSchema):
 
 class QuizAttemptAdminSchema(QuizAttemptBaseSchema):
     answers: list[QuizAttemptAnswerAdminSchema]
-
-
-# ----------------------------------------------- RELATION SPECIFIC -------------------------------------------------
-
-
-class QuizAttemptAndQuizRelSchema(QuizAttemptSchema):
-    quiz: CompanyQuizBaseSchema
-
-
-class QuizAttemptAdminAndQuizRelSchema(QuizAttemptAdminSchema):
-    quiz: CompanyQuizBaseSchema
 
 
 # ----------------------------------------------- RESPONSES -------------------------------------------------
