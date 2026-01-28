@@ -19,7 +19,7 @@ security = HTTPBearer(auto_error=False)
 SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
 
 
-def get_jwt(request: Request, header: SecurityDep | None) -> str | None:
+def get_jwt(request: Request, header: SecurityDep) -> str | None:
     token = request.cookies.get("access_token")
     if token:
         return token

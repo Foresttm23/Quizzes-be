@@ -185,7 +185,7 @@ async def delete_self(user_service: UserServiceDep, user: GetUserJWTDep):
     response_model=UserAverageSystemStatsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
-@cache(expire=600, key_builder=endpoint_key_builder)
+@cache(expire=3600, key_builder=endpoint_key_builder)
 async def get_user_average_score_system_wide(
     attempt_service: AttemptServiceDep, user: GetUserJWTDep
 ):
