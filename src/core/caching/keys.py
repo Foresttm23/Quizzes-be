@@ -48,7 +48,8 @@ def endpoint_key_builder(
     )
 
     query_params = sorted(request.query_params.items())  # A must
+    query_params_str = ":".join(f"{k}={v}" for k, v in query_params)
 
     return (
-        f"{namespace}:{user_info}:{request.url.path}:{pagination_info}:{query_params}"
+        f"{namespace}:{user_info}:{request.url.path}:{pagination_info}:{query_params_str}"
     )
