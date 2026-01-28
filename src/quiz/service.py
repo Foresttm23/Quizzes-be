@@ -106,7 +106,6 @@ class QuizService(BaseService[QuizRepository]):
 
         return quiz
 
-    # TODO? caching when published
     async def get_quiz(
         self, company_id: UUID, quiz_id: UUID, is_admin: bool
     ) -> CompanyQuizAdminSchema | CompanyQuizSchema:
@@ -471,7 +470,6 @@ class QuizService(BaseService[QuizRepository]):
         question = assert_valid_question(question=question)
         return question
 
-    # TODO caching. Since isn't used for now, can skip
     async def get_question(
         self, company_id: UUID, quiz_id: UUID, question_id: UUID
     ) -> CompanyQuizQuestionAdminSchema:
@@ -723,7 +721,6 @@ class AttemptService(BaseService[AttemptRepository]):
                 {"attempt": attempt, "questions": questions}
             )
 
-    # TODO? Caching
     async def _get_active_attempt_or_none(
         self, user_id: UUID, quiz_id: UUID
     ) -> QuizAttemptAdminSchema | None:

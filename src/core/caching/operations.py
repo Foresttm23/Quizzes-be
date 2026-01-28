@@ -33,7 +33,9 @@ async def invalidate_mapping(mapping_key: str | UUID):
         await redis.delete(*keys, mapping_key)
 
 
-async def get_schema_from_cache(key: str, response_schema: Type[SchemaType] | None) -> SchemaType | None:
+async def get_schema_from_cache(
+    key: str, response_schema: Type[SchemaType] | None
+) -> SchemaType | None:
     redis = FastAPICache.get_backend().redis
     obj = await redis.get(key)
     if not obj:

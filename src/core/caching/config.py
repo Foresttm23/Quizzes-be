@@ -8,6 +8,7 @@ DAY = 86400
 
 class CacheConfig(Enum):  # TODO Pydantic settings.
     """(prefix: str, expire: int) expire is in seconds."""
+
     QUIZ = ("quiz", "quiz_id", DAY)
     ATTEMPT = ("attempt", "attempt_id", 2 * DAY)
     # Correct as long as company and sys stats have different args
@@ -15,7 +16,8 @@ class CacheConfig(Enum):  # TODO Pydantic settings.
     USER_SYSTEM_STATS = ("user:stats", "user_id", 5 * MINUTE)
 
     @property
-    def prefix(self): return self.value[0]
+    def prefix(self):
+        return self.value[0]
 
     @property
     def mapping_key_name(self) -> str:
