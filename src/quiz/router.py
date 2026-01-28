@@ -1,9 +1,11 @@
 from uuid import UUID
 
 from fastapi import APIRouter, status
+from fastapi_cache.decorator import cache
 
 from src.auth.dependencies import GetOptionalUserJWTDep, GetUserJWTDep
 from src.company.dependencies import CompanyMemberServiceDep
+from src.core.caching.keys import endpoint_key_builder
 from src.core.dependencies import PaginationParamDep
 from src.core.schemas import PaginationResponse
 
@@ -91,6 +93,7 @@ async def delete_company_quiz(
     response_model=CompanyQuizAdminSchema | CompanyQuizSchema,
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_quiz(
     member_service: CompanyMemberServiceDep,
     quiz_service: CompanyQuizServiceDep,
@@ -114,6 +117,7 @@ async def get_quiz(
     response_model=PaginationResponse[CompanyQuizBaseSchema],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=60, key_builder=endpoint_key_builder)
 async def get_quizzes(
     quiz_service: CompanyQuizServiceDep,
     user: GetOptionalUserJWTDep,
@@ -197,6 +201,7 @@ async def delete_question(
     | list[CompanyQuizQuestionSchema],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_questions(
     quiz_service: CompanyQuizServiceDep,
     member_service: CompanyMemberServiceDep,
@@ -309,12 +314,13 @@ async def submit_quiz_attempt(
     response_model=QuizStartAttemptResponseSchema | QuizReviewAttemptResponseSchema,
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_quiz_attempt(
     attempt_service: AttemptServiceDep,
     user: GetUserJWTDep,
     attempt_id: UUID,
 ):
-    # False fot now, since user cant see his attempts unless an attempt ended.
+    # False for now, since user cant see his attempts unless an attempt ended.
     return await attempt_service.get_attempt_results(
         user_id=user.id, attempt_id=attempt_id, is_admin=False
     )

@@ -1,7 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
+from fastapi_cache.decorator import cache
 
+from src.core.caching.keys import endpoint_key_builder
 from src.core.dependencies import PaginationParamDep
 from src.core.exceptions import ExternalAuthProviderException
 from src.core.schemas import PaginationResponse
@@ -26,10 +28,8 @@ from .schemas import (
     UserPasswordUpdateRequest,
 )
 
+# These limits are router based, so all routers endpoints will share the same limit.
 auth_router = APIRouter(prefix="/auth", tags=["Auth"], dependencies=[AuthLimitDep])
-# TODO update the limits for more realistic value.
-# Since the limits are at the router itself, it means all of the requests on this router will share the same limit
-# TODO Add per endpoint limit, so the limit won't be shared. Or just increase the limit attempts.
 users_router = APIRouter(prefix="/users", tags=["Users"], dependencies=[UserLimitDep])
 
 
@@ -46,6 +46,7 @@ async def register(auth_service: AuthServiceDep, register_data: RegisterRequest)
     "/login", response_model=TokenResponse, status_code=status.HTTP_200_OK
 )
 async def login(
+    response: Response,
     token_service: TokenServiceDep,
     auth_service: AuthServiceDep,
     login_data: LoginRequest,
@@ -56,7 +57,34 @@ async def login(
     """
     user = await auth_service.handle_email_password_sign_in(sign_in_data=login_data)
     tokens = token_service.create_token_pairs(user=user)
+
+    response.set_cookie(
+        key="access_token",
+        value=tokens.access_token,
+        httponly=True,
+        max_age=1800,
+        expires=1800,
+        samesite="lax",
+        secure=True,  # HTTPS
+    )
+
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens.refresh_token,
+        httponly=True,
+        path="/auth/refresh",
+        samesite="lax",
+        secure=True,  # HTTPS
+    )
+
     return tokens
+
+
+@auth_router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"message": "Logged out"}
 
 
 @auth_router.post(
@@ -83,6 +111,7 @@ async def refresh_jwt(token_service: TokenServiceDep, user: GetUserRefreshJWTDep
     status_code=status.HTTP_200_OK,
     response_model=PaginationResponse[UserDetailsResponse],
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_users(user_service: UserServiceDep, pagination: PaginationParamDep):
     """Return a list of all users by page and page_size"""
     users = await user_service.get_users_paginated(
@@ -96,6 +125,7 @@ async def get_users(user_service: UserServiceDep, pagination: PaginationParamDep
 @users_router.get(
     "/me", status_code=status.HTTP_200_OK, response_model=UserDetailsResponse
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_me(user: GetUserJWTDep):
     """Returns an authenticated user info"""
     return user
@@ -104,6 +134,7 @@ async def get_me(user: GetUserJWTDep):
 @users_router.get(
     "/{user_id}", status_code=status.HTTP_200_OK, response_model=UserDetailsResponse
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_user(user_service: UserServiceDep, user_id: UUID):
     """Returns a user by its id"""
     user = await user_service.get_by_id(user_id=user_id)
@@ -154,6 +185,7 @@ async def delete_self(user_service: UserServiceDep, user: GetUserJWTDep):
     response_model=UserAverageSystemStatsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_user_average_score_system_wide(
     attempt_service: AttemptServiceDep, user: GetUserJWTDep
 ):
