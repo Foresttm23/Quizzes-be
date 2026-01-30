@@ -55,8 +55,12 @@ class JoinRequestService(BaseService[JoinRequestRepository]):
     def display_name(self) -> str:
         return "JoinRequest"
 
-    def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=JoinRequestRepository(db=db))
+    def __init__(
+        self,
+        join_request_repo: JoinRequestRepository,
+        member_service: MemberService,
+    ):
+        super().__init__(repo=join_request_repo)
         self.member_service = member_service
 
     async def create_join_request(
@@ -239,8 +243,8 @@ class MemberService(BaseService[MemberRepository]):
     def display_name(self) -> str:
         return "CompanyMember"
 
-    def __init__(self, db: AsyncSession):
-        super().__init__(repo=MemberRepository(db=db))
+    def __init__(self, member_repo: MemberRepository) -> None:
+        super().__init__(repo=member_repo)
 
     async def get_members_paginated(
         self,
@@ -515,8 +519,10 @@ class InvitationService(BaseService[InvitationRepository]):
     def display_name(self) -> str:
         return "Invitation"
 
-    def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=InvitationRepository(db=db))
+    def __init__(
+        self, invitation_repo: InvitationRepository, member_service: MemberService
+    ) -> None:
+        super().__init__(repo=invitation_repo)
         self.member_service = member_service
 
     async def create_invitation(
@@ -700,8 +706,10 @@ class CompanyService(BaseService[CompanyRepository]):
     def display_name(self) -> str:
         return "Company"
 
-    def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=CompanyRepository(db=db))
+    def __init__(
+        self, company_repo: CompanyRepository, member_service: MemberService
+    ) -> None:
+        super().__init__(repo=company_repo)
         self.member_service = member_service
 
     async def get_companies_paginated(

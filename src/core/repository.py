@@ -29,10 +29,14 @@ class BaseRepository(Generic[ModelType]):
         page_size: int,
         return_schema: Type[SchemaType],
         filters: dict[InstrumentedAttribute, Any] | None = None,
+        order_rules: Sequence[Any] | None = None,
     ) -> PaginationResponse[SchemaType]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
-        stmt = stmt.order_by(self.model.id.desc())
+
+        if order_rules is None:
+            order_rules = [self.model.id.desc()]
+        stmt = stmt.order_by(*order_rules)
 
         result = await self.paginate_query(
             stmt=stmt, page=page, page_size=page_size, return_schema=return_schema

@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
-from src.auth.enums import AuthProviderEnum, JWTTypeEnum
+from src.auth.enums import JWTTypeEnum
 from src.core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
 from src.core.exceptions import (
     ExternalAuthProviderException,
@@ -53,8 +53,8 @@ class UserService(BaseService[UserRepository]):
     def display_name(self) -> str:
         return "User"
 
-    def __init__(self, db: AsyncSession):
-        super().__init__(repo=UserRepository(db=db))
+    def __init__(self, user_repo: UserRepository) -> None:
+        super().__init__(repo=user_repo)
 
     async def get_by_email_model(
         self, email: EmailStr, relationships: set[InstrumentedAttribute] | None = None
@@ -234,7 +234,6 @@ class AuthService:
 
 
 class TokenService:
-
     def __init__(
         self,
         http_client: AsyncClient,
