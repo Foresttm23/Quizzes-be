@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Annotated
 from uuid import UUID
 
@@ -10,13 +12,14 @@ from src.core.dependencies import DBSessionDep, HTTPClientDep
 from src.core.exceptions import NotAuthenticatedException
 
 from .models import User as UserModel
+from .repository import UserRepository
 from .service import AuthService, TokenService, UserService
 
 AuthLimitDep = Depends(RateLimiter(times=20, seconds=60))
 UserLimitDep = Depends(RateLimiter(times=20, seconds=60))
 
 security = HTTPBearer(auto_error=False)
-SecurityDep = Annotated[HTTPAuthorizationCredentials, Depends(security)]
+SecurityDep = Annotated[HTTPAuthorizationCredentials | None, Depends(security)]
 
 
 def get_jwt(request: Request, header: SecurityDep) -> str | None:
@@ -39,8 +42,8 @@ def get_refresh_token(request: Request, header: SecurityDep | None) -> str | Non
 RefreshCredentialsDep = Annotated[str | None, Depends(get_refresh_token)]
 
 
-async def get_user_service(db: DBSessionDep) -> UserService:
-    return UserService(db=db)
+async def get_user_service(user_repo: UserRepositoryDep) -> UserService:
+    return UserService(user_repo=user_repo)
 
 
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
@@ -99,3 +102,10 @@ async def get_user_from_refresh_jwt(
 
 
 GetUserRefreshJWTDep = Annotated[UserModel, Depends(get_user_from_refresh_jwt)]
+
+
+def get_user_repository(db: DBSessionDep) -> UserRepository:
+    return UserRepository(db=db)
+
+
+UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]

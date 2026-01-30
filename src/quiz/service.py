@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Sequence
 from uuid import UUID, uuid4
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql.base import ExecutableOption
 
@@ -12,7 +11,6 @@ from src.company.schemas import UserAverageCompanyStatsResponseSchema
 from src.company.service import MemberService
 from src.core.caching.config import CacheConfig
 from src.core.caching.decorators import cache_with_mapping
-from src.core.caching.rules import cache_attempt_if_finished
 from src.core.exceptions import InstanceNotFoundException, ResourceConflictException
 from src.core.logger import logger
 from src.core.schemas import PaginationResponse
@@ -79,10 +77,15 @@ class QuizService(BaseService[QuizRepository]):
     def display_name(self) -> str:
         return "Quiz"
 
-    def __init__(self, db: AsyncSession, member_service: MemberService):
-        super().__init__(repo=QuizRepository(db=db))
+    def __init__(
+        self,
+        quiz_repo: QuizRepository,
+        question_repo: QuestionRepository,
+        member_service: MemberService,
+    ):
+        super().__init__(repo=quiz_repo)
         self.member_service = member_service
-        self.question_repo = QuestionRepository(db=db)
+        self.question_repo = question_repo
 
     async def _get_quiz_model(
         self,
@@ -129,7 +132,7 @@ class QuizService(BaseService[QuizRepository]):
     async def get_quiz_time_limit_minutes(
         self, company_id: UUID, quiz_id: UUID
     ) -> int | None:
-        time_limit_minutes = await self.repo.get_quiz_time_limit_minutes(
+        time_limit_minutes = await self.repo.get_time_limit_minutes(
             company_id=company_id, quiz_id=quiz_id
         )
         return time_limit_minutes
@@ -137,7 +140,7 @@ class QuizService(BaseService[QuizRepository]):
     @cache_with_mapping(
         config=CacheConfig.QUIZ, response_schema=CompanyQuizQuestionAdminSchema
     )
-    async def _get_questions_and_options_cached(
+    async def _get_questions_with_options_cached(
         self, company_id: UUID, quiz_id: UUID
     ) -> Sequence[CompanyQuizQuestionAdminSchema]:
         questions = await self.question_repo.get_questions_with_options(
@@ -148,10 +151,10 @@ class QuizService(BaseService[QuizRepository]):
             for question in questions
         ]
 
-    async def get_questions_and_options(
+    async def get_questions_with_options(
         self, company_id: UUID, quiz_id: UUID, is_admin: bool
     ) -> Sequence[CompanyQuizQuestionAdminSchema] | Sequence[CompanyQuizQuestionSchema]:
-        questions = await self._get_questions_and_options_cached(
+        questions = await self._get_questions_with_options_cached(
             company_id=company_id, quiz_id=quiz_id
         )
 
@@ -483,12 +486,18 @@ class QuizService(BaseService[QuizRepository]):
         return CompanyQuizQuestionAdminSchema.model_validate(question)
 
     async def get_quiz_allowed_attempts(self, company_id: UUID, quiz_id: UUID) -> int:
-        allowed_attempts = await self.repo.get_quiz_allowed_attempts(
+        allowed_attempts = await self.repo.get_allowed_attempts(
             company_id=company_id, quiz_id=quiz_id
         )
         if allowed_attempts is None:
             raise InstanceNotFoundException(instance_name="Quiz")
         return allowed_attempts
+
+    async def get_company_id(self, quiz_id: UUID) -> UUID:
+        company_id = await self.repo.get_company_id_or_none(quiz_id=quiz_id)
+        if not company_id:
+            raise InstanceNotFoundException(instance_name="Company")
+        return company_id
 
 
 class AttemptService(BaseService[AttemptRepository]):
@@ -497,14 +506,20 @@ class AttemptService(BaseService[AttemptRepository]):
         return "QuizAttempt"
 
     def __init__(
-        self, db: AsyncSession, member_service: MemberService, quiz_service: QuizService
+        self,
+        attempt_repo: AttemptRepository,
+        user_repo: UserRepository,
+        answer_repo: AnswerRepository,
+        question_repo: QuestionRepository,
+        member_service: MemberService,
+        quiz_service: QuizService,
     ):
-        super().__init__(repo=AttemptRepository(db=db))
+        super().__init__(repo=attempt_repo)
         self.member_service = member_service
         self.quiz_service = quiz_service
-        self.user_repo = UserRepository(db=db)
-        self.answer_repo = AnswerRepository(db=db)
-        self.question_repo = QuestionRepository(db=db)
+        self.user_repo = user_repo
+        self.answer_repo = answer_repo
+        self.question_repo = question_repo
 
     async def start_attempt(
         self, company_id: UUID, quiz_id: UUID, user_id: UUID
@@ -521,15 +536,6 @@ class AttemptService(BaseService[AttemptRepository]):
 
         await self._assert_user_have_attempts(
             company_id=company_id, quiz_id=quiz_id, user_id=user_id
-        )
-
-        time_limit_minutes = await self.quiz_service.get_quiz_time_limit_minutes(
-            company_id=company_id, quiz_id=quiz_id
-        )
-        expires_at = (
-            datetime.now(timezone.utc) + timedelta(minutes=time_limit_minutes)
-            if time_limit_minutes
-            else None
         )
 
         return await self._create_new_attempt(company_id, quiz_id, user_id)
@@ -550,7 +556,7 @@ class AttemptService(BaseService[AttemptRepository]):
         )
         await self.repo.save(attempt)
 
-        questions_schema = await self.quiz_service.get_questions_and_options(
+        questions_schema = await self.quiz_service.get_questions_with_options(
             company_id=company_id, quiz_id=quiz_id, is_admin=False
         )
 
@@ -696,10 +702,12 @@ class AttemptService(BaseService[AttemptRepository]):
         attempt = await self.get_attempt(
             user_id=user_id, attempt_id=attempt_id, is_admin=is_admin
         )
+        company_id = await self.quiz_service.get_company_id(quiz_id=attempt.quiz_id)
+
         assert_viewable(attempt=attempt, is_admin=is_admin)
 
-        questions = await self.quiz_service.get_questions_and_options(
-            company_id=attempt.company_id, quiz_id=attempt.quiz_id, is_admin=True
+        questions = await self.quiz_service.get_questions_with_options(
+            company_id=company_id, quiz_id=attempt.quiz_id, is_admin=True
         )
         return QuizReviewAttemptResponseSchema.model_validate(
             {"attempt": attempt, "questions": questions}
@@ -712,6 +720,13 @@ class AttemptService(BaseService[AttemptRepository]):
         relationships: set[InstrumentedAttribute] | None = None,
         options: Sequence[ExecutableOption] | None = None,
     ) -> QuizAttemptSchema | QuizAttemptAdminSchema | None:
+        """
+        :param filters: Pass only the filters to find the attempt, the filter for finding active attempt is inside the method.
+        :param is_admin:
+        :param relationships:
+        :param options:
+        :return: QuizAttemptSchema | QuizAttemptAdminSchema
+        """
         relationships.add(QuizAttemptModel.answers)
         filters[QuizAttemptModel.status] = AttemptStatus.IN_PROGRESS
 
@@ -758,8 +773,10 @@ class AttemptService(BaseService[AttemptRepository]):
         attempt = await self.get_active_attempt_by_id(
             user_id=user_id, attempt_id=attempt_id, is_admin=False
         )
-        questions = await self.quiz_service.get_questions_and_options(
-            company_id=attempt.company_id, quiz_id=attempt.quiz_id, is_admin=False
+        company_id = await self.quiz_service.get_company_id(quiz_id=attempt.quiz_id)
+
+        questions = await self.quiz_service.get_questions_with_options(
+            company_id=company_id, quiz_id=attempt.quiz_id, is_admin=False
         )
 
         data = {"questions": questions, "attempt": attempt}
