@@ -320,7 +320,7 @@ async def get_active_attempt(
     user: GetUserJWTDep,
     attempt_id: UUID,
 ):
-    # is_admin = False for now, since user cant see his attempts unless an attempt ended.
+    # Users only access their own active attempts here; admin review mode is not enabled.
     return await attempt_service.continue_attempt(
         user_id=user.id, attempt_id=attempt_id
     )
