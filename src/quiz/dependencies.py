@@ -47,7 +47,6 @@ async def get_attempt_service(
         attempt_repo=attempt_repo,
         user_repo=user_repo,
         answer_repo=answer_repo,
-        quiz_repo=quiz_repo,
         question_repo=question_repo,
         member_service=member_service,
         quiz_service=quiz_service,
