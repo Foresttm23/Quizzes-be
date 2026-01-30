@@ -18,7 +18,7 @@ from ..schemas import QuizAttemptBaseSchema
 
 def assert_in_progress(
     attempt: QuizAttemptModel,
-) -> None:  # TODO pass the task to the worker to invalidate the quiz.
+) -> None:  # TODO pass the task to the worker to invalidate the attempt.
     if attempt.status != AttemptStatus.IN_PROGRESS:
         raise ResourceConflictException(
             message=f"Cannot save answer. Attempt is {attempt.status.value}"
