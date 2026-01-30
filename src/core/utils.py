@@ -17,7 +17,7 @@ def sanitize(
     So only the smaller/user schema should be passed.
     """
     if is_admin and admin_schema is not None:
-        return admin_schema.model_validate(data) if admin_schema else data
+        return admin_schema.model_validate(data)
     if isinstance(data, Sequence):
         return [schema.model_validate(item) for item in data]
     return schema.model_validate(data)
