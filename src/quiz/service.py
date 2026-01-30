@@ -727,7 +727,10 @@ class AttemptService(BaseService[AttemptRepository]):
         :param options:
         :return: QuizAttemptSchema | QuizAttemptAdminSchema
         """
-        relationships.add(QuizAttemptModel.answers)
+        if relationships is None:
+            relationships = {QuizAttemptModel.answers}
+        else:
+            relationships.add(QuizAttemptModel.answers)
         filters[QuizAttemptModel.status] = AttemptStatus.IN_PROGRESS
 
         attempt: QuizAttemptModel = await self.repo.get_instance_by_filters_or_none(
