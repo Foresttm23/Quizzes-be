@@ -3,9 +3,6 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
-    Enum as SQLEnum,
-)
-from sqlalchemy import (
     UUID,
     Boolean,
     DateTime,
@@ -15,9 +12,13 @@ from sqlalchemy import (
     String,
     Text,
 )
+from sqlalchemy import (
+    Enum as SQLEnum,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.models import AttemptMixin, Base, TimestampMixin
+
 from .enums import AttemptStatus
 
 if TYPE_CHECKING:
@@ -131,6 +132,7 @@ class QuizAttempt(Base, AttemptMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    @property
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False

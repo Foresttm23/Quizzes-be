@@ -48,6 +48,7 @@ from .schemas import (
     QuizAttemptSchema,
     QuizCreateRequestSchema,
     QuizReviewAttemptResponseSchema,
+    QuizStartAttemptResponseSchema,
     QuizUpdateRequestSchema,
     SaveAnswerRequestSchema,
 )
@@ -507,7 +508,7 @@ class AttemptService(BaseService[AttemptRepository]):
 
     async def start_attempt(
         self, company_id: UUID, quiz_id: UUID, user_id: UUID
-    ) -> tuple[Sequence[CompanyQuizQuestionSchema], QuizAttemptSchema]:
+    ) -> QuizStartAttemptResponseSchema:
         await self.member_service.get_and_lock_member_row(
             company_id=company_id, user_id=user_id
         )
@@ -531,6 +532,19 @@ class AttemptService(BaseService[AttemptRepository]):
             else None
         )
 
+        return await self._create_new_attempt(company_id, quiz_id, user_id)
+
+    async def _create_new_attempt(
+        self, company_id: UUID, quiz_id: UUID, user_id: UUID
+    ) -> QuizStartAttemptResponseSchema:
+        time_limit = await self.quiz_service.get_quiz_time_limit_minutes(
+            company_id=company_id, quiz_id=quiz_id
+        )
+
+        expires_at = None
+        if time_limit:
+            expires_at = datetime.now(timezone.utc) + timedelta(minutes=time_limit)
+
         attempt = QuizAttemptModel(
             user_id=user_id, quiz_id=quiz_id, expires_at=expires_at
         )
@@ -539,9 +553,9 @@ class AttemptService(BaseService[AttemptRepository]):
         questions_schema = await self.quiz_service.get_questions_and_options(
             company_id=company_id, quiz_id=quiz_id, is_admin=False
         )
-        attempt_schema = QuizAttemptSchema.model_validate(attempt)
 
-        return questions_schema, attempt_schema
+        data = {"questions": questions_schema, "attempt": attempt}
+        return sanitize(data=data, schema=QuizStartAttemptResponseSchema)
 
     async def submit_attempt(
         self, user_id: UUID, attempt_id: UUID
@@ -554,7 +568,7 @@ class AttemptService(BaseService[AttemptRepository]):
         if attempt.status != AttemptStatus.IN_PROGRESS:  # Basic return if finished
             return QuizAttemptBaseSchema.model_validate(attempt)
 
-        if attempt.is_expired():  # Expire
+        if attempt.is_expired:  # Expire
             attempt = await self._finalize_attempt(
                 attempt=attempt, status=AttemptStatus.EXPIRED
             )
@@ -660,11 +674,6 @@ class AttemptService(BaseService[AttemptRepository]):
         if taken_attempts >= allowed_attempts:
             raise ResourceConflictException("You have no attempts left for this quiz.")
 
-    @cache_with_mapping(
-        config=CacheConfig.ATTEMPT,
-        response_schema=QuizAttemptAdminSchema,
-        cache_condition=cache_attempt_if_finished,
-    )
     async def get_attempt(
         self, user_id: UUID, attempt_id: UUID, is_admin: bool
     ) -> QuizAttemptAdminSchema | QuizAttemptSchema:
@@ -684,7 +693,9 @@ class AttemptService(BaseService[AttemptRepository]):
         self, user_id: UUID, attempt_id: UUID, is_admin: bool
     ) -> QuizReviewAttemptResponseSchema:
         """Returns Admin schema if passed admin == True or the attempt ended. Else Basic with no correct option."""
-        attempt = await self.get_attempt(user_id=user_id, attempt_id=attempt_id)
+        attempt = await self.get_attempt(
+            user_id=user_id, attempt_id=attempt_id, is_admin=is_admin
+        )
         assert_viewable(attempt=attempt, is_admin=is_admin)
 
         questions = await self.quiz_service.get_questions_and_options(
@@ -707,6 +718,9 @@ class AttemptService(BaseService[AttemptRepository]):
         attempt: QuizAttemptModel = await self.repo.get_instance_by_filters_or_none(
             filters=filters, relationships=relationships, options=options
         )
+        if attempt is None:
+            return None
+
         assert_in_progress(attempt=attempt)
 
         return sanitize(
@@ -740,14 +754,16 @@ class AttemptService(BaseService[AttemptRepository]):
 
     async def continue_attempt(
         self, user_id: UUID, attempt_id: UUID
-    ) -> tuple[Sequence[CompanyQuizQuestionSchema], QuizAttemptSchema]:
+    ) -> QuizStartAttemptResponseSchema:
         attempt = await self.get_active_attempt_by_id(
             user_id=user_id, attempt_id=attempt_id, is_admin=False
         )
         questions = await self.quiz_service.get_questions_and_options(
             company_id=attempt.company_id, quiz_id=attempt.quiz_id, is_admin=False
         )
-        return questions, attempt
+
+        data = {"questions": questions, "attempt": attempt}
+        return sanitize(data=data, schema=QuizStartAttemptResponseSchema)
 
     async def _check_and_expire_attempt(self, attempt: QuizAttemptModel) -> None:
         """
@@ -755,7 +771,7 @@ class AttemptService(BaseService[AttemptRepository]):
         Refetches the attempt to ensure the correct fields for _finalize_attempt() are present.
         For worker only, other methods should check expiration manually.
         """
-        if attempt.status == AttemptStatus.IN_PROGRESS and attempt.is_expired():
+        if attempt.status == AttemptStatus.IN_PROGRESS and attempt.is_expired:
             options = finalize_attempt_options()
             attempt = await self._get_attempt_model(
                 user_id=attempt.user_id, attempt_id=attempt.id, options=options

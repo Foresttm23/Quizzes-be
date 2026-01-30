@@ -13,6 +13,7 @@ from ..models import CompanyQuizQuestion as CompanyQuizQuestionModel
 from ..models import QuestionAnswerOption as QuestionAnswerOptionModel
 from ..models import QuizAttempt as QuizAttemptModel
 from ..models import QuizAttemptAnswer as QuizAttemptAnswerModel
+from ..schemas import QuizAttemptBaseSchema
 
 
 def assert_in_progress(
@@ -39,15 +40,17 @@ def finalize_attempt_options() -> list[ExecutableOption]:
     ]
 
 
-def assert_viewable(attempt: Any, is_admin: bool) -> None:
+def assert_viewable(attempt: QuizAttemptBaseSchema, is_admin: bool) -> None:
     is_finished = attempt.status != AttemptStatus.IN_PROGRESS
     is_viewable = is_finished or attempt.is_expired or is_admin
 
     if not is_viewable:
-        raise  # TODO raise error that indicate that provided attempt is still ongoing
+        raise ResourceConflictException(
+            "Attempt is still in progress and cannot be viewed."
+        )
 
 
-def user_attempts_order_rules():
+def user_attempts_order_rules() -> list[Any]:
     status_priority = case(
         {
             AttemptStatus.IN_PROGRESS: 1,

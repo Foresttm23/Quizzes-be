@@ -343,12 +343,12 @@ async def get_quiz_attempt_results(
     )
 
 
-@cache(expire=60, key_builder=endpoint_key_builder)  # Critical endpoint
 @attempt_router.get(
     "/",
     response_model=PaginationResponse[QuizAttemptBaseSchema],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=60, key_builder=endpoint_key_builder)  # Critical endpoint
 async def get_attempts(
     attempt_service: AttemptServiceDep,
     user: GetUserJWTDep,
