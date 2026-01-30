@@ -212,7 +212,7 @@ async def get_questions(
     is_admin = await member_service.has_admin_permission(
         company_id=company_id, user_id=user.id
     )
-    questions = await quiz_service.get_questions_and_options(
+    questions = await quiz_service.get_questions_with_options(
         company_id=company_id, quiz_id=quiz_id, is_admin=is_admin
     )
     return questions
