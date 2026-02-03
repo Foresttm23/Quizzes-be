@@ -94,6 +94,8 @@ async def get_user_from_refresh_jwt(
     token_service: TokenServiceDep,
     user_service: UserServiceDep,
 ) -> UserModel:
+    if not refresh_token:
+        raise NotAuthenticatedException()
     jwt_refresh_payload = token_service.verify_refresh_token_and_get_payload(
         token=refresh_token
     )

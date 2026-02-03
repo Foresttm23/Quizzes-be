@@ -82,8 +82,8 @@ async def login(
 
 @auth_router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    response.delete_cookie("access_token", path="/auth")
+    response.delete_cookie("refresh_token", path="/auth/refresh")
     return {"message": "Logged out"}
 
 

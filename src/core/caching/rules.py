@@ -1,5 +1,5 @@
-from quiz.schemas import QuizAttemptBaseSchema
 from src.quiz.enums import AttemptStatus
+from src.quiz.schemas import QuizAttemptBaseSchema
 
 
 # Might use a specific schema, but since I might call it for other attempts schema, left as is

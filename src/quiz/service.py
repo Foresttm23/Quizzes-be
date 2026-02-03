@@ -698,9 +698,13 @@ class AttemptService(BaseService[AttemptRepository, QuizAttemptModel]):
     async def get_attempt_results(
         self, user_id: UUID, attempt_id: UUID, is_admin: bool
     ) -> QuizReviewAttemptResponseSchema:
-        """Returns Admin schema if passed admin == True or the attempt ended. Else Basic with no correct option."""
+        """
+        If result ended, or admin is trying to access it, return results. Else raise ResourceConflictException.
+        Doesn't return active attempt.
+        """
+
         attempt = await self.get_attempt(
-            user_id=user_id, attempt_id=attempt_id, is_admin=is_admin
+            user_id=user_id, attempt_id=attempt_id, is_admin=True
         )
         company_id = await self.quiz_service.get_company_id(quiz_id=attempt.quiz_id)
 

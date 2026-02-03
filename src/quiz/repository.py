@@ -172,7 +172,9 @@ class AttemptRepository(BaseRepository[QuizAttemptModel]):
             QuizAttemptModel.user_id == user_id,
             QuizAttemptModel.quiz_id == quiz_id,
             QuizAttemptModel.status == AttemptStatus.IN_PROGRESS,
-            or_(QuizAttemptModel.expires_at > now, QuizAttemptModel.expires_at is None),
+            or_(
+                QuizAttemptModel.expires_at > now, QuizAttemptModel.expires_at.is_(None)
+            ),
         )
         attempt_id = await self.db.scalar(query)
         return attempt_id

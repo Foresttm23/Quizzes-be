@@ -43,7 +43,7 @@ def cache_with_mapping[S: BaseSchema](
             cached = await get_schema_from_cache(
                 key=cache_key, response_schema=response_schema
             )
-            if cached:
+            if cached is not None:
                 return cached
 
             result = await func(self, *args, **kwargs)
