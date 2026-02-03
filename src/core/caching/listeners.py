@@ -5,6 +5,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from src.quiz.models import CompanyQuiz, QuizAttempt
+
 from .config import CacheConfig
 from .operations import invalidate_mapping
 

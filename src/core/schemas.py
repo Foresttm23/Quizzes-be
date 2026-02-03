@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Generic, Sequence, TypeVar
+from typing import Sequence
 
 from pydantic import BaseModel, model_validator
 
@@ -16,11 +16,8 @@ class BaseUpdateMixin(BaseModel):
         return self
 
 
-T = TypeVar("T")
-
-
 # Generic response, so we can reuse it for pagination routes
-class PaginationResponse(Base, Generic[T]):
+class PaginationResponse[T](Base):
     total: int
     page: int
     page_size: int

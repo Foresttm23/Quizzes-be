@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Sequence
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from src.core.repository import BaseRepository
+
 from .enums import AttemptStatus
 from .models import (
     CompanyQuiz as CompanyQuizModel,
@@ -43,7 +45,7 @@ class QuizRepository(BaseRepository[CompanyQuizModel]):
         return is_published
 
     async def hide_other_versions(
-            self, company_id: UUID, root_id: UUID, exclude_quiz_id: UUID
+        self, company_id: UUID, root_id: UUID, exclude_quiz_id: UUID
     ) -> None:
         """
         Hides other versions of the quiz. is_visible = False. Does not affect is_published field.
@@ -66,9 +68,7 @@ class QuizRepository(BaseRepository[CompanyQuizModel]):
         )
         await self.db.execute(query)
 
-    async def get_quiz_allowed_attempts(
-            self, company_id: UUID, quiz_id: UUID
-    ) -> int | None:
+    async def get_allowed_attempts(self, company_id: UUID, quiz_id: UUID) -> int | None:
         query = select(CompanyQuizModel.allowed_attempts).where(
             CompanyQuizModel.company_id == company_id,
             CompanyQuizModel.id == quiz_id,
@@ -76,8 +76,8 @@ class QuizRepository(BaseRepository[CompanyQuizModel]):
         allowed_attempts = await self.db.scalar(query)
         return allowed_attempts
 
-    async def get_quiz_time_limit_minutes(
-            self, company_id: UUID, quiz_id: UUID
+    async def get_time_limit_minutes(
+        self, company_id: UUID, quiz_id: UUID
     ) -> int | None:
         query = select(CompanyQuizModel.time_limit_minutes).where(
             CompanyQuizModel.company_id == company_id, CompanyQuizModel.id == quiz_id
@@ -85,17 +85,24 @@ class QuizRepository(BaseRepository[CompanyQuizModel]):
         time_limit_minutes = await self.db.scalar(query)
         return time_limit_minutes
 
+    async def get_company_id_or_none(self, quiz_id: UUID) -> UUID | None:
+        query = select(CompanyQuizModel.company_id).where(
+            CompanyQuizModel.id == quiz_id
+        )
+        company_id = await self.db.scalar(query)
+        return company_id
+
 
 class QuestionRepository(BaseRepository[CompanyQuestionModel]):
     def __init__(self, db: AsyncSession):
         super().__init__(model=CompanyQuestionModel, db=db)
 
     async def get_question_or_none(
-            self,
-            company_id: UUID,
-            quiz_id: UUID,
-            question_id: UUID,
-            relationship: InstrumentedAttribute | None = None,
+        self,
+        company_id: UUID,
+        quiz_id: UUID,
+        question_id: UUID,
+        relationship: InstrumentedAttribute | None = None,
     ) -> CompanyQuestionModel | None:
         query = (
             select(CompanyQuestionModel)
@@ -112,7 +119,7 @@ class QuestionRepository(BaseRepository[CompanyQuestionModel]):
         return question
 
     async def get_questions_with_options(
-            self, company_id: UUID, quiz_id: UUID
+        self, company_id: UUID, quiz_id: UUID
     ) -> Sequence[CompanyQuestionModel]:
         query = (
             select(CompanyQuestionModel)
@@ -127,7 +134,7 @@ class QuestionRepository(BaseRepository[CompanyQuestionModel]):
         return questions.all()
 
     async def get_questions_count_for_quiz(self, quiz_id: UUID) -> int:
-        """Since require only quiz_id field, must ensure its correct. Example: attempt.quiz_id - ensures it exists and correct."""
+        """Since require only quiz_id field, must ensure it's correct. Example: attempt.quiz_id - ensures it exists and correct."""
         query = (
             select(func.count(CompanyQuestionModel.id))
             .join(CompanyQuizModel)
@@ -142,7 +149,7 @@ class AttemptRepository(BaseRepository[QuizAttemptModel]):
         super().__init__(model=QuizAttemptModel, db=db)
 
     async def get_user_attempts_count(
-            self, company_id: UUID, user_id: UUID, quiz_id: UUID
+        self, company_id: UUID, user_id: UUID, quiz_id: UUID
     ) -> int:
         """
         Get attempts count of user for a specific quiz. Asserts that quiz belongs to the company.
@@ -159,16 +166,21 @@ class AttemptRepository(BaseRepository[QuizAttemptModel]):
         attempts_taken = await self.db.scalar(query)
         return attempts_taken or 0
 
-    async def get_attempt_id(self, user_id: UUID, quiz_id: UUID) -> UUID | None:
+    async def get_active_attempt_id(self, user_id: UUID, quiz_id: UUID) -> UUID | None:
+        now = datetime.now(timezone.utc)
         query = select(QuizAttemptModel.id).where(
             QuizAttemptModel.user_id == user_id,
             QuizAttemptModel.quiz_id == quiz_id,
+            QuizAttemptModel.status == AttemptStatus.IN_PROGRESS,
+            or_(
+                QuizAttemptModel.expires_at > now, QuizAttemptModel.expires_at.is_(None)
+            ),
         )
         attempt_id = await self.db.scalar(query)
         return attempt_id
 
     async def get_user_company_stats(
-            self, user_id: UUID, company_id: UUID
+        self, user_id: UUID, company_id: UUID
     ) -> tuple[int, int]:
         """
         :returns: total_correct_answers, total_questions_answered
@@ -215,8 +227,8 @@ class AttemptRepository(BaseRepository[QuizAttemptModel]):
 
         return correct_answers_count or 0, total_questions_count or 0
 
-    async def get_attempt_status_or_none(
-            self, user_id: UUID, attempt_id: UUID
+    async def get_attempt_status(
+        self, user_id: UUID, attempt_id: UUID
     ) -> AttemptStatus | None:
         query = select(QuizAttemptModel.status).where(
             QuizAttemptModel.user_id == user_id, QuizAttemptModel.id == attempt_id

@@ -9,8 +9,8 @@ Create Date: 2025-11-14 20:21:10.608313
 from typing import Sequence, Union
 
 import sqlalchemy as sa
-from alembic import op
 
+from alembic import op
 from src.company.enums import CompanyRole
 
 # revision identifiers, used by Alembic.

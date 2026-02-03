@@ -6,7 +6,8 @@ from app.core.exceptions import InstanceNotFoundException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.models import User as UserModel
-from .test_base_service_setup import _TestService, _TestCreateSchema, _TestUpdateSchema
+
+from .test_base_service_setup import _TestCreateSchema, _TestService, _TestUpdateSchema
 
 pytestmark = pytest.mark.asyncio
 

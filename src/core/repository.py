@@ -1,4 +1,4 @@
-from typing import Any, Generic, Sequence, Type, TypeVar
+from typing import Any, Sequence, Type
 
 from pydantic import BaseModel as BaseSchema
 from sqlalchemy import func, select
@@ -12,36 +12,37 @@ from .exceptions import RecordAlreadyExistsException
 from .models import Base as BaseModel
 from .schemas import PaginationResponse
 
-ModelType = TypeVar("ModelType", bound=BaseModel)
-SchemaType = TypeVar("SchemaType", bound=BaseSchema)
-
-QueryType = TypeVar("QueryType", bound=Select[Any] | Update | Delete)
+type QueryType = Select[Any] | Update | Delete
 
 
-class BaseRepository(Generic[ModelType]):
-    def __init__(self, model: Type[ModelType], db: AsyncSession):
+class BaseRepository[M: BaseModel]:
+    def __init__(self, model: Type[M], db: AsyncSession):
         self.model = model
         self.db = db
 
-    async def get_instances_paginated(
-            self,
-            page: int,
-            page_size: int,
-            return_schema: Type[SchemaType],
-            filters: dict[InstrumentedAttribute, Any] | None = None,
-    ) -> PaginationResponse[SchemaType]:
+    async def get_instances_paginated[S: BaseSchema](
+        self,
+        page: int,
+        page_size: int,
+        return_schema: Type[S],
+        filters: dict[InstrumentedAttribute, Any] | None = None,
+        order_rules: Sequence[Any] | None = None,
+    ) -> PaginationResponse[S]:
         stmt = select(self.model)
         stmt = self._apply_filters(filters, stmt)
-        stmt = stmt.order_by(self.model.id.desc())
+
+        if order_rules is None:
+            order_rules = [self.model.id.desc()]
+        stmt = stmt.order_by(*order_rules)
 
         result = await self.paginate_query(
             stmt=stmt, page=page, page_size=page_size, return_schema=return_schema
         )
         return result
 
-    async def paginate_query(
-            self, stmt: Select, page: int, page_size: int, return_schema: Type[SchemaType]
-    ) -> PaginationResponse[SchemaType]:
+    async def paginate_query[S: BaseSchema](
+        self, stmt: Select, page: int, page_size: int, return_schema: Type[S]
+    ) -> PaginationResponse[S]:
         count_query = select(func.count()).select_from(stmt.subquery())
         total = await self.db.scalar(count_query) or 0
 
@@ -64,9 +65,9 @@ class BaseRepository(Generic[ModelType]):
         )
 
     @staticmethod
-    def _apply_filters(
-            filters: dict[InstrumentedAttribute, Any] | None, base_query: QueryType
-    ) -> QueryType:
+    def _apply_filters[Q: QueryType](
+        filters: dict[InstrumentedAttribute, Any] | None, base_query: Q
+    ) -> Q:
         """
         Returns conditions and query of stacked queries.
         """
@@ -91,11 +92,11 @@ class BaseRepository(Generic[ModelType]):
             raise RecordAlreadyExistsException()
 
     async def get_instance_by_field_or_none(
-            self,
-            field: InstrumentedAttribute,
-            value: Any,
-            relationships: set[InstrumentedAttribute] | None = None,
-    ) -> ModelType | None:
+        self,
+        field: InstrumentedAttribute,
+        value: Any,
+        relationships: set[InstrumentedAttribute] | None = None,
+    ) -> M | None:
         """
         Gets instance by single field.
         :param field:
@@ -110,11 +111,11 @@ class BaseRepository(Generic[ModelType]):
         return instance
 
     async def get_instance_by_filters_or_none(
-            self,
-            filters: dict[InstrumentedAttribute, Any],
-            relationships: set[InstrumentedAttribute] | None = None,
-            options: Sequence[ExecutableOption] | None = None,
-    ) -> ModelType | None:
+        self,
+        filters: dict[InstrumentedAttribute, Any],
+        relationships: set[InstrumentedAttribute] | None = None,
+        options: Sequence[ExecutableOption] | None = None,
+    ) -> M | None:
         """
         Gets instance by many field. Applies .model_dump(exclude_unset=True)
         :param filters: Executes the .where() DB query to the passed args
@@ -138,8 +139,8 @@ class BaseRepository(Generic[ModelType]):
         return instance
 
     @staticmethod
-    def apply_instance_updates(
-            instance: ModelType, new_instance_info: BaseSchema
+    def apply_instance_updates[S: BaseSchema](
+        instance: M, new_instance_info: S
     ) -> dict:
         """
         Helper function for updating instance details and keeping track of changes.

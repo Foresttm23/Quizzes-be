@@ -1,6 +1,5 @@
 import pytest
 import pytest_asyncio
-from alembic import command
 from alembic.config import Config
 from app.core.config import settings
 from app.db.postgres import DBSessionManager
@@ -10,6 +9,7 @@ from app.services.user.user_service import UserService
 from pydantic import SecretStr
 from sqlalchemy import NullPool, text
 
+from alembic import command
 from auth.models import User as UserModel
 
 DEFAULT_EMAIL = "test@example.com"

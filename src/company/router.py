@@ -1,8 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
+from fastapi_cache.decorator import cache
 
 from src.auth.dependencies import GetOptionalUserJWTDep, GetUserJWTDep
+from src.core.caching.keys import endpoint_key_builder
 from src.core.dependencies import PaginationParamDep
 from src.core.schemas import PaginationResponse
 from src.quiz.dependencies import AttemptServiceDep
@@ -71,6 +73,7 @@ async def create_company(
     response_model=PaginationResponse[CompanyDetailsResponseSchema],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_companies(
     company_service: CompanyServiceDep,
     user: GetOptionalUserJWTDep,
@@ -93,6 +96,7 @@ async def get_companies(
     response_model=CompanyDetailsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_company(
     company_service: CompanyServiceDep, user: GetOptionalUserJWTDep, company_id: UUID
 ):
@@ -210,6 +214,7 @@ async def cancel_invitation(
     response_model=PaginationResponse[InvitationDetailsResponse],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_company_pending_invitations(
     company_invitation_service: CompanyInvitationServiceDep,
     acting_user: GetUserJWTDep,
@@ -230,6 +235,7 @@ async def get_company_pending_invitations(
     response_model=PaginationResponse[InvitationDetailsResponse],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_my_pending_invitations(
     company_invitation_service: CompanyInvitationServiceDep,
     user: GetUserJWTDep,
@@ -313,6 +319,7 @@ async def cancel_request(
     response_model=PaginationResponse[RequestDetailsResponse],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=600, key_builder=endpoint_key_builder)
 async def get_company_pending_requests(
     company_join_request_service: CompanyJoinRequestServiceDep,
     acting_user: GetUserJWTDep,
@@ -333,6 +340,7 @@ async def get_company_pending_requests(
     response_model=PaginationResponse[RequestDetailsResponse],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=60, key_builder=endpoint_key_builder)
 async def get_my_pending_requests(
     company_join_request_service: CompanyJoinRequestServiceDep,
     user: GetUserJWTDep,
@@ -352,6 +360,7 @@ async def get_my_pending_requests(
     response_model=PaginationResponse[CompanyMemberDetailsResponse],
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=300, key_builder=endpoint_key_builder)
 async def get_company_members(
     member_service: CompanyMemberServiceDep,
     pagination: PaginationParamDep,
@@ -414,6 +423,7 @@ async def update_member_role(
     response_model=UserAverageCompanyStatsResponseSchema,
     status_code=status.HTTP_200_OK,
 )
+@cache(expire=3600, key_builder=endpoint_key_builder)
 async def get_user_average_score_in_company(
     attempt_service: AttemptServiceDep,
     user: GetUserJWTDep,

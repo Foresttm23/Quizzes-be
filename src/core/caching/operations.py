@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from typing import Type, TypeVar
+from typing import Type
 from uuid import UUID
 
 from fastapi_cache import FastAPICache
 from pydantic import BaseModel as BaseSchema
 
 from .serializers import deserialize
-
-SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
 
 async def set_with_mapping(mapping_key: str, key: str, value: str, expire: int):
@@ -33,7 +31,9 @@ async def invalidate_mapping(mapping_key: str | UUID):
         await redis.delete(*keys, mapping_key)
 
 
-async def get_schema_from_cache(key: str, response_schema: Type[SchemaType] | None) -> SchemaType | None:
+async def get_schema_from_cache[S: BaseSchema](
+    key: str, response_schema: Type[S] | None
+) -> S | None:
     redis = FastAPICache.get_backend().redis
     obj = await redis.get(key)
     if not obj:

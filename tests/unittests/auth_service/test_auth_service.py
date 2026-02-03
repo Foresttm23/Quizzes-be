@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 import pytest
 from app.core.exceptions import (
-    InvalidJWTException,
     InstanceNotFoundException,
+    InvalidJWTException,
     UserIncorrectPasswordOrEmailException,
 )
 from app.schemas.user.user_request_schema import LoginRequest

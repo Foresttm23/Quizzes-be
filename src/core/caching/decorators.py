@@ -1,18 +1,21 @@
 import functools
-from typing import Callable, Type, Any, TypeVar
+from typing import Any, Callable, Type
 
 from pydantic import BaseModel as BaseSchema
 
+from ..exceptions import CacheKeyNotExistException
 from .config import CacheConfig
-from .keys import custom_key_builder
-from .operations import set_with_mapping, get_schema_from_cache
+from .keys import service_key_builder
+from .operations import get_schema_from_cache, set_with_mapping
 from .serializers import serialize
 
-SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
-
-def cache_with_mapping(*, config: CacheConfig, response_schema: Type[SchemaType] | None,
-                       cache_condition: Callable[[Any], bool] | None = None) -> Callable[[Any], Any] | SchemaType:
+def cache_with_mapping[S: BaseSchema](
+    *,
+    config: CacheConfig,
+    response_schema: Type[S] | None,
+    cache_condition: Callable[[Any], bool] | None = None,
+) -> Callable[[Any], Any] | S:
     """
     Custom decorator that caches result and adds the key to a Shadow Set.
     Services must be called with **kwargs parameters if possible. Example: quiz_service(user_id=user_id).
@@ -33,12 +36,14 @@ def cache_with_mapping(*, config: CacheConfig, response_schema: Type[SchemaType]
             mapping_id = str(kwargs.get(config.mapping_key_name))
             mapping_key = config.get_mapping_key(mapping_id)
             if not mapping_key:
-                raise KeyError(f"Mapping key {mapping_id} does not exist.")  # TODO Custom exception
+                raise CacheKeyNotExistException(mapping=mapping_id)
 
-            cache_key = custom_key_builder(namespace=func.__name__, *args, **kwargs)
+            cache_key = service_key_builder(namespace=func.__name__, *args, **kwargs)
 
-            cached = await get_schema_from_cache(key=cache_key, response_schema=response_schema)
-            if cached:
+            cached = await get_schema_from_cache(
+                key=cache_key, response_schema=response_schema
+            )
+            if cached is not None:
                 return cached
 
             result = await func(self, *args, **kwargs)
@@ -48,8 +53,12 @@ def cache_with_mapping(*, config: CacheConfig, response_schema: Type[SchemaType]
             if cache_condition and not cache_condition(result):
                 return result
 
-            await set_with_mapping(mapping_key=mapping_key, key=cache_key, value=serialize(result),
-                                   expire=config.expire)
+            await set_with_mapping(
+                mapping_key=mapping_key,
+                key=cache_key,
+                value=serialize(result),
+                expire=config.expire,
+            )
 
             return result
 

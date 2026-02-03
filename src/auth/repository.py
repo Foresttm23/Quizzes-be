@@ -5,6 +5,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.repository import BaseRepository
+
 from .models import User as UserModel
 
 
@@ -13,7 +14,7 @@ class UserRepository(BaseRepository[UserModel]):
         super().__init__(model=UserModel, db=db)
 
     async def update_last_quiz_attempt_time(
-            self, user_id: UUID, new_time: datetime
+        self, user_id: UUID, new_time: datetime
     ) -> None:
         query = (
             update(UserModel)

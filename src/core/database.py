@@ -1,7 +1,12 @@
 import contextlib
 from typing import Any, AsyncGenerator
 
-from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker, create_async_engine, AsyncEngine, )
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from .exceptions import SessionNotInitializedException
 from .logger import logger
@@ -15,7 +20,9 @@ class DBSessionManager:
     def start(self, database_url: str, **pool_kwargs: Any) -> None:
         if self.engine is None:
             self.engine = create_async_engine(database_url, **pool_kwargs)
-            self.sessionmaker = async_sessionmaker(autocommit=False, bind=self.engine, expire_on_commit=False)
+            self.sessionmaker = async_sessionmaker(
+                autocommit=False, bind=self.engine, expire_on_commit=False
+            )
 
     async def stop(self) -> None:
         if self.engine:
