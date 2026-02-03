@@ -1,17 +1,16 @@
-from typing import Any, Sequence, TypeVar
+from typing import Any, Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy.orm import InstrumentedAttribute
 
 from src.core.exceptions import InstanceNotFoundException, ResourceConflictException
+
 from ..models import CompanyQuiz as CompanyQuizModel
 from ..models import CompanyQuizQuestion as CompanyQuizQuestionModel
 from ..models import QuestionAnswerOption as QuestionAnswerOptionModel
 from ..schemas import (
     QuestionUpdateRequestSchema,
 )
-
-Q = TypeVar("Q")
 
 
 def validate_quiz(quiz: CompanyQuizModel) -> None:
@@ -65,7 +64,7 @@ def get_all_quiz_filters(
     return filters
 
 
-def assert_valid_question(
+def assert_valid_question[Q](
     question: Q | None,
 ) -> Q:
     if not question:

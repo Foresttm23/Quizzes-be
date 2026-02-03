@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any, TypeVar
+from typing import Any
 from uuid import UUID, uuid4
 
 from httpx import AsyncClient
-from pydantic import BaseModel, EmailStr
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import EmailStr
 from sqlalchemy.orm import InstrumentedAttribute
 
 from src.auth.enums import JWTTypeEnum
@@ -45,10 +44,8 @@ from .utils import (
     verify_refresh_token_and_get_payload,
 )
 
-SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
-
-class UserService(BaseService[UserRepository]):
+class UserService(BaseService[UserRepository, UserModel]):
     @property
     def display_name(self) -> str:
         return "User"

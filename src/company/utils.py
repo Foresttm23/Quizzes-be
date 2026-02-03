@@ -4,6 +4,7 @@ from src.core.exceptions import (
     CompanyPermissionException,
     UserIsNotACompanyMemberException,
 )
+
 from .enums import CompanyRole
 
 

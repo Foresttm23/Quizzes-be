@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel as BaseSchema
@@ -8,22 +7,17 @@ from .logger import logger
 from .models import Base as BaseModel
 from .repository import BaseRepository
 
-RepoType = TypeVar("RepoType", bound=BaseRepository)
-ModelType = TypeVar("ModelType", bound=BaseModel)
 
-
-class BaseService(ABC, Generic[RepoType]):
+class BaseService[R: BaseRepository, M: BaseModel](ABC):
     @property
     @abstractmethod
     def display_name(self) -> str:
         pass
 
-    def __init__(self, repo: RepoType):
+    def __init__(self, repo: R):
         self.repo = repo
 
-    def _update_instance(
-        self, instance: ModelType, new_data: BaseSchema, by: UUID
-    ) -> ModelType:
+    def _update_instance(self, instance: M, new_data: BaseSchema, by: UUID) -> M:
         """
         Method for updating instance details by id.
         Should only be called inside subclasses with the specified Schema in parameters.
@@ -41,6 +35,6 @@ class BaseService(ABC, Generic[RepoType]):
         )
         return instance
 
-    async def _delete_instance(self, instance: BaseModel) -> None:
+    async def _delete_instance(self, instance: M) -> None:
         logger.info(f"Deleted {self.display_name}: {instance.id}")
         await self.repo.delete_instance(instance=instance)

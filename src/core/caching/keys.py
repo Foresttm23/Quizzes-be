@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-from typing import TypeVar
-
 from fastapi import Request, Response
 from fastapi_cache import FastAPICache
-from pydantic import BaseModel as BaseSchema
 
 from src.auth.models import User as UserModel
 
 from ..dependencies import PaginationParams
-
-SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
 
 def service_key_builder(namespace: str, *args, **kwargs) -> str:

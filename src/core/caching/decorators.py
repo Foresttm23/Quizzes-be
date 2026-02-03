@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Callable, Type, TypeVar
+from typing import Any, Callable, Type
 
 from pydantic import BaseModel as BaseSchema
 
@@ -9,15 +9,13 @@ from .keys import service_key_builder
 from .operations import get_schema_from_cache, set_with_mapping
 from .serializers import serialize
 
-SchemaType = TypeVar("SchemaType", bound=BaseSchema)
 
-
-def cache_with_mapping(
+def cache_with_mapping[S: BaseSchema](
     *,
     config: CacheConfig,
-    response_schema: Type[SchemaType] | None,
+    response_schema: Type[S] | None,
     cache_condition: Callable[[Any], bool] | None = None,
-) -> Callable[[Any], Any] | SchemaType:
+) -> Callable[[Any], Any] | S:
     """
     Custom decorator that caches result and adds the key to a Shadow Set.
     Services must be called with **kwargs parameters if possible. Example: quiz_service(user_id=user_id).

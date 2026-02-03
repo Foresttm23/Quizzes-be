@@ -1,8 +1,8 @@
 import pytest
 from app.core.exceptions import (
     InstanceNotFoundException,
-    RecordAlreadyExistsException,
     PasswordReuseException,
+    RecordAlreadyExistsException,
 )
 from app.schemas.user.user_request_schema import (
     RegisterRequest,

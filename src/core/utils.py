@@ -1,17 +1,14 @@
-from typing import Any, Sequence, Type, TypeVar
+from typing import Any, Sequence, Type
 
 from pydantic import BaseModel as BaseSchema
 
-UserSchema = TypeVar("UserSchema", bound=BaseSchema)
-AdminSchema = TypeVar("AdminSchema", bound=BaseSchema)
 
-
-def sanitize(
+def sanitize[U: BaseSchema, A: BaseSchema](
     data: Any,
-    schema: Type[UserSchema],
-    admin_schema: Type[AdminSchema] | None = None,
+    schema: Type[U],
+    admin_schema: Type[A] | None = None,
     is_admin: bool = False,
-) -> UserSchema | AdminSchema | Sequence[UserSchema] | Sequence[AdminSchema]:
+) -> U | A | Sequence[U] | Sequence[A]:
     """
     Every caching method saves the admin model, so it won't be sanitized.
     So only the smaller/user schema should be passed.

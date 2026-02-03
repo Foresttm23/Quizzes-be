@@ -6,13 +6,14 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.exceptions import (
-    PasswordReuseException,
-    InvalidPasswordException,
     ExternalAuthProviderException,
+    InvalidPasswordException,
+    PasswordReuseException,
 )
 from src.core.models import Base, TimestampMixin
+
 from .enums import AuthProviderEnum
-from .security import verify_password, hash_password
+from .security import hash_password, verify_password
 
 if TYPE_CHECKING:
     from src.company.models import Invitation, JoinRequest, Member

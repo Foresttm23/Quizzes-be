@@ -72,7 +72,7 @@ from .utils.quiz_logic import (
 )
 
 
-class QuizService(BaseService[QuizRepository]):
+class QuizService(BaseService[QuizRepository, CompanyQuizModel]):
     @property
     def display_name(self) -> str:
         return "Quiz"
@@ -500,7 +500,7 @@ class QuizService(BaseService[QuizRepository]):
         return company_id
 
 
-class AttemptService(BaseService[AttemptRepository]):
+class AttemptService(BaseService[AttemptRepository, QuizAttemptModel]):
     @property
     def display_name(self) -> str:
         return "QuizAttempt"

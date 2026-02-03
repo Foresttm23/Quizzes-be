@@ -4,7 +4,6 @@ from typing import Any, Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 
 from src.core.exceptions import (
@@ -50,7 +49,7 @@ from .schemas import (
 from .utils import assert_user_role
 
 
-class JoinRequestService(BaseService[JoinRequestRepository]):
+class JoinRequestService(BaseService[JoinRequestRepository, CompanyJoinRequestModel]):
     @property
     def display_name(self) -> str:
         return "JoinRequest"
@@ -238,7 +237,7 @@ class JoinRequestService(BaseService[JoinRequestRepository]):
         return request
 
 
-class MemberService(BaseService[MemberRepository]):
+class MemberService(BaseService[MemberRepository, CompanyMemberModel]):
     @property
     def display_name(self) -> str:
         return "CompanyMember"
@@ -514,7 +513,7 @@ class MemberService(BaseService[MemberRepository]):
         return member
 
 
-class InvitationService(BaseService[InvitationRepository]):
+class InvitationService(BaseService[InvitationRepository, CompanyInvitationModel]):
     @property
     def display_name(self) -> str:
         return "Invitation"
@@ -701,7 +700,7 @@ class InvitationService(BaseService[InvitationRepository]):
         return invitation
 
 
-class CompanyService(BaseService[CompanyRepository]):
+class CompanyService(BaseService[CompanyRepository, CompanyModel]):
     @property
     def display_name(self) -> str:
         return "Company"
