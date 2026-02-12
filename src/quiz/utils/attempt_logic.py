@@ -5,8 +5,7 @@ from sqlalchemy import case
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql.base import ExecutableOption
 
-from src.core.exceptions import ResourceConflictException
-
+from core.exceptions import ResourceConflictException
 from ..enums import AttemptStatus
 from ..models import AttemptAnswerSelection as AttemptAnswerSelectionModel
 from ..models import CompanyQuizQuestion as CompanyQuizQuestionModel

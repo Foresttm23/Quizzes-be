@@ -5,10 +5,10 @@ import httpx
 import jwt
 from jwt.exceptions import PyJWTError
 
-from src.auth.enums import AuthProviderEnum, JWTTypeEnum
-from src.auth.schemas import JWTSchema
-from src.core.config import Auth0JWTSettings, LocalJWTSettings
-from src.core.exceptions import InvalidJWTException
+from auth.enums import AuthProviderEnum, JWTTypeEnum
+from auth.schemas import JWTSchema
+from core.config import Auth0JWTSettings, LocalJWTSettings
+from core.exceptions import InvalidJWTException
 
 
 def encode_access_token(
