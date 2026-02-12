@@ -5,19 +5,18 @@ from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.core.exceptions import (
+from core.exceptions import (
     ExternalAuthProviderException,
     InvalidPasswordException,
     PasswordReuseException,
 )
-from src.core.models import Base, TimestampMixin
-
+from core.models import Base, TimestampMixin
 from .enums import AuthProviderEnum
 from .security import hash_password, verify_password
 
 if TYPE_CHECKING:
-    from src.company.models import Invitation, JoinRequest, Member
-    from src.quiz.models import QuizAttempt
+    from company.models import Invitation, JoinRequest, Member
+    from quiz.models import QuizAttempt
 
 
 class User(Base, TimestampMixin):

@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import or_, select
 from sqlalchemy.orm import InstrumentedAttribute
 
-from src.core.exceptions import (
+from core.exceptions import (
     CompanyPermissionException,
     InstanceNotFoundException,
     InvalidRecipientException,
@@ -15,10 +15,9 @@ from src.core.exceptions import (
     UserAlreadyInCompanyException,
     UserIsNotACompanyMemberException,
 )
-from src.core.logger import logger
-from src.core.schemas import PaginationResponse
-from src.core.service import BaseService
-
+from core.logger import logger
+from core.schemas import PaginationResponse
+from core.service import BaseService
 from .enums import CompanyRole, MessageStatus
 from .models import (
     Company as CompanyModel,

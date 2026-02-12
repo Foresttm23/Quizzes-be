@@ -12,3 +12,4 @@ logs/
 .vscode
 
 .ruff_cache
+.coverage

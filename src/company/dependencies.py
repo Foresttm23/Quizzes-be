@@ -5,8 +5,7 @@ from typing import Annotated
 from fastapi import Depends
 from fastapi_limiter.depends import RateLimiter
 
-from src.core.dependencies import DBSessionDep
-
+from core.dependencies import DBSessionDep
 from .repository import (
     CompanyRepository,
     InvitationRepository,
