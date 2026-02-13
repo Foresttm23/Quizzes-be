@@ -33,9 +33,9 @@ dev = [
     "testcontainers[postgres,redis]>=4.14.1",
     "pytest-cov>=7.0.0",
     "black>=26.1.0",
+    "ruff>=0.15.1",
 ]
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
