@@ -1,6 +1,8 @@
 services:
   # FastApi
   api:
+    build:
+      dockerfile: deploy/Dockerfile-prod
     environment:
       - ENV_FILE=deploy/envs/.env.prod
     ports:

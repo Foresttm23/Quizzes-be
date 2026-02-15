@@ -8,19 +8,18 @@ from httpx import AsyncClient
 from pydantic import EmailStr
 from sqlalchemy.orm import InstrumentedAttribute
 
-from src.auth.enums import JWTTypeEnum
-from src.core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
-from src.core.exceptions import (
+from auth.enums import JWTTypeEnum
+from core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
+from core.exceptions import (
     ExternalAuthProviderException,
     InstanceNotFoundException,
     InvalidJWTException,
     InvalidJWTRefreshException,
     UserIncorrectPasswordOrEmailException,
 )
-from src.core.logger import logger
-from src.core.schemas import PaginationResponse
-from src.core.service import BaseService
-
+from core.logger import logger
+from core.schemas import PaginationResponse
+from core.service import BaseService
 from .models import User as UserModel
 from .repository import UserRepository
 from .schemas import (
@@ -155,7 +154,7 @@ class UserService(BaseService[UserRepository, UserModel]):
     async def update_user_password(
         self, user: UserModel, new_password_info: UserPasswordUpdateRequest
     ) -> UserModel:
-        """Method for updating user password by id"""
+        """Method for updating the user password by id"""
         current_password = new_password_info.current_password.get_secret_value()
         new_password = new_password_info.new_password.get_secret_value()
         await user.update_password(
@@ -209,7 +208,7 @@ class AuthService:
         self, sign_in_data: LoginRequest
     ) -> UserModel:
         """Creates user from password and email if not found. Returns user in either way."""
-        # Checks if user exist byt itself, so the call checking user isn't needed
+        # Checks if the user exists by itself, so the call checking user isn't needed
         # but might help in some unexpected situations
         try:
             user = await self.user_service.get_by_email_model(email=sign_in_data.email)
@@ -231,12 +230,13 @@ class AuthService:
 
 
 class TokenService:
+
     def __init__(
         self,
         http_client: AsyncClient,
         local_settings: LocalJWTSettings,
         auth0_settings: Auth0JWTSettings,
-    ):  # Easy mock
+    ):
         self.local_settings = local_settings
         self.auth0_settings = auth0_settings
         self.http_client = http_client
@@ -256,13 +256,13 @@ class TokenService:
         return TokenResponse.model_validate(result)
 
     async def verify_token_and_get_payload(self, jwt_token: str) -> JWTSchema:
-        # Since we have 2 variation of registration we check them in order
+        # Since we have 2 variations of registration, we check them in order
         try:
             payload_dict = verify_local_token_and_get_payload(
                 token=jwt_token, local_settings=self.local_settings
             )
         except InvalidJWTException:
-            # If this raises error, code stops
+            # If this raises an error, the code stops
             payload_dict = await verify_auth0_token_and_get_payload(
                 token=jwt_token,
                 auth0_settings=self.auth0_settings,

@@ -9,14 +9,14 @@ from fastapi_cache.backends.redis import RedisBackend
 from fastapi_limiter import FastAPILimiter
 from redis.asyncio import Redis as AsyncRedis
 
-from src.auth.router import auth_router, users_router
-from src.company.router import companies_router, invitations_router, requests_router
-from src.core.config import settings
-from src.core.database import db_session_manager
-from src.core.http_client import http_client_manager
-from src.core.logger import logger
-from src.core.redis import redis_manager
-from src.quiz.router import attempt_router, quiz_router
+from auth.router import auth_router, users_router
+from company.router import companies_router, invitations_router, requests_router
+from core.config import settings
+from core.database import db_session_manager
+from core.http_client import http_client_manager
+from core.logger import logger
+from core.redis import redis_manager
+from quiz.router import attempt_router, quiz_router
 
 
 # From guide https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0-pydantic-v2-e6c540be4308
@@ -75,7 +75,7 @@ app.add_middleware(
 
 if __name__ == "__main__":
     uvicorn.run(
-        "src.main:app",
+        "main:app",
         host=settings.APP.HOST,
         port=settings.APP.PORT,
         reload=settings.APP.RELOAD,

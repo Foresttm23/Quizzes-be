@@ -29,6 +29,7 @@ class AppSettings(SharedConfig):
     MAX_PAGE_SIZE: int = 100
 
 
+# For local development we will pass the test_db values and use testcontainers for tests.
 class DBSettings(SharedConfig):
     # PostgresSQL
     POSTGRES_USER: str = "user"
@@ -41,18 +42,6 @@ class DBSettings(SharedConfig):
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
-
-
-class TestDBSettings(SharedConfig):
-    # Test PostgresSQL
-    TEST_POSTGRES_USER: str = "test_user"
-    TEST_POSTGRES_PASSWORD: str = "passw"
-    TEST_POSTGRES_DB: str = "db_test"
-
-    @computed_field
-    @property
-    def TEST_DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.TEST_POSTGRES_USER}:{self.TEST_POSTGRES_PASSWORD}@postgres:5432/{self.TEST_POSTGRES_DB}"
 
 
 class Auth0JWTSettings(SharedConfig):
@@ -86,7 +75,6 @@ class RedisSettings(SharedConfig):
 class Settings(BaseSettings):
     APP: AppSettings = AppSettings()
     DB: DBSettings = DBSettings()
-    TESTDB: TestDBSettings = TestDBSettings()
     LOCAL_JWT: LocalJWTSettings = LocalJWTSettings()
     AUTH0_JWT: Auth0JWTSettings = Auth0JWTSettings()
     REDIS: RedisSettings = RedisSettings()

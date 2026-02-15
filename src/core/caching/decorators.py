@@ -3,11 +3,11 @@ from typing import Any, Callable, Type
 
 from pydantic import BaseModel as BaseSchema
 
-from ..exceptions import CacheKeyNotExistException
 from .config import CacheConfig
 from .keys import service_key_builder
 from .operations import get_schema_from_cache, set_with_mapping
 from .serializers import serialize
+from ..exceptions import CacheKeyNotExistException
 
 
 def cache_with_mapping[S: BaseSchema](
