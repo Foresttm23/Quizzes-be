@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from pydantic import SecretStr
@@ -9,6 +9,7 @@ from auth.enums import AuthProviderEnum
 from auth.models import User as UserModel
 from auth.schemas import (
     JWTSchema,
+    LoginRequest,
     RegisterRequest,
     UserDetailsResponse,
 )
@@ -30,11 +31,6 @@ def fake_email():
 @pytest.fixture
 def fake_user_password():
     return SecretStr("curr_password")
-
-
-@pytest.fixture
-def fake_user_new_password():
-    return SecretStr("new_password")
 
 
 @pytest.fixture
@@ -73,9 +69,9 @@ def fake_user_auth0_model(fake_user_model, fake_auth0_user):
 
 
 @pytest.fixture
-def fake_user(fake_user_id, fake_email, fake_timestamp):
+def fake_user(fake_uuid: UUID, fake_email, fake_timestamp):
     user: UserModel = Mock(spec=UserModel)
-    user.id = fake_user_id
+    user.id = fake_uuid
     user.email = fake_email
     user.auth_provider = AuthProviderEnum.LOCAL
     user.hashed_password = "some_hashed_password"
@@ -101,7 +97,7 @@ def fake_auth0_user(fake_user, fake_timestamp):
 
 
 @pytest.fixture
-def fake_user_id():
+def fake_uuid() -> UUID:
     return uuid4()
 
 
@@ -130,7 +126,7 @@ def fake_register_request(fake_user, fake_user_password):
 
 
 @pytest.fixture
-def fake_jwt_schema(fake_user):  # JWT is generated from the real user
+def fake_jwt_schema(fake_user) -> JWTSchema:  # JWT is generated from the real user
     fake_schema = JWTSchema(
         sub=str(fake_user.id),
         email=fake_user.email,
@@ -140,46 +136,54 @@ def fake_jwt_schema(fake_user):  # JWT is generated from the real user
 
 
 @pytest.fixture
-def mock_user_model_call(mocker, fake_user):
-    mock = mocker.patch("auth.service.UserModel", return_value=fake_user)
-    return mock
-
-
-@pytest.fixture
-def mock_auth0_user_call(mocker, fake_auth0_user):
-    mock = mocker.patch("auth.service.UserModel", return_value=fake_auth0_user)
-    return mock
-
-
-@pytest.fixture
-def mock_hash_call(mocker, fake_user):
-    mock = mocker.patch(
-        "auth.service.hash_password", return_value=fake_user.hashed_password
+def fake_auth0_jwt_schema(
+    fake_auth0_user,
+) -> JWTSchema:  # JWT is generated from the real user
+    fake_schema = JWTSchema(
+        sub=str(uuid4()),  # External providers have their own  ids
+        email=fake_auth0_user.email,
+        auth_provider=fake_auth0_user.auth_provider,
     )
+    return fake_schema
+
+
+@pytest.fixture
+def mock_user_model_call(mocker):
+    mock = mocker.patch("auth.service.UserModel")
+    return mock
+
+
+@pytest.fixture
+def mock_hash_call(mocker):
+    mock = mocker.patch("auth.service.hash_password")
     return mock
 
 
 @pytest.fixture
 def mock_verify_call(mocker):
-    mock = mocker.patch("auth.service.verify_password", return_value=True)
+    mock = mocker.patch("auth.service.verify_password")
     return mock
 
 
 @pytest.fixture
-def mock_model_hash_call(mocker, fake_user):
-    mock = mocker.patch(
-        "auth.models.hash_password", return_value=fake_user.hashed_password
-    )
+def mock_model_hash_call(mocker):
+    mock = mocker.patch("auth.models.hash_password")
     return mock
 
 
 @pytest.fixture
-def mock_model_verify_call_success(mocker):
-    mock = mocker.patch("auth.models.verify_password", return_value=True)
+def mock_model_verify_call(mocker):
+    mock = mocker.patch("auth.models.verify_password")
     return mock
 
 
 @pytest.fixture
-def mock_model_verify_call_error(mocker):
-    mock = mocker.patch("auth.models.verify_password", return_value=False)
+def mock_get_user_id_from_payload_call(mocker):
+    mock = mocker.patch("auth.service.get_user_id_from_payload")
     return mock
+
+
+@pytest.fixture
+def fake_login_request(fake_user, fake_user_password) -> LoginRequest:
+    login_request = LoginRequest(email=fake_user.email, password=fake_user_password)
+    return login_request
