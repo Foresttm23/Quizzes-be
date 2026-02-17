@@ -2,8 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from core.database import get_db_session
-from core.redis import get_redis_client
+from src.core.database import db_session_manager
+from src.core.redis import redis_manager
 from src.main import app
 
 client = TestClient(app)
@@ -11,14 +11,14 @@ client = TestClient(app)
 
 @pytest.mark.asyncio
 async def test_redis_connection_health():
-    redis_client = await get_redis_client()
-    response = await redis_client.ping()
-    assert response == True
+    async with redis_manager.session() as conn:
+        response = await conn.ping()
+        assert response
 
 
 @pytest.mark.asyncio
-async def test_postgresql_connection_health(init_db_for_tests):
-    async for session in get_db_session():
+async def test_postgresql_connection_health():
+    async with db_session_manager.session() as session:
         response = await session.execute(text("SELECT 1"))
         assert response.scalar() == 1
 
