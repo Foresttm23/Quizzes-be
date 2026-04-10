@@ -3,23 +3,29 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import SecretStr
 
+from auth.enums import JWTTypeEnum
 from auth.models import User as UserModel
 from auth.repository import UserRepository
 from auth.schemas import (
+    JWTRefreshSchema,
+    JWTSchema,
+    TokenResponse,
     UserDetailsResponse,
     UserInfoUpdateRequest,
     UserPasswordUpdateRequest,
 )
-from auth.service import AuthService, UserService
-from core.config import AppSettings
+from auth.service import AuthService, TokenService, UserService
+from core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
 from core.exceptions import (
     ExternalAuthProviderException,
     InstanceNotFoundException,
     InvalidJWTException,
+    InvalidJWTRefreshException,
     InvalidPasswordException,
     PasswordReuseException,
     UserIncorrectPasswordOrEmailException,
 )
+from core.http_client import HTTPClientManager
 
 
 @pytest.fixture
@@ -38,6 +44,36 @@ def mock_user_service(mock_user_repo):
 def mock_auth_service(mock_user_repo, mock_user_service, fake_uuid):
     fake_app_settings = AppSettings(UUID_TRANSFORM_SECRET=fake_uuid)
     mock = AuthService(user_service=mock_user_service, app_settings=fake_app_settings)
+    return mock
+
+
+@pytest.fixture
+def mock_http_client():
+    mock = AsyncMock(spec=HTTPClientManager)
+    return mock
+
+
+@pytest.fixture
+def mock_token_service(mock_http_client):
+    fake_auth0_settings = Auth0JWTSettings()
+    fake_local_settings = LocalJWTSettings()
+    mock = TokenService(
+        http_client=mock_http_client,
+        local_settings=fake_local_settings,
+        auth0_settings=fake_auth0_settings,
+    )
+    return mock
+
+
+@pytest.fixture
+def mock_create_access_token_call(mocker, mock_token_service):
+    mock = mocker.patch.object(mock_token_service, "_create_access_token")
+    return mock
+
+
+@pytest.fixture
+def mock_create_refresh_token_call(mocker, mock_token_service):
+    mock = mocker.patch.object(mock_token_service, "_create_refresh_token")
     return mock
 
 
@@ -497,5 +533,130 @@ class TestAuthService:
             )
 
 
+@pytest.mark.asyncio
 class TestTokenService:
-    pass
+    def test_create_token_pairs(
+        self,
+        mock_token_service,
+        fake_user,
+        mock_create_access_token_call,
+        mock_create_refresh_token_call,
+        caplog,
+    ):
+        access_token = "access_token"
+        refresh_token = "refresh_token"
+
+        mock_create_access_token_call.return_value = access_token
+        mock_create_refresh_token_call.return_value = refresh_token
+
+        tokens = mock_token_service.create_token_pairs(user=fake_user)
+
+        assert isinstance(tokens, TokenResponse)
+        assert tokens.access_token == access_token
+        assert tokens.refresh_token == refresh_token
+        assert tokens.token_type == "bearer"
+
+        assert len(caplog.records) > 0
+
+    @pytest.mark.parametrize("is_local", [True, False])
+    async def test_verify_token_and_get_payload(
+        self,
+        mock_token_service,
+        is_local,
+        fake_jwt_schema,
+        fake_auth0_jwt_schema,
+        mock_verify_local_token_and_get_payload_call,
+        mock_verify_auth0_token_and_get_payload_call,
+    ):
+        if is_local:
+            mock_verify_local_token_and_get_payload_call.return_value = fake_jwt_schema
+            expected_payload = fake_jwt_schema
+        else:
+            mock_verify_local_token_and_get_payload_call.side_effect = (
+                InvalidJWTException()
+            )
+
+            mock_verify_auth0_token_and_get_payload_call.return_value = (
+                fake_auth0_jwt_schema
+            )
+            expected_payload = fake_auth0_jwt_schema
+
+        payload = await mock_token_service.verify_token_and_get_payload(
+            jwt_token="token"
+        )
+
+        assert isinstance(payload, JWTSchema)
+        assert payload.email == expected_payload.email
+        assert payload.sub == expected_payload.sub
+
+        if is_local:
+            mock_verify_local_token_and_get_payload_call.assert_called_once()
+            mock_verify_auth0_token_and_get_payload_call.assert_not_called()
+        else:
+            mock_verify_local_token_and_get_payload_call.assert_called_once()
+            mock_verify_auth0_token_and_get_payload_call.assert_called_once()
+
+    @pytest.mark.parametrize("is_refresh", [True, False])
+    def test_verify_refresh_token_and_get_payload(
+        self,
+        mock_token_service,
+        is_refresh,
+        fake_jwt_refresh_schema,
+        mock_verify_refresh_token_and_get_payload_call,
+    ):
+        if not is_refresh:
+            fake_jwt_refresh_schema.type = JWTTypeEnum.ACCESS
+        else:
+            fake_jwt_refresh_schema.type = JWTTypeEnum.REFRESH
+
+        mock_verify_refresh_token_and_get_payload_call.return_value = (
+            fake_jwt_refresh_schema.model_dump()
+        )
+
+        token_str = "some_random_token_string"
+
+        if not is_refresh:
+            with pytest.raises(InvalidJWTRefreshException):
+                mock_token_service.verify_refresh_token_and_get_payload(token=token_str)
+        else:
+            payload = mock_token_service.verify_refresh_token_and_get_payload(
+                token=token_str
+            )
+
+            assert isinstance(payload, JWTRefreshSchema)
+            assert payload.sub == fake_jwt_refresh_schema.sub
+            assert payload.type == JWTTypeEnum.REFRESH
+
+    async def test_create_access_token(
+        self,
+        mock_token_service,
+        fake_jwt_schema,
+        fake_user,
+        mock_encode_access_token_call,
+    ):
+        expected_token = "mocked_jwt_string"
+        mock_encode_access_token_call.return_value = expected_token
+
+        access_token = mock_token_service._create_access_token(user=fake_user)
+
+        mock_encode_access_token_call.assert_called_once()
+
+        assert isinstance(access_token, str)
+        assert access_token == expected_token
+
+    async def test_create_refresh_token(
+        self,
+        mock_token_service,
+        fake_jwt_schema,
+        fake_user,
+        mock_encode_refresh_token_call,
+    ):
+        expected_token = "mocked_jwt_string"
+        mock_encode_refresh_token_call.return_value = expected_token
+
+        refresh_token = mock_token_service._create_refresh_token(user=fake_user)
+
+        mock_encode_refresh_token_call.assert_called_once()
+
+        assert isinstance(refresh_token, str)
+        assert refresh_token == expected_token

@@ -22,6 +22,7 @@ dependencies = [
     "pyjwt>=2.10.1",
     "fastapi-limiter>=0.1.6",
     "httpx==0.28.1",
+    "pytest-loguru>=0.4.0",
 ]
 
 [dependency-groups]
