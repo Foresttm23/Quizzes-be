@@ -9,3 +9,11 @@ __pycache__/
 README.md
 
 app.log
+
+logs/
+.vscode
+
+.ruff_cache
+.coverage
+
+.egg-info
