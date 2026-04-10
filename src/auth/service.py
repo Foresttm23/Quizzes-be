@@ -8,7 +8,6 @@ from httpx import AsyncClient
 from pydantic import EmailStr
 from sqlalchemy.orm import InstrumentedAttribute
 
-from auth.enums import JWTTypeEnum
 from core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
 from core.exceptions import (
     ExternalAuthProviderException,
@@ -20,6 +19,8 @@ from core.exceptions import (
 from core.logger import logger
 from core.schemas import PaginationResponse
 from core.service import BaseService
+
+from .enums import JWTTypeEnum
 from .models import User as UserModel
 from .repository import UserRepository
 from .schemas import (
@@ -60,10 +61,26 @@ class UserService(BaseService[UserRepository, UserModel]):
         )
         return user
 
+    async def get_by_email_model_or_none(
+        self, email: EmailStr, relationships: set[InstrumentedAttribute] | None = None
+    ) -> UserModel | None:
+        user = await self._get_user_by_field_or_none(
+            field=UserModel.email, value=email, relationships=relationships
+        )
+        return user
+
     async def get_by_id_model(
         self, user_id: UUID, relationships: set[InstrumentedAttribute] | None = None
     ) -> UserModel:
         user = await self._get_user_by_field(
+            field=UserModel.id, value=user_id, relationships=relationships
+        )
+        return user
+
+    async def get_by_id_model_or_none(
+        self, user_id: UUID, relationships: set[InstrumentedAttribute] | None = None
+    ) -> UserModel | None:
+        user = await self._get_user_by_field_or_none(
             field=UserModel.id, value=user_id, relationships=relationships
         )
         return user
@@ -82,11 +99,22 @@ class UserService(BaseService[UserRepository, UserModel]):
         value: Any,
         relationships: set[InstrumentedAttribute] | None = None,
     ) -> UserModel:
-        user = await self.repo.get_instance_by_field_or_none(
+        user = await self._get_user_by_field_or_none(
             field=field, value=value, relationships=relationships
         )
         if not user:
             raise InstanceNotFoundException(instance_name=self.display_name)
+        return user
+
+    async def _get_user_by_field_or_none(  # pragma: no cover
+        self,
+        field: InstrumentedAttribute,
+        value: Any,
+        relationships: set[InstrumentedAttribute] | None = None,
+    ) -> UserModel | None:
+        user = await self.repo.get_instance_by_field_or_none(
+            field=field, value=value, relationships=relationships
+        )
         return user
 
     async def get_users_paginated(
@@ -191,16 +219,17 @@ class AuthService:
             jwt_payload=jwt_payload, uuid_secret=self.app_settings.UUID_TRANSFORM_SECRET
         )
 
-        try:
-            user = await self.user_service.get_by_id_model(user_id=user_id)
-        except InstanceNotFoundException:
-            if is_local_auth_provider(auth_provider=jwt_payload.auth_provider):
-                # User should exist if jwt auth_provider is "local"
-                raise InvalidJWTException(message="Record for user not found.")
+        user = await self.user_service.get_by_id_model_or_none(user_id=user_id)
+        if user:
+            return user
 
-            user = await self.user_service.create_user_from_auth0(
-                user_id=user_id, user_info=jwt_payload
-            )
+        if is_local_auth_provider(auth_provider=jwt_payload.auth_provider):
+            # User should exist if jwt auth_provider is "local"
+            raise InvalidJWTException(message="Record for user not found.")
+
+        user = await self.user_service.create_user_from_auth0(
+            user_id=user_id, user_info=jwt_payload
+        )
 
         return user
 
@@ -210,9 +239,10 @@ class AuthService:
         """Creates user from password and email if not found. Returns user in either way."""
         # Checks if the user exists by itself, so the call checking user isn't needed
         # but might help in some unexpected situations
-        try:
-            user = await self.user_service.get_by_email_model(email=sign_in_data.email)
-        except InstanceNotFoundException:
+        user = await self.user_service.get_by_email_model_or_none(
+            email=sign_in_data.email
+        )
+        if user is None:
             raise UserIncorrectPasswordOrEmailException()
 
         if user.hashed_password is None:
@@ -230,7 +260,6 @@ class AuthService:
 
 
 class TokenService:
-
     def __init__(
         self,
         http_client: AsyncClient,

@@ -4,7 +4,7 @@ from loguru import logger
 # logger.remove(0)
 
 # Can be added more, like rotation and compression
-logger.add(
+logger.add(  # pyright: ignore[reportUnusedCallResult]
     "logs/src.log",
     level="DEBUG",
     encoding="utf-8",

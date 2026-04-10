@@ -1,15 +1,15 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Import all models.
-import auth.models  # type: ignore # noqa
-import company.models  # type: ignore # noqa
-import quiz.models  # type: ignore # noqa
+import auth.models  # noqa
+import company.models  # noqa
+import quiz.models  # noqa
+from alembic import context
 from core.config import settings
 from core.models import Base
 
