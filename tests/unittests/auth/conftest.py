@@ -14,6 +14,7 @@ from auth.schemas import (
     RegisterRequest,
     UserDetailsResponse,
 )
+from core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
 from core.schemas import PaginationResponse
 
 
@@ -98,6 +99,24 @@ def fake_auth0_user(fake_user, fake_timestamp):
 
 
 @pytest.fixture
+def fake_auth0_settings():
+    settings = Auth0JWTSettings()
+    return settings
+
+
+@pytest.fixture
+def fake_local_settings():
+    settings = LocalJWTSettings()
+    return settings
+
+
+@pytest.fixture
+def fake_app_settings(fake_uuid):
+    settings = AppSettings(UUID_TRANSFORM_SECRET=fake_uuid)
+    return settings
+
+
+@pytest.fixture
 def fake_uuid() -> UUID:
     return uuid4()
 
@@ -167,6 +186,13 @@ def mock_user_model_call(mocker):
 @pytest.fixture
 def mock_hash_call(mocker):
     mock = mocker.patch("auth.service.hash_password")
+    return mock
+
+
+@pytest.fixture
+def mock_http_client(mocker):
+    # spec = HTTPClientManager
+    mock = mocker.AsyncMock()
     return mock
 
 

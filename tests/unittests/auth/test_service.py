@@ -15,7 +15,6 @@ from auth.schemas import (
     UserPasswordUpdateRequest,
 )
 from auth.service import AuthService, TokenService, UserService
-from core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
 from core.exceptions import (
     ExternalAuthProviderException,
     InstanceNotFoundException,
@@ -25,7 +24,6 @@ from core.exceptions import (
     PasswordReuseException,
     UserIncorrectPasswordOrEmailException,
 )
-from core.http_client import HTTPClientManager
 
 
 @pytest.fixture
@@ -41,22 +39,13 @@ def mock_user_service(mock_user_repo):
 
 
 @pytest.fixture
-def mock_auth_service(mock_user_repo, mock_user_service, fake_uuid):
-    fake_app_settings = AppSettings(UUID_TRANSFORM_SECRET=fake_uuid)
+def mock_auth_service(mock_user_repo, mock_user_service, fake_app_settings):
     mock = AuthService(user_service=mock_user_service, app_settings=fake_app_settings)
     return mock
 
 
 @pytest.fixture
-def mock_http_client():
-    mock = AsyncMock(spec=HTTPClientManager)
-    return mock
-
-
-@pytest.fixture
-def mock_token_service(mock_http_client):
-    fake_auth0_settings = Auth0JWTSettings()
-    fake_local_settings = LocalJWTSettings()
+def mock_token_service(mock_http_client, fake_local_settings, fake_auth0_settings):
     mock = TokenService(
         http_client=mock_http_client,
         local_settings=fake_local_settings,
