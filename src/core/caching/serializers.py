@@ -6,7 +6,7 @@ from typing import Any, Type
 from pydantic import TypeAdapter
 from pydantic_core import to_jsonable_python
 
-from src.core.schemas import Base as BaseSchema
+from core.schemas import Base as BaseSchema
 
 
 def serialize(obj: Any) -> str:

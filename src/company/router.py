@@ -3,12 +3,11 @@ from uuid import UUID
 from fastapi import APIRouter, Query, status
 from fastapi_cache.decorator import cache
 
-from src.auth.dependencies import GetOptionalUserJWTDep, GetUserJWTDep
-from src.core.caching.keys import endpoint_key_builder
-from src.core.dependencies import PaginationParamDep
-from src.core.schemas import PaginationResponse
-from src.quiz.dependencies import AttemptServiceDep
-
+from auth.dependencies import GetOptionalUserJWTDep, GetUserJWTDep
+from core.caching.keys import endpoint_key_builder
+from core.dependencies import PaginationParamDep
+from core.schemas import PaginationResponse
+from quiz.dependencies import AttemptServiceDep
 from .dependencies import (
     CompanyInvitationServiceDep,
     CompanyJoinRequestServiceDep,

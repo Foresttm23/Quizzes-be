@@ -3,12 +3,11 @@ from uuid import UUID
 from fastapi import APIRouter, Response, status
 from fastapi_cache.decorator import cache
 
-from src.core.caching.keys import endpoint_key_builder
-from src.core.dependencies import PaginationParamDep
-from src.core.exceptions import ExternalAuthProviderException
-from src.core.schemas import PaginationResponse
-from src.quiz.dependencies import AttemptServiceDep
-
+from core.caching.keys import endpoint_key_builder
+from core.dependencies import PaginationParamDep
+from core.exceptions import ExternalAuthProviderException
+from core.schemas import PaginationResponse
+from quiz.dependencies import AttemptServiceDep
 from .dependencies import (
     AuthLimitDep,
     AuthServiceDep,

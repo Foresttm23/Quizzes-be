@@ -12,3 +12,7 @@ logs/
 .vscode
 
 .ruff_cache
+.coverage
+*.egg-info
+
+*.egg-info

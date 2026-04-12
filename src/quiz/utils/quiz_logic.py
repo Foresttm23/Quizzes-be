@@ -3,8 +3,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.orm import InstrumentedAttribute
 
-from src.core.exceptions import InstanceNotFoundException, ResourceConflictException
-
+from core.exceptions import InstanceNotFoundException, ResourceConflictException
 from ..models import CompanyQuiz as CompanyQuizModel
 from ..models import CompanyQuizQuestion as CompanyQuizQuestionModel
 from ..models import QuestionAnswerOption as QuestionAnswerOptionModel

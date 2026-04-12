@@ -1,11 +1,16 @@
 services:
   # FastApi
   api:
+    build:
+      dockerfile: deploy/Dockerfile-dev
     volumes:
-      - ../src:/package/src
+      - ../:/package
+      # Ensures there are no conflicts with .envs on local pc and the container
+      - /package/.venv
     environment:
       - ENV_FILE=deploy/envs/.env.dev
-      - REDIS_HOST=redis # Purely docker setup, since we use localhost in the pure local setup
+      # For docker, we should use the internal port/host
+      - REDIS_HOST=redis
       - REDIS_PORT=6379
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -16,23 +21,6 @@ services:
   postgres:
     ports:
       - "5433:5432"
-
-  # Test PostgresSQL
-  test_postgres:
-    image: postgres:16-alpine
-    container_name: test_postgres_db
-    ports:
-      - "5432:5432" # integration tests run in docker anyway
-    environment:
-      POSTGRES_USER: ${TEST_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${TEST_POSTGRES_DB}
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER} -d ${TEST_POSTGRES_DB}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: always
 
   # Redis
   redis:

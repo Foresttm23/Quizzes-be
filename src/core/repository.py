@@ -98,7 +98,7 @@ class BaseRepository[M: BaseModel]:
         relationships: set[InstrumentedAttribute] | None = None,
     ) -> M | None:
         """
-        Gets instance by single field.
+        Gets instance by a single field.
         :param field:
         :param value:
         :param relationships:

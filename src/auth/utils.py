@@ -5,10 +5,10 @@ import httpx
 import jwt
 from jwt.exceptions import PyJWTError
 
-from src.auth.enums import AuthProviderEnum, JWTTypeEnum
-from src.auth.schemas import JWTSchema
-from src.core.config import Auth0JWTSettings, LocalJWTSettings
-from src.core.exceptions import InvalidJWTException
+from auth.enums import AuthProviderEnum, JWTTypeEnum
+from auth.schemas import JWTSchema
+from core.config import Auth0JWTSettings, LocalJWTSettings
+from core.exceptions import InvalidJWTException
 
 
 def encode_access_token(
@@ -111,7 +111,7 @@ def _handle_local_token_encode(data: dict, secret: str, algorithm: str) -> str:
 
 def _handle_local_token_decode(token: str, secret: str, algorithm: str) -> dict:
     try:
-        return jwt.decode(token, key=secret, algorithms=[algorithm])
+        return jwt.decode(jwt=token, key=secret, algorithms=[algorithm])
     except PyJWTError:
         raise InvalidJWTException()
 

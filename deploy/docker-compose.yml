@@ -3,7 +3,6 @@ services:
   api:
     build:
       context: ..
-      dockerfile: deploy/Dockerfile
     container_name: myapp
     depends_on:
       postgres:

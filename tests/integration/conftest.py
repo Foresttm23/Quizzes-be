@@ -1,16 +1,16 @@
 import pytest
 import pytest_asyncio
 from alembic.config import Config
-from app.core.config import settings
-from app.db.postgres import DBSessionManager
-from app.schemas.user.user_request_schema import RegisterRequest
-from app.services.company.member_service import MemberService
-from app.services.user.user_service import UserService
 from pydantic import SecretStr
 from sqlalchemy import NullPool, text
+from src.db.postgres import DBSessionManager
+from src.schemas.user.user_request_schema import RegisterRequest
+from src.services.company.member_service import MemberService
+from src.services.user.user_service import UserService
 
 from alembic import command
 from auth.models import User as UserModel
+from src.core.config import settings
 
 DEFAULT_EMAIL = "test@example.com"
 DEFAULT_USERNAME = "testuser"

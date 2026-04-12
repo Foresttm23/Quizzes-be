@@ -4,8 +4,7 @@ from uuid import UUID
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.repository import BaseRepository
-
+from core.repository import BaseRepository
 from .models import User as UserModel
 
 

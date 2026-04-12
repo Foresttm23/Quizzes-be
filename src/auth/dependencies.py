@@ -7,10 +7,9 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_limiter.depends import RateLimiter
 
-from src.core.config import settings
-from src.core.dependencies import DBSessionDep, HTTPClientDep
-from src.core.exceptions import NotAuthenticatedException
-
+from core.config import settings
+from core.dependencies import DBSessionDep, HTTPClientDep
+from core.exceptions import NotAuthenticatedException
 from .models import User as UserModel
 from .repository import UserRepository
 from .service import AuthService, TokenService, UserService

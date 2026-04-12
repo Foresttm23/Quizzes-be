@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import EmailStr, Field, SecretStr
 
-from src.core.schemas import Base, ScoreStatsBase, TimestampMixin
+from core.schemas import Base, ScoreStatsBase, TimestampMixin
 
 from .enums import AuthProviderEnum, JWTTypeEnum
 
@@ -15,7 +15,6 @@ class JWTSchema(Base):
 
 
 class JWTRefreshSchema(JWTSchema):
-    sub: str
     type: JWTTypeEnum
 
 

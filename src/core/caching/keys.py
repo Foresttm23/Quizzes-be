@@ -3,8 +3,7 @@ from __future__ import annotations
 from fastapi import Request, Response
 from fastapi_cache import FastAPICache
 
-from src.auth.models import User as UserModel
-
+from auth.models import User as UserModel
 from ..dependencies import PaginationParams
 
 

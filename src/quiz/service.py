@@ -5,18 +5,17 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.sql.base import ExecutableOption
 
-from src.auth.repository import UserRepository
-from src.auth.schemas import UserAverageSystemStatsResponseSchema
-from src.company.schemas import UserAverageCompanyStatsResponseSchema
-from src.company.service import MemberService
-from src.core.caching.config import CacheConfig
-from src.core.caching.decorators import cache_with_mapping
-from src.core.exceptions import InstanceNotFoundException, ResourceConflictException
-from src.core.logger import logger
-from src.core.schemas import PaginationResponse
-from src.core.service import BaseService
-from src.core.utils import sanitize
-
+from auth.repository import UserRepository
+from auth.schemas import UserAverageSystemStatsResponseSchema
+from company.schemas import UserAverageCompanyStatsResponseSchema
+from company.service import MemberService
+from core.caching.config import CacheConfig
+from core.caching.decorators import cache_with_mapping
+from core.exceptions import InstanceNotFoundException, ResourceConflictException
+from core.logger import logger
+from core.schemas import PaginationResponse
+from core.service import BaseService
+from core.utils import sanitize
 from .enums import AttemptStatus
 from .models import AttemptAnswerSelection as AttemptAnswerSelectionModel
 from .models import CompanyQuiz as CompanyQuizModel

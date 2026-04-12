@@ -5,8 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
-from src.core.schemas import AttemptMixin, Base, BaseUpdateMixin, TimestampMixin
-from src.quiz.enums import AttemptStatus
+from core.schemas import AttemptMixin, Base, BaseUpdateMixin, TimestampMixin
+from quiz.enums import AttemptStatus
 
 
 class QuestionAnswerOptionBaseSchema(Base):
