@@ -111,7 +111,7 @@ def _handle_local_token_encode(data: dict, secret: str, algorithm: str) -> str:
 
 def _handle_local_token_decode(token: str, secret: str, algorithm: str) -> dict:
     try:
-        return jwt.decode(token, key=secret, algorithms=[algorithm])
+        return jwt.decode(jwt=token, key=secret, algorithms=[algorithm])
     except PyJWTError:
         raise InvalidJWTException()
 

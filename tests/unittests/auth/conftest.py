@@ -5,14 +5,16 @@ from uuid import UUID, uuid4
 import pytest
 from pydantic import SecretStr
 
-from auth.enums import AuthProviderEnum
+from auth.enums import AuthProviderEnum, JWTTypeEnum
 from auth.models import User as UserModel
 from auth.schemas import (
+    JWTRefreshSchema,
     JWTSchema,
     LoginRequest,
     RegisterRequest,
     UserDetailsResponse,
 )
+from core.config import AppSettings, Auth0JWTSettings, LocalJWTSettings
 from core.schemas import PaginationResponse
 
 
@@ -97,6 +99,24 @@ def fake_auth0_user(fake_user, fake_timestamp):
 
 
 @pytest.fixture
+def fake_auth0_settings():
+    settings = Auth0JWTSettings()
+    return settings
+
+
+@pytest.fixture
+def fake_local_settings():
+    settings = LocalJWTSettings()
+    return settings
+
+
+@pytest.fixture
+def fake_app_settings(fake_uuid):
+    settings = AppSettings(UUID_TRANSFORM_SECRET=fake_uuid)
+    return settings
+
+
+@pytest.fixture
 def fake_uuid() -> UUID:
     return uuid4()
 
@@ -136,6 +156,16 @@ def fake_jwt_schema(fake_user) -> JWTSchema:  # JWT is generated from the real u
 
 
 @pytest.fixture
+def fake_jwt_refresh_schema(
+    fake_user, fake_jwt_schema
+) -> JWTRefreshSchema:  # JWT is generated from the real user
+    fake_schema = JWTRefreshSchema(
+        **fake_jwt_schema.model_dump(), type=JWTTypeEnum.REFRESH
+    )
+    return fake_schema
+
+
+@pytest.fixture
 def fake_auth0_jwt_schema(
     fake_auth0_user,
 ) -> JWTSchema:  # JWT is generated from the real user
@@ -160,8 +190,33 @@ def mock_hash_call(mocker):
 
 
 @pytest.fixture
+def mock_http_client(mocker):
+    # spec = HTTPClientManager
+    mock = mocker.AsyncMock()
+    return mock
+
+
+@pytest.fixture
 def mock_verify_call(mocker):
     mock = mocker.patch("auth.service.verify_password")
+    return mock
+
+
+@pytest.fixture
+def mock_verify_local_token_and_get_payload_call(mocker):
+    mock = mocker.patch("auth.service.verify_local_token_and_get_payload")
+    return mock
+
+
+@pytest.fixture
+def mock_verify_auth0_token_and_get_payload_call(mocker):
+    mock = mocker.patch("auth.service.verify_auth0_token_and_get_payload")
+    return mock
+
+
+@pytest.fixture
+def mock_verify_refresh_token_and_get_payload_call(mocker):
+    mock = mocker.patch("auth.service.verify_refresh_token_and_get_payload")
     return mock
 
 
@@ -180,6 +235,18 @@ def mock_model_verify_call(mocker):
 @pytest.fixture
 def mock_get_user_id_from_payload_call(mocker):
     mock = mocker.patch("auth.service.get_user_id_from_payload")
+    return mock
+
+
+@pytest.fixture
+def mock_encode_access_token_call(mocker):
+    mock = mocker.patch("auth.service.encode_access_token")
+    return mock
+
+
+@pytest.fixture
+def mock_encode_refresh_token_call(mocker):
+    mock = mocker.patch("auth.service.encode_refresh_token")
     return mock
 
 
