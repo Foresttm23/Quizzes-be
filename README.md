@@ -1,124 +1,114 @@
-###### Early reviewers: Volodymyr Tkach | Illia Puzdranovskyi | Kyrylo Lipovok
+# Quiz Management System
 
-# About this project
+A backend service for managing quizzes, built with **FastAPI**, **PostgreSQL**, **SQLAlchemy**, **Redis**, and **JWT-based authentication**. The project supports both local authentication and **Auth0** login, and is structured around separate service and repository layers for maintainability.
 
-### Technologies - FastAPI, PostgreSQL, SQLAlchemy, asyncio, Docker, JWT, Auth0, Redis, uv, pytest, alembic
+## Overview
 
-#### A backend service for managing quizzes, built with FastAPI and following RESTful principles. The service separates repository and service layers and follows Domain Driven architecture to maintain clean code and scalability.
+The system is designed with a layered architecture, caching, and asynchronous processing to support scalable backend workflows.
 
-#### The platform supports both local sign-up using email and password, issuing a local JWT, as well as login via Auth0 with their JWT, both token types are supported. Each user can send companies join requests or create a company themselves by becoming its owner. Owners can send other user's invitations, manage join requests and assign roles such as admins withing the company. Users can view visible companies as well as their own companies, even if those companies are marked as invisible.
+## Technologies Used
 
-#### Company admins can create quizzes, add questions and answers, and publish quizzes for company members. Once published, questions cannot be changed. To update them, admin or owner should create a new version from an existing one: all questions are preserved, the new version starts unpublished, and after publishing, the previous version becomes invisible while retaining its published status. Quick change of visible quiz is also available.
+- **Core:** Python 3.13+, FastAPI, Pydantic v2
+- **Data:** PostgreSQL, asynchronous SQLAlchemy, Alembic
+- **Performance:** Redis, `fastapi-cache2`
+- **Security:** Auth0, local JWT, role-based access control (RBAC)
+- **Infrastructure:** Docker, Docker Compose, `uv`, Makefile
+- **Quality:** Pytest, asyncio, Ruff, Black
 
-#### Frequently used service calls, such as retrieving quiz attempts, are cached using Redis, the fastapi-cache2 library, and a custom decorator. Cache invalidation happens automatically on model updates using SQLAlchemy event listeners.
+## Key Features
 
-#### Most endpoints are protected with required JWT authentication, other with optional. (Anyone can access a list of companies, invisible companies are only visible to their members)
+- Local email/password authentication with JWT
+- Auth0 login support
+- Company-based access control
+- Create, publish, and manage quizzes
+- Add and update questions and answers
+- Quiz attempt handling
+- Redis-based caching for frequently used data
+- Automated cache invalidation on data changes
+- Protected API endpoints with JWT authentication
 
-___
+## Architecture
 
-# Quizzes-be
+- **Service layer:** contains business logic
+- **Repository layer:** handles data persistence
+- **Async design:** uses asynchronous database and API patterns
+- **Caching:** Redis and `fastapi-cache2` are used to reduce repeated database work
+- **Authentication:** supports both local and external identity providers
 
-___
+## Getting Started
 
-## Install Docker
+### 1. Create a virtual environment
 
-https://www.docker.com
-___
-
-# For IDE support and better experience configure virtual environment
-
-### Create .venv
-
-```bash 
+```bash
 python -m venv venv
 ```
 
-### Activate .venv
+### 2. Activate the environment
 
-```bash 
+```bash
 .\venv\Scripts\activate
 ```
 
-### Install dependencies
+### 3. Install dependencies
 
-```bash 
+```bash
 uv sync
 ```
 
-# Project Setup
+### 4. Configure environment variables
 
-### Create local environment file.
+Copy the sample environment file and fill in the required values:
 
-```bash 
+```bash
 cp .env.sample .env
 ```
 
-#### `.env` files should be placed in deploy/envs folder, where the `.env.sample` is located.
+Environment files are stored in `deploy/envs`:
+- `.env.dev` for development
+- `.env.prod` for production
 
-#### For development name it `.env.dev` for production `.env.prod`.
+## Running the Project
 
-#### Fill real values in the `.env` or leave as is for a local development.
-
-# Run the App
-
-### If you are on Windows you need to install the `make` extension to run the `Makefile` scripts.
+### Development with Docker
 
 ```bash
-winget install GnuWin32.Make
-```
-
-### This command will start FastApi, Postgresql and Redis in separate containers and run it in the background.
-
-#### For development use `dev` to build and `dev-down` to remove container.
-
-```bash 
 make dev
 ```
 
-#### To access the container for development you need to run `make dev`, which will launch api, db and redis containers.
+This starts the API, PostgreSQL, and Redis containers.
 
-#### Then you can either go to the http://localhost:8080 which are the container api endpoint or to the http://localhost:8000 if you had launched api locally.
-
-### To run api locally:
+### Run locally
 
 ```bash
 python -m src.main
 ```
 
-# How to Run Tests
+The API will be available at `http://localhost:8000`.
 
-### Tests can be run from both container and local api.
+## Testing
 
-```bash 
+Run the test suite with:
+
+```bash
 uv run pytest
 ```
 
-# How to Teardown the Containers
+## Database Migrations
 
-### To teardown the containers. `Doesn't remove the volumes`
+Create a migration after changing SQLAlchemy models:
 
-```bash 
-make dev-down
+```bash
+alembic revision --autogenerate -m "description"
 ```
 
-#### To teardown the dev containers `dev-down` for prod `prod-down`.
+Apply migrations:
 
-# Creating and Applying migrations
-
-### After you change a SQLAlchemy model  in app/db/models/ you must generate a migration script:
-
-```bash 
-alembic revision --autogenerate -m "Your message"
-```
-
-### Then to apply a migration changes:
-
-```bash 
+```bash
 alembic upgrade head
 ```
 
-### To revert the last changes:
+Revert the last migration:
 
-```bash 
+```bash
 alembic downgrade -1
 ```
